@@ -219,7 +219,7 @@ func _build_camera_and_hud() -> void:
 	panel.position = Vector2(8, 8)
 	layer.add_child(panel)
 	hud = Label.new()
-	hud.add_theme_font_size_override("font_size", 14)
+	hud.add_theme_font_size_override("font_size", 24)
 	panel.add_child(hud)
 
 
