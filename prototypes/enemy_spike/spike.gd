@@ -421,7 +421,7 @@ func _hud_text() -> String:
 		var s := _stats(key)
 		lines.append("%-12s %7.2f %7.2f" % [key, s.x, s.y])
 	lines.append("draw calls %d | neighbours/enemy %.1f" % [_stats("draw_calls").x, _stats("neighbours").x])
-	lines.append("+/- count  D dense  S sep  Y y-sort  V vsync  wheel/arrows camera")
+	lines.append("+/- count  D dense  S sep  Y y-sort  V vsync\nZ/X or pinch: zoom  B: zoom to base  arrows or two-finger drag: move")
 	return "\n".join(lines)
 
 
@@ -437,9 +437,13 @@ func _set_vsync(on: bool) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera.zoom *= 1.1
+			_zoom_by(1.1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera.zoom /= 1.1
+			_zoom_by(1.0 / 1.1)
+	elif event is InputEventMagnifyGesture:
+		_zoom_by(event.factor)
+	elif event is InputEventPanGesture:
+		camera.position += event.delta * 20.0 / camera.zoom.x
 	if not (event is InputEventKey and event.pressed and not event.echo) or bench_index >= 0:
 		return
 	match event.keycode:
@@ -454,8 +458,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			separation = not separation
 		KEY_Y:
 			sorted_layer.y_sort_enabled = not sorted_layer.y_sort_enabled
+		KEY_Z:
+			_zoom_by(1.5)
+		KEY_X:
+			_zoom_by(1.0 / 1.5)
+		KEY_B:
+			camera.position = _grid_to_world(base_x, base_y)
+			camera.zoom = Vector2(3.0, 3.0)
 		KEY_V:
 			_set_vsync(DisplayServer.window_get_vsync_mode() == DisplayServer.VSYNC_DISABLED)
+
+
+func _zoom_by(factor: float) -> void:
+	camera.zoom = (camera.zoom * factor).clamp(Vector2(0.3, 0.3), Vector2(8.0, 8.0))
 
 
 func _pan(delta: float) -> void:
