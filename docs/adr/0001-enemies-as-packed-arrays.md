@@ -9,3 +9,5 @@ Enemies live as parallel typed packed arrays (dense, swap-remove on death, stabl
 - **C# for the hot loop**: needs the .NET editor build and adds GC pauses. If the loop ever has to leave GDScript, it moves to a C++ GDExtension behind the same module.
 
 Evidence: [Drawing 1,000+ enemies](https://github.com/vandelay87/pile-up/issues/2), [Can GDScript move 1,000 enemies within budget?](https://github.com/vandelay87/pile-up/issues/6), [Spike: 1,000 enemies on a flow field](https://github.com/vandelay87/pile-up/issues/7).
+
+Amended by ADR 0002: the module's `died` and `leaked` signals became lists returned from its removal step and passed on by the tick driver.
