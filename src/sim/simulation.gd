@@ -17,14 +17,18 @@ enum Step {
 const TICKS_PER_SECOND := 60
 
 var settings: Settings
+var map: MapData
+var occupancy: Occupancy
 var step_observer := Callable()
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 
 
-func _init(run_settings: Settings) -> void:
+func _init(run_settings: Settings, run_map: MapData) -> void:
 	settings = run_settings
+	map = run_map
+	occupancy = Occupancy.new(map.width, map.height)
 
 
 func queue_command(command: Commands.Command) -> void:
