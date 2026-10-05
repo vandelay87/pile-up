@@ -77,8 +77,6 @@ func _draw_tracer(image: Image) -> void:
 			image.set_pixel(x, y, Color(WHITE, alpha))
 
 
-# An isometric box standing on the diamond centred at foot: top face, then the left and
-# right faces, shaded so the box reads in 3D even when tinted by modulate.
 func _draw_box(image: Image, foot: Vector2, half: Vector2, height: int, color: Color) -> void:
 	for x in range(floori(foot.x - half.x), ceili(foot.x + half.x)):
 		var across := 1.0 - absf(x + 0.5 - foot.x) / half.x

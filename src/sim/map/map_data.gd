@@ -82,62 +82,30 @@ static func from_json(text: String) -> LoadResult:
 	var errors := PackedStringArray()
 	var version := _read_int(data, "version", errors)
 	if errors.is_empty() and version != VERSION:
-		return LoadResult.new(
-			null, "version: unknown version %d (expected %d)" % [version, VERSION]
-		)
+		errors.append("version: unknown version %d (expected %d)" % [version, VERSION])
+		return _failure(errors)
 	var map_width := _read_side(data, "width", errors)
 	var map_height := _read_side(data, "height", errors)
 	var rows := _read_strings(data, "rows", errors)
 	var base_rect := _read_base(data, errors)
 	var edges := _read_edges(data, errors)
 	if not errors.is_empty():
-		return LoadResult.new(null, "\n".join(errors))
+		return _failure(errors)
 
-	if rows.size() != map_height:
-		errors.append("rows: %d rows, expected %d" % [rows.size(), map_height])
-	for y in rows.size():
-		if rows[y].length() != map_width:
-			errors.append("rows[%d]: %d cells, expected %d" % [y, rows[y].length(), map_width])
+	var rock := _parse_rock(rows, map_width, map_height, errors)
 	if not errors.is_empty():
-		return LoadResult.new(null, "\n".join(errors))
+		return _failure(errors)
 
-	var rock := PackedByteArray()
-	rock.resize(map_width * map_height)
-	for y in map_height:
-		var row := rows[y]
-		for x in map_width:
-			match row[x]:
-				ROCK:
-					rock[y * map_width + x] = 1
-				CLEAR:
-					pass
-				_:
-					errors.append("rows[%d]: unknown character '%s' at x %d" % [y, row[x], x])
+	_check_base(base_rect, rock, map_width, map_height, errors)
 	if not errors.is_empty():
-		return LoadResult.new(null, "\n".join(errors))
-
-	var bounds := Rect2i(0, 0, map_width, map_height)
-	if not base_rect.has_area() or not bounds.encloses(base_rect):
-		return LoadResult.new(
-			null,
-			(
-				"base: %s size %s is outside the %d×%d map"
-				% [base_rect.position, base_rect.size, map_width, map_height]
-			)
-		)
-	for y in range(base_rect.position.y, base_rect.end.y):
-		for x in range(base_rect.position.x, base_rect.end.x):
-			if rock[y * map_width + x] == 1:
-				errors.append("base: covers rock at %s" % Vector2i(x, y))
-	if not errors.is_empty():
-		return LoadResult.new(null, "\n".join(errors))
+		return _failure(errors)
 
 	var map := MapData.new(map_width, map_height, rock, base_rect, edges)
 	for edge in edges:
 		if map.spawn_cells(edge).is_empty():
 			errors.append("spawn_edges: %s has no passable cell that reaches the base" % edge)
 	if not errors.is_empty():
-		return LoadResult.new(null, "\n".join(errors))
+		return _failure(errors)
 	return LoadResult.new(map, "")
 
 
@@ -206,6 +174,55 @@ func _cells_reaching_base() -> PackedByteArray:
 	return reached
 
 
+static func _failure(errors: PackedStringArray) -> LoadResult:
+	return LoadResult.new(null, "\n".join(errors))
+
+
+static func _parse_rock(
+	rows: PackedStringArray, map_width: int, map_height: int, errors: PackedStringArray
+) -> PackedByteArray:
+	var rock := PackedByteArray()
+	if rows.size() != map_height:
+		errors.append("rows: %d rows, expected %d" % [rows.size(), map_height])
+		return rock
+	rock.resize(map_width * map_height)
+	for y in map_height:
+		var row := rows[y]
+		if row.length() != map_width:
+			errors.append("rows[%d]: %d cells, expected %d" % [y, row.length(), map_width])
+			continue
+		for x in map_width:
+			match row[x]:
+				ROCK:
+					rock[y * map_width + x] = 1
+				CLEAR:
+					pass
+				_:
+					errors.append("rows[%d]: unknown character '%s' at x %d" % [y, row[x], x])
+	return rock
+
+
+static func _check_base(
+	base_rect: Rect2i,
+	rock: PackedByteArray,
+	map_width: int,
+	map_height: int,
+	errors: PackedStringArray,
+) -> void:
+	if not base_rect.has_area() or not Rect2i(0, 0, map_width, map_height).encloses(base_rect):
+		errors.append(
+			(
+				"base: %s size %s is outside the %d×%d map"
+				% [base_rect.position, base_rect.size, map_width, map_height]
+			)
+		)
+		return
+	for y in range(base_rect.position.y, base_rect.end.y):
+		for x in range(base_rect.position.x, base_rect.end.x):
+			if rock[y * map_width + x] == 1:
+				errors.append("base: covers rock at %s" % Vector2i(x, y))
+
+
 static func _read_base(data: Dictionary, errors: PackedStringArray) -> Rect2i:
 	if data.get("base") is not Dictionary:
 		errors.append("base: expected an object with origin and size")
@@ -221,7 +238,9 @@ static func _read_edges(data: Dictionary, errors: PackedStringArray) -> PackedSt
 	var seen := PackedStringArray()
 	for edge in edges:
 		if edge not in EDGES:
-			errors.append("spawn_edges: unknown edge '%s' (expected N, E, S or W)" % edge)
+			errors.append(
+				"spawn_edges: unknown edge '%s' (expected one of %s)" % [edge, ", ".join(EDGES)]
+			)
 		elif edge in seen:
 			errors.append("spawn_edges: %s is listed twice" % edge)
 		seen.append(edge)

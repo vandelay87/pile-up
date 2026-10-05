@@ -22,6 +22,18 @@ func _map() -> MapData:
 	return result.map
 
 
+func _assert_rejected(result: MapData.LoadResult, fragment: String) -> void:
+	assert_object(result.map).is_null()
+	assert_str(result.error).contains(fragment)
+
+
+func _clear_rows(width: int, height: int) -> Array[String]:
+	var rows: Array[String] = []
+	for y in height:
+		rows.append(".".repeat(width))
+	return rows
+
+
 func test_loads_size_and_rock() -> void:
 	var map := _map()
 
@@ -41,7 +53,7 @@ func test_derives_the_base_cells_from_origin_and_size() -> void:
 	assert_bool(map.is_base(Vector2i(2, 3))).is_false()
 
 
-func test_derives_each_spawn_edge_s_passable_cells() -> void:
+func test_derives_the_passable_cells_of_each_spawn_edge() -> void:
 	var map := _map()
 
 	assert_array(map.spawn_edges).contains_exactly(["N", "W"])
@@ -73,24 +85,12 @@ func test_rejects_an_unknown_version() -> void:
 	_assert_rejected(_load(data), "version: unknown version 2")
 
 
-func _assert_rejected(result: MapData.LoadResult, fragment: String) -> void:
-	assert_object(result.map).is_null()
-	assert_str(result.error).contains(fragment)
-
-
 func test_rejects_a_side_over_150_cells() -> void:
 	var data := _valid()
 	data["width"] = 151
 	data["rows"] = _clear_rows(151, 4)
 
 	_assert_rejected(_load(data), "width: 151 is outside 1 to 150")
-
-
-func _clear_rows(width: int, height: int) -> Array[String]:
-	var rows: Array[String] = []
-	for y in height:
-		rows.append(".".repeat(width))
-	return rows
 
 
 func test_rejects_rows_whose_lengths_do_not_match() -> void:
