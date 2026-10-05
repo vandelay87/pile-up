@@ -14,6 +14,10 @@ _Avoid_: Tile (reserved for the drawn isometric diamond)
 The central structure being defended; it has a number of lives.
 _Avoid_: Core, HQ
 
+**Rock**:
+A cell that is part of the map itself: no enemy can enter it, and nothing can be built or land on it. It never changes.
+_Avoid_: Obstacle, blocked cell, wall
+
 **Spawn edge**:
 A map edge that enemies enter from during the current wave.
 
