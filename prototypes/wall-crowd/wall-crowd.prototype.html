@@ -114,7 +114,7 @@ const WallCrowd = (() => {
     pileRoll: 0.05, wallRoll: 0.03,
     attackMode: 'space', slotsPerWall: 2, reach: 0.1,
     attackersHold: true, giveUpSec: 0,
-    targetRule: 'route', rollTrigger: 'adjacent',
+    targetRule: 'touching', rollTrigger: 'adjacent', afterBreach: 'reroute',
   };
   const DT = 1 / 60;
   const SQRT2 = Math.SQRT2;
@@ -234,10 +234,12 @@ const WallCrowd = (() => {
   // Which wall (if any) this enemy hits this tick.
   function wallTarget(sim, e, f, c) {
     const reach = sim.s.radius + sim.s.reach, p = f.parent[c];
+    if (sim.s.afterBreach !== 'reroute' && e.state === 'attacking' && isWall(sim, e.target) && distToCell(sim, e.x, e.y, e.target) <= reach) return e.target;
     if (p >= 0 && isWall(sim, p) && distToCell(sim, e.x, e.y, p) <= reach) return p;
-    if (sim.s.targetRule !== 'touching') return -1;
-    // 'touching': if the route crosses a wall within 2 steps, hit the nearest wall the enemy is pressed against.
-    if (p < 0 || !(isWall(sim, p) || (f.parent[p] >= 0 && isWall(sim, f.parent[p])))) return -1;
+    const jammed = sim.s.afterBreach === 'jam' && e.stuckT >= 0.5;
+    if (sim.s.targetRule !== 'touching' && !jammed) return -1;
+    // 'touching': if the route crosses a wall within 2 steps (or the enemy is jammed), hit the nearest wall it is pressed against.
+    if (!jammed && (p < 0 || !(isWall(sim, p) || (f.parent[p] >= 0 && isWall(sim, f.parent[p]))))) return -1;
     let best = -1, bestD = reach;
     const cx = c % sim.W, cy = (c / sim.W) | 0;
     for (const [dx, dy] of DIRS) {
@@ -534,15 +536,18 @@ const Scenarios = (() => {
     {
       key: 'sealed', name: 'Sealed corridor',
       intro: 'A corridor four cells wide is closed off by a line of four walls. There is no way around, so both routes go through the walls and every enemy has to attack. 150 enemies arrive at 5 per second; the first reach the wall after about 11 s.',
-      watch: 'How many enemies fit against the wall face. Once one wall cell is damaged its route cost drops, so with "the one its route steps into" the whole crowd funnels to that single cell and only 1–2 can hit it. Compare with "any wall it is pressed against".',
+      watch: 'How many enemies fit against the wall face (attackers hit any wall cell they are pressed against), then what happens to the damaged walls beside the first breach under each "After a breach" rule.',
       def: { rows: sealed('W'), spawn: { count: 150, rate: 5 } },
       steps: [
         { label: 'Run 13 s: the first enemies reach the wall', run: (ui) => ui.runFor(13) },
-        { label: 'Run 7 s: one cell gets damaged and the crowd funnels to it', run: (ui) => ui.runFor(7) },
-        { label: 'Switch to "any wall it is pressed against"', run: (ui) => ui.set('targetRule', 'touching') },
-        { label: 'Run 5 s: attackers spread across the face', run: (ui) => ui.runFor(5) },
         { label: 'Run until a wall falls', run: (ui) => ui.runUntilFall() },
-        { label: 'Run 10 s: the crowd squeezes through the level-3 pile', run: (ui) => ui.runFor(10) },
+        { label: 'Run 10 s: everyone reroutes through the gap; the weak walls beside it are left alone', run: (ui) => ui.runFor(10) },
+        { label: 'Restart with "attackers finish the wall they are on"', run: (ui) => ui.restartWith('afterBreach', 'finish') },
+        { label: 'Run until a wall falls', run: (ui) => ui.runUntilFall() },
+        { label: 'Run 10 s: watch the neighbouring walls', run: (ui) => ui.runFor(10) },
+        { label: 'Restart with "finish, plus jammed enemies hit walls"', run: (ui) => ui.restartWith('afterBreach', 'jam') },
+        { label: 'Run until a wall falls', run: (ui) => ui.runUntilFall() },
+        { label: 'Run 10 s: watch the neighbouring walls', run: (ui) => ui.runFor(10) },
       ],
     },
     {
@@ -624,6 +629,7 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
   const SETTINGS = [
     { key: 'attackMode', label: 'Who can attack a wall', hint: 'any enemy touching it, or a fixed number per wall cell', type: 'select', options: [['space', 'limited only by space'], ['slots', 'fixed slots per wall cell']] },
     { key: 'targetRule', label: 'Which wall cell an enemy hits', hint: 'the one its route steps into, or any it is pressed against', type: 'select', options: [['route', 'the one its route steps into'], ['touching', 'any wall it is pressed against']] },
+    { key: 'afterBreach', label: 'After a breach', hint: 'what happens to walls next to a gap', type: 'select', options: [['reroute', 'everyone reroutes through the gap'], ['finish', 'attackers finish the wall they are on'], ['jam', 'finish, plus jammed enemies hit walls they are pressed against']] },
     { key: 'slotsPerWall', label: 'Slots per wall cell', hint: 'only with fixed slots', type: 'number', step: 1, min: 1 },
     { key: 'reach', label: 'Attack reach (cells)', hint: 'gap allowed between enemy and wall', type: 'number', step: 0.05, min: 0 },
     { key: 'attackersHold', label: 'Attackers hold their ground', hint: 'the crowd behind cannot shove them aside', type: 'check' },
@@ -648,6 +654,7 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
   const ui = {
     runFor: (sec) => { stopAt = sim.tick + Math.round(sec * 60); stopOnFall = false; setPlaying(true); },
     runUntilFall: () => { stopAt = sim.tick + 60 * 120; stopOnFall = true; setPlaying(true); },
+    restartWith: (k, v) => { overrides[k] = v; load(scenario); },
     ticks: (n) => { for (let i = 0; i < n; i++) WallCrowd.step(sim); render(); },
     set: (k, v) => { WallCrowd.setSetting(sim, k, v); overrides[k] = v; renderSettings(); render(); },
     cell: (x, y, kind) => { WallCrowd.setCell(sim, x, y, kind); render(); },
