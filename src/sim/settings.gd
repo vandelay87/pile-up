@@ -4,7 +4,6 @@ extends RefCounted
 enum Apply { LIVE, RESTART }
 
 const DEFAULTS_PATH := "res://data/settings/defaults.json"
-const TICKS_PER_SECOND := 60
 
 const SCHEMA := {
 	"run":
@@ -43,7 +42,7 @@ var map_path: String:
 
 var _schema: Dictionary
 var _values: Dictionary
-var _pending: Dictionary
+var _restart_values: Dictionary
 
 
 class LoadResult:
@@ -88,24 +87,24 @@ static func from_json(text: String, schema: Dictionary = SCHEMA) -> LoadResult:
 			errors.append("%s: unknown group" % group)
 	for group: String in schema:
 		var entries: Dictionary = schema[group]
-		if data.get(group) is not Dictionary:
+		if not data.has(group):
 			errors.append("%s: missing" % group)
 			continue
+		if data[group] is not Dictionary:
+			errors.append("%s: expected an object of settings" % group)
+			continue
 		var group_data: Dictionary = data[group]
-		for key: String in group_data:
-			if not entries.has(key):
-				errors.append("%s.%s: unknown setting" % [group, key])
 		values[group] = {}
+		for key: String in group_data:
+			var error := _validation_error(schema, group, key, group_data[key])
+			if error.is_empty():
+				var entry: Dictionary = entries[key]
+				values[group][key] = _coerce(entry, group_data[key])
+			else:
+				errors.append(error)
 		for key: String in entries:
 			if not group_data.has(key):
 				errors.append("%s.%s: missing" % [group, key])
-				continue
-			var entry: Dictionary = entries[key]
-			var error := _check(entry, group_data[key])
-			if not error.is_empty():
-				errors.append("%s.%s: %s" % [group, key, error])
-				continue
-			values[group][key] = _coerce(entry, group_data[key])
 
 	if not errors.is_empty():
 		return LoadResult.new(null, "\n".join(errors))
@@ -113,11 +112,11 @@ static func from_json(text: String, schema: Dictionary = SCHEMA) -> LoadResult:
 
 
 static func ticks_from_seconds(seconds: float) -> int:
-	return roundi(seconds * TICKS_PER_SECOND)
+	return roundi(seconds * Simulation.TICKS_PER_SECOND)
 
 
 static func interval_ticks(per_second: float) -> int:
-	return maxi(1, roundi(TICKS_PER_SECOND / per_second))
+	return maxi(1, roundi(Simulation.TICKS_PER_SECOND / per_second))
 
 
 func value(group: String, key: String) -> Variant:
@@ -125,15 +124,12 @@ func value(group: String, key: String) -> Variant:
 
 
 func change(group: String, key: String, new_value: Variant) -> String:
-	var entries: Dictionary = _schema.get(group, {})
-	if not entries.has(key):
-		return "%s.%s: unknown setting" % [group, key]
-	var entry: Dictionary = entries[key]
-	var error := _check(entry, new_value)
+	var error := _validation_error(_schema, group, key, new_value)
 	if not error.is_empty():
-		return "%s.%s: %s" % [group, key, error]
+		return error
 
-	var target := _values if entry["apply"] == Apply.LIVE else _pending
+	var entry: Dictionary = _schema[group][key]
+	var target := _values if entry["apply"] == Apply.LIVE else _restart_values
 	if not target.has(group):
 		target[group] = {}
 	target[group][key] = _coerce(entry, new_value)
@@ -142,14 +138,27 @@ func change(group: String, key: String, new_value: Variant) -> String:
 
 func for_next_run() -> Settings:
 	var values := _values.duplicate(true)
-	for group: String in _pending:
+	for group: String in _restart_values:
 		var group_values: Dictionary = values[group]
-		var pending_values: Dictionary = _pending[group]
+		var pending_values: Dictionary = _restart_values[group]
 		group_values.merge(pending_values, true)
 	return Settings.new(_schema, values)
 
 
-static func _check(entry: Dictionary, raw: Variant) -> String:
+static func _validation_error(
+	schema: Dictionary, group: String, key: String, raw: Variant
+) -> String:
+	var entries: Dictionary = schema.get(group, {})
+	if not entries.has(key):
+		return "%s.%s: unknown setting" % [group, key]
+	var entry: Dictionary = entries[key]
+	var error := _type_or_range_error(entry, raw)
+	if error.is_empty():
+		return ""
+	return "%s.%s: %s" % [group, key, error]
+
+
+static func _type_or_range_error(entry: Dictionary, raw: Variant) -> String:
 	var type: int = entry["type"]
 	match type:
 		TYPE_INT:

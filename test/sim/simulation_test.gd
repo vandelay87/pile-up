@@ -9,7 +9,7 @@ var _trace: Array[String]
 
 
 func before_test() -> void:
-	_sim = Simulation.new(Settings.load_file(Settings.DEFAULTS_PATH).settings)
+	_sim = Simulation.new(Settings.from_json("{}", {}).settings)
 	_trace = []
 	_sim.step_observer = func(step: int) -> void: _trace.append("step %d" % step)
 

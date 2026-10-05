@@ -14,6 +14,8 @@ enum Step {
 	CHECK_WAVE_END,
 }
 
+const TICKS_PER_SECOND := 60
+
 var settings: Settings
 var step_observer := Callable()
 

@@ -102,6 +102,13 @@ func test_rejects_a_missing_group() -> void:
 	_assert_rejected(_load(data), "towers: missing")
 
 
+func test_rejects_a_group_that_is_not_an_object() -> void:
+	var data := _valid()
+	data["run"] = 5
+
+	_assert_rejected(_load(data), "run: expected an object of settings")
+
+
 func test_rejects_a_wrong_type() -> void:
 	var data := _valid()
 	data["run"]["starting_lives"] = "20"

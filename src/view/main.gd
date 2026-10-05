@@ -4,6 +4,7 @@ var _simulation: Simulation
 
 
 func _ready() -> void:
+	Engine.physics_ticks_per_second = Simulation.TICKS_PER_SECOND
 	var loaded := Settings.load_file(Settings.DEFAULTS_PATH)
 	if loaded.settings == null:
 		push_error(loaded.error)
