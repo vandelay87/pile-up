@@ -114,7 +114,7 @@ const WallCrowd = (() => {
     pileRoll: 0.05, wallRoll: 0.03,
     attackMode: 'space', slotsPerWall: 2, reach: 0.1,
     attackersHold: true, giveUpSec: 0,
-    targetRule: 'touching', rollTrigger: 'adjacent', afterBreach: 'finish', brushRoll: 0, brushScope: 'breach',
+    targetRule: 'touching', rollTrigger: 'adjacent', afterBreach: 'jam', jamSec: 0.5, brushRoll: 0, brushScope: 'breach',
   };
   const DT = 1 / 60;
   const SQRT2 = Math.SQRT2;
@@ -249,7 +249,7 @@ const WallCrowd = (() => {
         if (sim.rand() < sim.s.brushRoll) return n;
       }
     }
-    const jammed = sim.s.afterBreach === 'jam' && e.stuckT >= 0.5;
+    const jammed = sim.s.afterBreach === 'jam' && e.stuckT >= sim.s.jamSec;
     if (sim.s.targetRule !== 'touching' && !jammed) return -1;
     // 'touching': if the route crosses a wall within 2 steps (or the enemy is jammed), hit the nearest wall it is pressed against.
     if (!jammed && (p < 0 || !(isWall(sim, p) || (f.parent[p] >= 0 && isWall(sim, f.parent[p]))))) return -1;
@@ -570,15 +570,14 @@ const Scenarios = (() => {
       ],
     },
     {
-      key: 'wide', name: 'Wide wall line',
-      intro: 'A corridor 14 cells wide sealed by 14 walls, with 250 enemies. "Attackers finish the wall they are on" is on.',
-      watch: 'About half the line falls: the walls that were under attack before the first breach. Once the gap is wide enough for the crowd, enemies never go near the remaining walls, so they stand untouched. Try the brush roll settings to see how little they change this.',
-      def: { rows: map('#', (rect) => { rect(0, 4, 31, 17, '.'); rect(0, 9, 35, 12, '.'); rect(16, 4, 16, 17, 'W'); }), spawn: { count: 250, rate: 5 } },
+      key: 'wide', name: 'Breach under pressure',
+      intro: 'A corridor 14 cells wide, sealed by 14 walls, two of which have already fallen. 500 enemies arrive at 15 per second, far more than the gap can pass.',
+      watch: 'The crowd backs up behind the gap. Under "finish" nobody touches the other walls. Under "jam", enemies stuck and pressed against a wall attack it, so the breach widens for as long as the pressure lasts.',
+      def: { rows: map('#', (rect) => { rect(0, 4, 31, 17, '.'); rect(0, 9, 35, 12, '.'); rect(16, 4, 16, 17, 'W'); rect(16, 10, 16, 11, '3'); }), spawn: { count: 500, rate: 15 }, settings: { afterBreach: 'finish' } },
       steps: [
-        { label: 'Run until a wall falls', run: (ui) => ui.runUntilFall() },
-        { label: 'Run 30 s', run: (ui) => ui.runFor(30) },
-        { label: 'Restart with brush roll 20% on any wall', run: (ui) => { ui.restartWith('brushScope', 'any'); ui.set('brushRoll', 0.2); } },
-        { label: 'Run 60 s', run: (ui) => ui.runFor(60) },
+        { label: 'Run 45 s with "finish"', run: (ui) => ui.runFor(45) },
+        { label: 'Restart with "jam"', run: (ui) => ui.restartWith('afterBreach', 'jam') },
+        { label: 'Run 45 s with "jam"', run: (ui) => ui.runFor(45) },
       ],
     },
     {
@@ -661,6 +660,7 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
     { key: 'attackMode', label: 'Who can attack a wall', hint: 'any enemy touching it, or a fixed number per wall cell', type: 'select', options: [['space', 'limited only by space'], ['slots', 'fixed slots per wall cell']] },
     { key: 'targetRule', label: 'Which wall cell an enemy hits', hint: 'the one its route steps into, or any it is pressed against', type: 'select', options: [['route', 'the one its route steps into'], ['touching', 'any wall it is pressed against']] },
     { key: 'afterBreach', label: 'After a breach', hint: 'what happens to walls next to a gap', type: 'select', options: [['reroute', 'everyone reroutes through the gap'], ['finish', 'attackers finish the wall they are on'], ['jam', 'finish, plus jammed enemies hit walls they are pressed against']] },
+    { key: 'jamSec', label: 'Stuck for this long counts as jammed (s)', hint: 'only with the jam rule', type: 'number', step: 0.25, min: 0.25 },
     { key: 'brushRoll', label: 'Brush roll chance', hint: 'brushing past a wall: chance to stop and attack it (0 = off)', type: 'number', step: 0.05, min: 0 },
     { key: 'brushScope', label: 'Brush roll applies to', hint: 'which walls a passing enemy may roll to attack', type: 'select', options: [['damaged', 'damaged walls'], ['breach', 'damaged walls and walls next to a breach'], ['any', 'any wall']] },
     { key: 'slotsPerWall', label: 'Slots per wall cell', hint: 'only with fixed slots', type: 'number', step: 1, min: 1 },
