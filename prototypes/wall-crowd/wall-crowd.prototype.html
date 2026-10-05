@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: crowd behaviour at walls</title>
+<style>
+  :root { --accent:#4f46e5; --ink:#1f2328; --muted:#636c76; --line:#d8dee4; --bg:#f6f7f9; --card:#fff; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
+  p { margin:0 0 8px; max-width:880px; }
+  .tag { display:inline-block; font-size:11px; font-weight:600; color:#fff; background:#b42318; padding:1px 6px; border-radius:4px; vertical-align:middle; margin-right:6px; }
+  .intro { margin-bottom:16px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
+  @media (max-width:1100px) { .layout { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  canvas { width:100%; height:auto; display:block; border-radius:4px; cursor:crosshair; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:10px; }
+  button { font:inherit; padding:5px 10px; border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:default; }
+  button.done { background:#eef0ff; border-color:#c7cbff; }
+  button.done::before { content:"✓ "; color:var(--accent); }
+  select, input[type=number] { font:inherit; padding:3px 6px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  input[type=number] { width:70px; }
+  .stats { display:grid; grid-template-columns:1fr auto; gap:2px 12px; }
+  .stats .k { color:var(--muted); }
+  .stats .v { font-variant-numeric:tabular-nums; text-align:right; }
+  .changed { background:#fff4c2; border-radius:3px; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:3px 4px; border-bottom:1px solid var(--line); font-size:13px; }
+  th { color:var(--muted); font-weight:500; }
+  .hpbar { display:inline-block; width:60px; height:8px; background:#eee; border-radius:4px; overflow:hidden; vertical-align:middle; }
+  .hpbar i { display:block; height:100%; background:#8a4b22; }
+  .events { max-height:180px; overflow:auto; font-size:12px; color:var(--muted); margin:0; padding-left:16px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:4px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+  .tabs button { border:none; border-bottom:2px solid transparent; border-radius:0; background:none; padding:6px 10px; }
+  .tabs button.active { border-bottom-color:var(--accent); color:var(--accent); font-weight:600; }
+  .steps { display:flex; flex-direction:column; gap:6px; align-items:flex-start; margin-top:10px; }
+  .legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--muted); margin-top:8px; }
+  .legend span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:-1px; background:var(--c); }
+  .legend span.sq::before { border-radius:2px; }
+  .settings { display:grid; grid-template-columns:1fr auto; gap:6px 12px; align-items:center; }
+  .settings label { color:var(--ink); }
+  .settings small { display:block; color:var(--muted); font-size:12px; }
+  .watch { background:#f3f4ff; border-left:3px solid var(--accent); padding:8px 10px; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1><span class="tag">PROTOTYPE</span>Crowd behaviour at walls</h1>
+  <p><strong>Question:</strong> how do enemies position around and attack a wall? How does an attacker pick its spot, how many fit, what do the enemies behind them do (queue or reroute), and what happens to the crowd when the wall falls back to a level-3 pile?</p>
+  <p>The flow fields, pile slow, route rolls and separation follow the decisions already made in <em>Flow field design</em> and <em>Enemy simulation and rendering architecture</em>. Shown top-down rather than isometric; each dot is one enemy. Settings on the right switch between the candidate answers.</p>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="card">
+      <canvas id="view" width="792" height="484"></canvas>
+      <div class="legend">
+        <span style="--c:#9aa3ad">walking (sensible route)</span>
+        <span style="--c:#f08c00">walking (direct route)</span>
+        <span style="--c:#d6336c">attacking a wall</span>
+        <span style="--c:#7048e8">stuck: no progress for 0.5 s</span>
+        <span class="sq" style="--c:#8a4b22">wall</span>
+        <span class="sq" style="--c:#e9c46a">pile (darker = higher)</span>
+        <span class="sq" style="--c:#3b4252">rock</span>
+        <span class="sq" style="--c:#4dabf7">base</span>
+      </div>
+      <div class="row">
+        <button id="play" class="primary">Play</button>
+        <button id="tick1">Step 1 tick</button>
+        <button id="sec1">Run 1 s</button>
+        <label>Speed <select id="speed"><option value="1">1×</option><option value="3" selected>3×</option><option value="10">10×</option></select></label>
+        <label>Overlay <select id="overlay"><option value="none">none</option><option value="sens">sensible route arrows</option><option value="dir">direct route arrows</option></select></label>
+        <button id="restart">Restart scenario</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="tabs" id="tabs"></div>
+      <div id="tabBody"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Current state</h2>
+      <div class="stats" id="stats"></div>
+      <h2 style="margin-top:14px">Walls</h2>
+      <div id="walls"></div>
+      <h2 style="margin-top:14px">What just happened</h2>
+      <ol class="events" id="events" reversed></ol>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Rules being tested</h2>
+      <div class="settings" id="settings"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Pure simulation module: no DOM. The page below only calls into it. -->
+<script id="sim">
+const WallCrowd = (() => {
+  const DEFAULTS = {
+    speed: 1.5, radius: 0.3, sepStrength: 0.5, headingOffsetDeg: 10,
+    wallHP: 30, wallDps: 1, hpBucket: 10,
+    sensPileW: 1, sensWallW: 1, dirPileW: 0, dirWallW: 0.1,
+    pileRoll: 0.05, wallRoll: 0.03,
+    attackMode: 'space', slotsPerWall: 2, reach: 0.1,
+    attackersHold: true, giveUpSec: 0,
+    targetRule: 'route', rollTrigger: 'adjacent',
+  };
+  const DT = 1 / 60;
+  const SQRT2 = Math.SQRT2;
+  const DIRS = [[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,SQRT2],[1,-1,SQRT2],[-1,1,SQRT2],[-1,-1,SQRT2]];
+
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function create(def, seed = 1) {
+    const s = Object.assign({}, DEFAULTS, def.settings || {});
+    const W = def.rows[0].length, H = def.rows.length, N = W * H;
+    const sim = {
+      W, H, s, tick: 0, rand: rng(seed),
+      rock: new Uint8Array(N), base: new Uint8Array(N), level: new Uint8Array(N), hp: new Float32Array(N),
+      bucket: new Int16Array(N), enemies: [], nextId: 1, leaked: 0, killed: 0, events: [],
+      fields: null, dirty: true, bodyQueue: [],
+      spawn: { remaining: def.spawn ? def.spawn.count : 0, rate: def.spawn ? def.spawn.rate : 0, acc: 0 },
+      spawnCells: [],
+    };
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const c = y * W + x, ch = def.rows[y][x];
+      if (ch === '#') sim.rock[c] = 1;
+      else if (ch === 'B') sim.base[c] = 1;
+      else if (ch >= '1' && ch <= '4') sim.level[c] = +ch;
+      else if (ch === 'W') { sim.level[c] = 5; sim.hp[c] = s.wallHP; }
+    }
+    for (const [x, y, hp] of def.damaged || []) sim.hp[y * W + x] = hp;
+    for (let y = 0; y < H; y++) if (!sim.rock[y * W]) sim.spawnCells.push(y * W);
+    for (let c = 0; c < N; c++) sim.bucket[c] = bucketOf(sim, c);
+    return sim;
+  }
+
+  const idx = (sim, x, y) => y * sim.W + x;
+  const inside = (sim, x, y) => x >= 0 && y >= 0 && x < sim.W && y < sim.H;
+  const cellAt = (sim, px, py) => idx(sim, Math.min(sim.W - 1, Math.max(0, Math.floor(px))), Math.min(sim.H - 1, Math.max(0, Math.floor(py))));
+  const isWall = (sim, c) => sim.level[c] === 5;
+  const blocked = (sim, c) => sim.rock[c] === 1 || sim.level[c] === 5;
+  const slow = (L) => (L >= 1 && L <= 4 ? 0.15 * L : 0);
+  const bucketOf = (sim, c) => (isWall(sim, c) ? Math.ceil(sim.hp[c] / sim.s.hpBucket) : 0);
+
+  function log(sim, text) { sim.events.push({ tick: sim.tick, text }); }
+
+  // Cost to enter a cell, shared by both routes with per-route weights.
+  function factor(sim, c, pileW, wallW) {
+    if (sim.rock[c]) return Infinity;
+    const L = sim.level[c];
+    if (L === 0) return 1;
+    if (L < 5) return 1 + pileW * (1 / (1 - slow(L)) - 1);
+    const hpB = Math.ceil(sim.hp[c] / sim.s.hpBucket) * sim.s.hpBucket;
+    const breakCells = (hpB / sim.s.wallDps) * sim.s.speed;
+    return 1 + wallW * breakCells;
+  }
+
+  function buildField(sim, pileW, wallW) {
+    const { W, H } = sim, N = W * H;
+    const val = new Float64Array(N).fill(Infinity), parent = new Int32Array(N).fill(-1);
+    const heap = [];
+    const push = (v, c) => { heap.push([v, c]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    for (let c = 0; c < N; c++) if (sim.base[c]) { val[c] = 0; push(0, c); }
+    while (heap.length) {
+      const [v, u] = pop();
+      if (v > val[u]) continue;
+      const ux = u % W, uy = (u / W) | 0;
+      const enter = sim.base[u] ? 0 : factor(sim, u, pileW, wallW);
+      for (const [dx, dy, step] of DIRS) {
+        const nx = ux + dx, ny = uy + dy;
+        if (!inside(sim, nx, ny)) continue;
+        const n = idx(sim, nx, ny);
+        if (sim.rock[n]) continue;
+        if (dx && dy && (sim.rock[idx(sim, ux, ny)] || sim.rock[idx(sim, nx, uy)])) continue;
+        const nv = v + step * enter;
+        if (nv < val[n]) { val[n] = nv; parent[n] = u; push(nv, n); }
+      }
+    }
+    const dirX = new Float32Array(N), dirY = new Float32Array(N);
+    for (let c = 0; c < N; c++) {
+      const p = parent[c];
+      if (p < 0) continue;
+      const dx = (p % W) - (c % W), dy = ((p / W) | 0) - ((c / W) | 0), l = Math.hypot(dx, dy);
+      dirX[c] = dx / l; dirY[c] = dy / l;
+    }
+    return { val, parent, dirX, dirY };
+  }
+
+  function rebuildFields(sim) {
+    sim.fields = {
+      sens: buildField(sim, sim.s.sensPileW, sim.s.sensWallW),
+      dir: buildField(sim, sim.s.dirPileW, sim.s.dirWallW),
+    };
+    sim.dirty = false;
+  }
+
+  // Bilinear blend of the 4 cells around a float position, skipping unreachable cells.
+  function sample(sim, f, px, py) {
+    const gx = px - 0.5, gy = py - 0.5, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+    let dx = 0, dy = 0, v = 0, wsum = 0;
+    for (const [ox, oy, w] of [[0, 0, (1 - fx) * (1 - fy)], [1, 0, fx * (1 - fy)], [0, 1, (1 - fx) * fy], [1, 1, fx * fy]]) {
+      const x = x0 + ox, y = y0 + oy;
+      if (!inside(sim, x, y) || w === 0) continue;
+      const c = idx(sim, x, y);
+      if (!isFinite(f.val[c])) continue;
+      dx += f.dirX[c] * w; dy += f.dirY[c] * w; v += f.val[c] * w; wsum += w;
+    }
+    if (wsum === 0) { const c = cellAt(sim, px, py); return { dx: f.dirX[c], dy: f.dirY[c], v: f.val[c] }; }
+    const l = Math.hypot(dx, dy) || 1;
+    return { dx: dx / l, dy: dy / l, v: v / wsum };
+  }
+
+  // Which wall (if any) this enemy hits this tick.
+  function wallTarget(sim, e, f, c) {
+    const reach = sim.s.radius + sim.s.reach, p = f.parent[c];
+    if (p >= 0 && isWall(sim, p) && distToCell(sim, e.x, e.y, p) <= reach) return p;
+    if (sim.s.targetRule !== 'touching') return -1;
+    // 'touching': if the route crosses a wall within 2 steps, hit the nearest wall the enemy is pressed against.
+    if (p < 0 || !(isWall(sim, p) || (f.parent[p] >= 0 && isWall(sim, f.parent[p])))) return -1;
+    let best = -1, bestD = reach;
+    const cx = c % sim.W, cy = (c / sim.W) | 0;
+    for (const [dx, dy] of DIRS) {
+      const x = cx + dx, y = cy + dy;
+      if (!inside(sim, x, y)) continue;
+      const n = idx(sim, x, y), dist = distToCell(sim, e.x, e.y, n);
+      if (isWall(sim, n) && dist <= bestD) { best = n; bestD = dist; }
+    }
+    return best;
+  }
+
+  function distToCell(sim, px, py, c) {
+    const cx = c % sim.W, cy = (c / sim.W) | 0;
+    const qx = Math.max(cx, Math.min(cx + 1, px)), qy = Math.max(cy, Math.min(cy + 1, py));
+    return Math.hypot(px - qx, py - qy);
+  }
+
+  function spawnAt(sim, px, py) {
+    const e = {
+      id: sim.nextId++, x: px, y: py, route: 'sensible',
+      offset: (sim.rand() * 2 - 1) * sim.s.headingOffsetDeg * Math.PI / 180,
+      state: 'walking', target: -1, rolledCell: -1, obstacle: -1,
+      bestVal: Infinity, stuckT: 0, alive: true,
+    };
+    sim.enemies.push(e);
+    return e;
+  }
+
+  function landBodies(sim) {
+    for (const c0 of sim.bodyQueue) {
+      const x0 = c0 % sim.W, y0 = (c0 / sim.W) | 0;
+      let best = -1;
+      const ok = (c) => !sim.rock[c] && !sim.base[c] && sim.level[c] < 5;
+      const order = [[0, 0], ...DIRS.map(([dx, dy]) => [dx, dy])];
+      for (const [dx, dy] of order) {
+        const x = x0 + dx, y = y0 + dy;
+        if (!inside(sim, x, y)) continue;
+        const c = idx(sim, x, y);
+        if (ok(c) && (best < 0 || sim.level[c] > sim.level[best])) best = c;
+      }
+      if (best < 0) {
+        const seen = new Set([c0]), q = [c0];
+        while (q.length && best < 0) {
+          const u = q.shift();
+          for (const [dx, dy] of DIRS) {
+            const x = (u % sim.W) + dx, y = ((u / sim.W) | 0) + dy;
+            if (!inside(sim, x, y)) continue;
+            const c = idx(sim, x, y);
+            if (seen.has(c)) continue;
+            seen.add(c);
+            if (ok(c)) { best = c; break; }
+            q.push(c);
+          }
+        }
+      }
+      if (best < 0) continue;
+      sim.level[best]++;
+      if (sim.level[best] === 5) {
+        sim.hp[best] = sim.s.wallHP;
+        log(sim, `Pile at (${best % sim.W}, ${(best / sim.W) | 0}) reached level 5 and became a wall`);
+      }
+      sim.dirty = true;
+    }
+    sim.bodyQueue = [];
+  }
+
+  function step(sim) {
+    const s = sim.s;
+    sim.tick++;
+
+    // 1. land bodies, refresh flow fields
+    if (sim.bodyQueue.length) landBodies(sim);
+    if (sim.dirty || !sim.fields) rebuildFields(sim);
+    const F = sim.fields;
+
+    // 2. spawn
+    if (sim.spawn.remaining > 0 && sim.spawnCells.length) {
+      sim.spawn.acc += sim.spawn.rate * DT;
+      while (sim.spawn.acc >= 1 && sim.spawn.remaining > 0) {
+        sim.spawn.acc -= 1; sim.spawn.remaining--;
+        const c = sim.spawnCells[Math.floor(sim.rand() * sim.spawnCells.length)];
+        spawnAt(sim, 0.35, ((c / sim.W) | 0) + 0.2 + sim.rand() * 0.6);
+      }
+    }
+
+    // 3. spatial hash
+    const buckets = new Map();
+    for (const e of sim.enemies) {
+      const c = cellAt(sim, e.x, e.y);
+      if (!buckets.has(c)) buckets.set(c, []);
+      buckets.get(c).push(e);
+    }
+
+    // 4a. routes and wall contact
+    const cand = new Map();
+    for (const e of sim.enemies) {
+      const c = cellAt(sim, e.x, e.y);
+      if (e.route === 'direct' && e.obstacle >= 0 && F.dir.val[c] < F.dir.val[e.obstacle]) {
+        e.route = 'sensible'; e.obstacle = -1; e.bestVal = Infinity; e.stuckT = 0;
+      }
+      if (e.route === 'sensible') {
+        const ps = F.sens.parent[c], pd = F.dir.parent[c];
+        let obstacle = -1;
+        if (pd >= 0 && pd !== ps) {
+          if (s.rollTrigger === 'adjacent') { if (sim.level[pd] > 0) obstacle = pd; }
+          else for (let k = pd, n = 0; k >= 0 && n < 40 && !sim.base[k]; k = F.dir.parent[k], n++) if (sim.level[k] > 0) { obstacle = k; break; }
+        }
+        if (obstacle >= 0 && obstacle !== e.rolledCell) {
+          e.rolledCell = obstacle;
+          const chance = isWall(sim, obstacle) ? s.wallRoll : s.pileRoll;
+          if (sim.rand() < chance) { e.route = 'direct'; e.obstacle = obstacle; e.bestVal = Infinity; e.stuckT = 0; }
+        }
+      }
+      const f = e.route === 'direct' ? F.dir : F.sens;
+      cand.set(e, wallTarget(sim, e, f, c));
+    }
+
+    // 4b. who gets to attack
+    const count = new Map();
+    const tryAttack = (e) => {
+      const t = cand.get(e);
+      if (t < 0) { e.state = 'walking'; e.target = -1; return; }
+      const n = count.get(t) || 0;
+      if (s.attackMode === 'slots' && n >= s.slotsPerWall) { e.state = 'waiting'; e.target = t; return; }
+      count.set(t, n + 1); e.state = 'attacking'; e.target = t;
+    };
+    for (const e of sim.enemies) if (e.state === 'attacking' && cand.get(e) === e.target) tryAttack(e);
+    for (const e of sim.enemies) if (!(e.state === 'attacking' && count.has(e.target) && cand.get(e) === e.target)) tryAttack(e);
+
+    // 4c. desired movement
+    const vx = new Map(), vy = new Map();
+    for (const e of sim.enemies) {
+      if (e.state === 'attacking') { vx.set(e, 0); vy.set(e, 0); continue; }
+      const f = e.route === 'direct' ? F.dir : F.sens;
+      const smp = sample(sim, f, e.x, e.y);
+      const cos = Math.cos(e.offset), sin = Math.sin(e.offset);
+      const hx = smp.dx * cos - smp.dy * sin, hy = smp.dx * sin + smp.dy * cos;
+      const sp = s.speed * (1 - slow(sim.level[cellAt(sim, e.x, e.y)]));
+      vx.set(e, hx * sp * DT); vy.set(e, hy * sp * DT);
+      if (smp.v < e.bestVal - 0.02) { e.bestVal = smp.v; e.stuckT = 0; } else e.stuckT += DT;
+      if (e.route === 'direct' && s.giveUpSec > 0 && e.stuckT >= s.giveUpSec) {
+        e.route = 'sensible'; e.obstacle = -1; e.bestVal = Infinity; e.stuckT = 0;
+      }
+    }
+    for (const e of sim.enemies) if (e.state === 'attacking') { e.stuckT = 0; }
+
+    // 4d. separation (from positions at tick start)
+    const d = 2 * s.radius, px = new Map(), py = new Map();
+    for (const e of sim.enemies) { px.set(e, 0); py.set(e, 0); }
+    for (const e of sim.enemies) {
+      const cx = Math.floor(e.x), cy = Math.floor(e.y);
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        if (!inside(sim, cx + ox, cy + oy)) continue;
+        const list = buckets.get(idx(sim, cx + ox, cy + oy));
+        if (!list) continue;
+        for (const o of list) {
+          if (o === e) continue;
+          let dx = e.x - o.x, dy = e.y - o.y, dist = Math.hypot(dx, dy);
+          if (dist >= d) continue;
+          if (dist < 1e-6) { dx = e.id < o.id ? 1 : -1; dy = 0; dist = 1; }
+          let share = 0.5;
+          if (s.attackersHold && e.state === 'attacking' && o.state !== 'attacking') share = 0;
+          else if (s.attackersHold && o.state === 'attacking' && e.state !== 'attacking') share = 1;
+          const push = (d - Math.hypot(e.x - o.x, e.y - o.y)) * s.sepStrength * share * 2;
+          px.set(e, px.get(e) + (dx / dist) * push); py.set(e, py.get(e) + (dy / dist) * push);
+        }
+      }
+    }
+    for (const e of sim.enemies) { e.x += vx.get(e) + px.get(e); e.y += vy.get(e) + py.get(e); }
+
+    // 4e. keep enemies out of rock and walls
+    for (const e of sim.enemies) for (let pass = 0; pass < 2; pass++) resolveBlocked(sim, e);
+
+    // 4f. wall damage
+    for (const e of sim.enemies) if (e.state === 'attacking') sim.hp[e.target] -= s.wallDps * DT;
+    for (const [t] of count) {
+      if (sim.hp[t] <= 0) {
+        sim.level[t] = 3; sim.hp[t] = 0; sim.dirty = true;
+        log(sim, `Wall at (${t % sim.W}, ${(t / sim.W) | 0}) fell to a level-3 pile; ${count.get(t)} were attacking it`);
+        for (const e of sim.enemies) if (e.target === t) { e.state = 'walking'; e.target = -1; }
+      } else {
+        const b = bucketOf(sim, t);
+        if (b !== sim.bucket[t]) {
+          sim.bucket[t] = b; sim.dirty = true;
+          log(sim, `Wall at (${t % sim.W}, ${(t / sim.W) | 0}) down to ${Math.ceil(sim.hp[t])} HP: route costs updated`);
+        }
+      }
+    }
+
+    // 6. leaks
+    sim.enemies = sim.enemies.filter((e) => {
+      if (sim.base[cellAt(sim, e.x, e.y)]) { sim.leaked++; return false; }
+      return true;
+    });
+  }
+
+  function resolveBlocked(sim, e) {
+    const r = sim.s.radius;
+    e.x = Math.max(r, Math.min(sim.W - r, e.x)); e.y = Math.max(r, Math.min(sim.H - r, e.y));
+    const cx = Math.floor(e.x), cy = Math.floor(e.y);
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const x = cx + ox, y = cy + oy;
+      if (!inside(sim, x, y)) continue;
+      const c = idx(sim, x, y);
+      if (!blocked(sim, c)) continue;
+      const qx = Math.max(x, Math.min(x + 1, e.x)), qy = Math.max(y, Math.min(y + 1, e.y));
+      const dx = e.x - qx, dy = e.y - qy, dist = Math.hypot(dx, dy);
+      if (dist >= r) continue;
+      if (dist > 1e-9) { e.x = qx + (dx / dist) * r; e.y = qy + (dy / dist) * r; continue; }
+      // Centre inside a blocked cell (e.g. a wall just formed underfoot): leave by the nearest open face.
+      const faces = [
+        [e.x - x, -1, 0], [x + 1 - e.x, 1, 0], [e.y - y, 0, -1], [y + 1 - e.y, 0, 1],
+      ].filter(([, fx, fy]) => inside(sim, x + fx, y + fy) && !blocked(sim, idx(sim, x + fx, y + fy)))
+       .sort((a, b) => a[0] - b[0]);
+      if (!faces.length) continue;
+      const [, fx, fy] = faces[0];
+      if (fx < 0) e.x = x - r; if (fx > 0) e.x = x + 1 + r;
+      if (fy < 0) e.y = y - r; if (fy > 0) e.y = y + 1 + r;
+    }
+  }
+
+  // ---- commands and queries ----
+  function kill(sim, list) {
+    for (const e of list) { sim.bodyQueue.push(cellAt(sim, e.x, e.y)); sim.killed++; }
+    const dead = new Set(list);
+    sim.enemies = sim.enemies.filter((e) => !dead.has(e));
+    if (list.length) log(sim, `Tower fire killed ${list.length}; bodies land next tick`);
+  }
+
+  function nearestToBase(sim, list, n) {
+    if (!sim.fields) rebuildFields(sim);
+    return list.map((e) => [sample(sim, sim.fields.sens, e.x, e.y).v, e.id, e])
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, n).map((a) => a[2]);
+  }
+  const killAttackers = (sim, n) => kill(sim, nearestToBase(sim, sim.enemies.filter((e) => e.state === 'attacking'), n));
+  const killOnPiles = (sim, n) => kill(sim, nearestToBase(sim, sim.enemies.filter((e) => { const L = sim.level[cellAt(sim, e.x, e.y)]; return L >= 1 && L <= 4; }), n));
+
+  function setCell(sim, x, y, kind) {
+    if (!inside(sim, x, y)) return;
+    const c = idx(sim, x, y);
+    if (sim.base[c]) return;
+    sim.rock[c] = 0; sim.level[c] = 0; sim.hp[c] = 0;
+    if (kind === 'rock') sim.rock[c] = 1;
+    else if (kind === 'wall') { sim.level[c] = 5; sim.hp[c] = sim.s.wallHP; }
+    else if (kind === 'pile') sim.level[c] = 2;
+    sim.bucket[c] = bucketOf(sim, c);
+    sim.dirty = true;
+  }
+  const dropBody = (sim, x, y) => { if (inside(sim, x, y)) sim.bodyQueue.push(idx(sim, x, y)); };
+  const addSpawns = (sim, count, rate) => { sim.spawn.remaining += count; sim.spawn.rate = rate; };
+  function setSetting(sim, key, value) {
+    sim.s[key] = value;
+    if (['sensPileW', 'sensWallW', 'dirPileW', 'dirWallW', 'hpBucket'].includes(key)) sim.dirty = true;
+  }
+
+  function summary(sim) {
+    const out = { sensible: 0, direct: 0, walking: 0, attacking: 0, waiting: 0, stuck: 0 };
+    for (const e of sim.enemies) {
+      out[e.route]++;
+      if (e.state === 'attacking') out.attacking++;
+      else if (e.state === 'waiting') out.waiting++;
+      else if (e.stuckT >= 0.5) out.stuck++;
+      else out.walking++;
+    }
+    const walls = [];
+    for (let c = 0; c < sim.W * sim.H; c++) {
+      if (!isWall(sim, c)) continue;
+      const attackers = sim.enemies.filter((e) => e.state === 'attacking' && e.target === c).length;
+      const waiting = sim.enemies.filter((e) => e.state === 'waiting' && e.target === c).length;
+      walls.push({ x: c % sim.W, y: (c / sim.W) | 0, hp: sim.hp[c], attackers, waiting });
+    }
+    return { tick: sim.tick, seconds: sim.tick / 60, alive: sim.enemies.length, leaked: sim.leaked, killed: sim.killed, toSpawn: sim.spawn.remaining, ...out, walls };
+  }
+
+  return { DEFAULTS, create, step, kill, killAttackers, killOnPiles, setCell, dropBody, spawnAt, addSpawns, setSetting, summary, rebuildFields, cellAt };
+})();
+if (typeof module !== 'undefined') module.exports = WallCrowd;
+</script>
+
+<!-- Scenarios: maps in the agreed ASCII style (. clear, # rock, 1-4 pile, W wall, B base). -->
+<script id="scenarios">
+const Scenarios = (() => {
+  const W = 36, H = 22;
+  function map(fill, paint) {
+    const g = Array.from({ length: H }, () => Array(W).fill(fill));
+    const rect = (x0, y0, x1, y1, ch) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) g[y][x] = ch; };
+    paint(rect);
+    rect(32, 9, 35, 12, 'B');
+    return g.map((r) => r.join(''));
+  }
+  const sealed = (wallChar) => map('#', (rect) => { rect(0, 9, 35, 12, '.'); rect(16, 9, 16, 12, wallChar); });
+
+  return [
+    {
+      key: 'sealed', name: 'Sealed corridor',
+      intro: 'A corridor four cells wide is closed off by a line of four walls. There is no way around, so both routes go through the walls and every enemy has to attack. 150 enemies arrive at 5 per second; the first reach the wall after about 11 s.',
+      watch: 'How many enemies fit against the wall face. Once one wall cell is damaged its route cost drops, so with "the one its route steps into" the whole crowd funnels to that single cell and only 1–2 can hit it. Compare with "any wall it is pressed against".',
+      def: { rows: sealed('W'), spawn: { count: 150, rate: 5 } },
+      steps: [
+        { label: 'Run 13 s: the first enemies reach the wall', run: (ui) => ui.runFor(13) },
+        { label: 'Run 7 s: one cell gets damaged and the crowd funnels to it', run: (ui) => ui.runFor(7) },
+        { label: 'Switch to "any wall it is pressed against"', run: (ui) => ui.set('targetRule', 'touching') },
+        { label: 'Run 5 s: attackers spread across the face', run: (ui) => ui.runFor(5) },
+        { label: 'Run until a wall falls', run: (ui) => ui.runUntilFall() },
+        { label: 'Run 10 s: the crowd squeezes through the level-3 pile', run: (ui) => ui.runFor(10) },
+      ],
+    },
+    {
+      key: 'detour', name: 'Wall with a detour',
+      intro: 'The same four walls, but a long loop goes around them. The sensible route takes the loop; the direct route goes through the wall. The wall roll chance is raised from 3% to 25% so direct-route enemies are easy to see.',
+      watch: 'Under the roll rule from Flow field design, an enemy only rolls when the direct route\'s very next cell is the obstacle. Here the routes split at the loop entrance, well before the wall, so nobody ever rolls. Then try the alternative trigger, and "give up when stuck" for direct-route enemies queuing behind the attackers.',
+      def: {
+        rows: map('#', (rect) => { rect(0, 9, 35, 12, '.'); rect(5, 1, 8, 12, '.'); rect(5, 1, 27, 4, '.'); rect(24, 1, 27, 12, '.'); rect(16, 9, 16, 12, 'W'); }),
+        spawn: { count: 200, rate: 4 }, settings: { wallRoll: 0.25 },
+      },
+      steps: [
+        { label: 'Run 15 s: who goes which way?', run: (ui) => ui.runFor(15) },
+        { label: 'Switch the roll to "routes split and the direct route crosses an obstacle ahead"', run: (ui) => ui.set('rollTrigger', 'ahead') },
+        { label: 'Run 15 s', run: (ui) => ui.runFor(15) },
+        { label: 'Turn on "give up when stuck" after 2 s', run: (ui) => ui.set('giveUpSec', 2) },
+        { label: 'Run 10 s', run: (ui) => ui.runFor(10) },
+        { label: 'Run until a wall falls', run: (ui) => ui.runUntilFall() },
+        { label: 'Run 8 s', run: (ui) => ui.runFor(8) },
+      ],
+    },
+    {
+      key: 'open', name: 'Wall in the open',
+      intro: 'Open ground with a single wall cell in the enemies\' path. Every enemy that sees a wall ahead rolls onto the direct route (wall roll 100%, alternative roll trigger), to show what the direct route is willing to break through.',
+      watch: 'A fresh wall costs the direct route only 4.5 extra cells, so it attacks only when going around is longer than that. A lone wall or a short line is walked around even on the direct route; walls get attacked when they seal a gap.',
+      def: { rows: map('.', (rect) => { rect(16, 10, 16, 10, 'W'); }), spawn: { count: 150, rate: 5 }, settings: { wallRoll: 1, pileRoll: 0, rollTrigger: 'ahead' } },
+      steps: [
+        { label: 'Run 12 s: a single wall', run: (ui) => ui.runFor(12) },
+        { label: 'Extend it into a line of 7 cells', run: (ui) => { for (let y = 7; y <= 13; y++) ui.cell(16, y, 'wall'); } },
+        { label: 'Run 8 s', run: (ui) => ui.runFor(8) },
+        { label: 'Extend it into a line of 13 cells', run: (ui) => { for (let y = 4; y <= 16; y++) ui.cell(16, y, 'wall'); } },
+        { label: 'Run 8 s', run: (ui) => ui.runFor(8) },
+        { label: 'Close the whole map edge to edge', run: (ui) => { for (let y = 0; y < 22; y++) ui.cell(16, y, 'wall'); } },
+        { label: 'Run 10 s', run: (ui) => ui.runFor(10) },
+      ],
+    },
+    {
+      key: 'underfoot', name: 'Wall forms under the crowd',
+      intro: 'The corridor is crossed by level-4 piles that enemies wade across at 60% slow. Tower fire then kills enemies standing on the piles: each body joins the tallest pile within 1 cell, so piles reach level 5 and turn into walls with enemies standing on them.',
+      watch: 'Where the enemies on a new wall end up (pushed out of its nearest open side), and how the enemies already past the line behave compared with the crowd behind it.',
+      def: { rows: sealed('4'), spawn: { count: 150, rate: 5 } },
+      steps: [
+        { label: 'Run 13 s: the crowd wades onto the piles', run: (ui) => ui.runFor(13) },
+        { label: 'Tower kills 8 enemies standing on the piles', run: (ui) => ui.killOnPiles(8) },
+        { label: 'Step 1 tick: bodies land, walls form', run: (ui) => ui.ticks(1) },
+        { label: 'Step 1 tick: enemies are pushed off the new walls', run: (ui) => ui.ticks(1) },
+        { label: 'Run 10 s', run: (ui) => ui.runFor(10) },
+      ],
+    },
+    {
+      key: 'thicken', name: 'Defending a wall thickens it',
+      intro: 'The sealed corridor again, with a tower picking off the attackers. Bodies of enemies killed at a wall land on the attackers\' side, so the pile in front of the wall grows under the next attackers\' feet.',
+      watch: 'Whether the crowd turns on the new front wall once it forms, and whether attackers on a growing pile still fit as many as before.',
+      def: { rows: sealed('W'), spawn: { count: 200, rate: 5 }, settings: { targetRule: 'touching' } },
+      steps: [
+        { label: 'Run 15 s: attackers take their places', run: (ui) => ui.runFor(15) },
+        { label: 'Tower kills the 6 attackers nearest the base', run: (ui) => ui.killAttackers(6) },
+        { label: 'Run 2 s', run: (ui) => ui.runFor(2) },
+        { label: 'Tower kills 6 more attackers', run: (ui) => ui.killAttackers(6) },
+        { label: 'Run 2 s', run: (ui) => ui.runFor(2) },
+        { label: 'Tower kills 6 more attackers', run: (ui) => ui.killAttackers(6) },
+        { label: 'Run 2 s', run: (ui) => ui.runFor(2) },
+        { label: 'Tower kills 6 more attackers', run: (ui) => ui.killAttackers(6) },
+        { label: 'Run 12 s', run: (ui) => ui.runFor(12) },
+      ],
+    },
+  ];
+})();
+if (typeof module !== 'undefined') module.exports = Scenarios;
+</script>
+
+<!-- Throwaway page shell -->
+<script>
+(() => {
+  const CELL = 22;
+  const canvas = document.getElementById('view'), g = canvas.getContext('2d');
+  let scenario = Scenarios[0], sim, playing = false, stopAt = null, stopOnFall = false, prevSummary = null, stepIndex = 0, tool = 'inspect';
+  let overrides = {};
+
+  const SETTINGS = [
+    { key: 'attackMode', label: 'Who can attack a wall', hint: 'any enemy touching it, or a fixed number per wall cell', type: 'select', options: [['space', 'limited only by space'], ['slots', 'fixed slots per wall cell']] },
+    { key: 'targetRule', label: 'Which wall cell an enemy hits', hint: 'the one its route steps into, or any it is pressed against', type: 'select', options: [['route', 'the one its route steps into'], ['touching', 'any wall it is pressed against']] },
+    { key: 'slotsPerWall', label: 'Slots per wall cell', hint: 'only with fixed slots', type: 'number', step: 1, min: 1 },
+    { key: 'reach', label: 'Attack reach (cells)', hint: 'gap allowed between enemy and wall', type: 'number', step: 0.05, min: 0 },
+    { key: 'attackersHold', label: 'Attackers hold their ground', hint: 'the crowd behind cannot shove them aside', type: 'check' },
+    { key: 'giveUpSec', label: 'Direct route: give up when stuck (s)', hint: '0 = never; returns to the sensible route', type: 'number', step: 0.5, min: 0 },
+    { key: 'rollTrigger', label: 'When a route roll happens', hint: 'Flow field design rule, or the alternative', type: 'select', options: [['adjacent', 'next cell on the direct route is the obstacle'], ['ahead', 'routes split and the direct route crosses an obstacle ahead']] },
+    { key: 'wallRoll', label: 'Wall roll chance', hint: 'design value 0.03', type: 'number', step: 0.01, min: 0 },
+    { key: 'pileRoll', label: 'Pile roll chance', hint: 'design value 0.05', type: 'number', step: 0.01, min: 0 },
+    { key: 'radius', label: 'Enemy radius (cells)', hint: 'sets how many fit per cell', type: 'number', step: 0.05, min: 0.1 },
+    { key: 'sepStrength', label: 'Separation strength', hint: '0–1', type: 'number', step: 0.1, min: 0 },
+    { key: 'headingOffsetDeg', label: 'Heading offset (°)', hint: 'new enemies only', type: 'number', step: 1, min: 0 },
+  ];
+
+  function load(sc) {
+    scenario = sc;
+    sim = WallCrowd.create(sc.def, 7);
+    for (const [k, v] of Object.entries(overrides)) WallCrowd.setSetting(sim, k, v);
+    WallCrowd.rebuildFields(sim);
+    playing = false; stopAt = null; stopOnFall = false; prevSummary = null; stepIndex = 0;
+    renderTabs(); renderSettings(); render();
+  }
+
+  const ui = {
+    runFor: (sec) => { stopAt = sim.tick + Math.round(sec * 60); stopOnFall = false; setPlaying(true); },
+    runUntilFall: () => { stopAt = sim.tick + 60 * 120; stopOnFall = true; setPlaying(true); },
+    ticks: (n) => { for (let i = 0; i < n; i++) WallCrowd.step(sim); render(); },
+    set: (k, v) => { WallCrowd.setSetting(sim, k, v); overrides[k] = v; renderSettings(); render(); },
+    cell: (x, y, kind) => { WallCrowd.setCell(sim, x, y, kind); render(); },
+    killAttackers: (n) => { WallCrowd.killAttackers(sim, n); render(); },
+    killOnPiles: (n) => { WallCrowd.killOnPiles(sim, n); render(); },
+  };
+
+  function setPlaying(p) { playing = p; document.getElementById('play').textContent = p ? 'Pause' : 'Play'; }
+
+  let last = 0, acc = 0;
+  function frame(t) {
+    const dt = Math.min(0.1, (t - last) / 1000); last = t;
+    if (playing) {
+      acc += dt * +document.getElementById('speed').value * 60;
+      const before = sim.events.length;
+      while (acc >= 1) {
+        acc -= 1;
+        WallCrowd.step(sim);
+        const fell = sim.events.slice(before).some((e) => e.text.includes('fell'));
+        if ((stopAt !== null && sim.tick >= stopAt) || (stopOnFall && fell)) { setPlaying(false); stopAt = null; stopOnFall = false; acc = 0; break; }
+      }
+      render();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function render() { draw(); renderState(); }
+
+  function draw() {
+    const { W, H, rock, base, level, hp } = sim;
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const c = y * W + x, L = level[c];
+      g.fillStyle = rock[c] ? '#3b4252' : base[c] ? '#4dabf7' : L === 5 ? '#8a4b22' : L ? ['#f4dfa0', '#e9c46a', '#d4a24c', '#b5813a'][L - 1] : '#f1f3f5';
+      g.fillRect(x * CELL, y * CELL, CELL, CELL);
+      g.strokeStyle = 'rgba(0,0,0,0.05)'; g.strokeRect(x * CELL + 0.5, y * CELL + 0.5, CELL - 1, CELL - 1);
+      if (L === 5) {
+        g.fillStyle = '#2b2b2b'; g.fillRect(x * CELL + 2, y * CELL + CELL - 5, CELL - 4, 3);
+        g.fillStyle = '#69db7c'; g.fillRect(x * CELL + 2, y * CELL + CELL - 5, (CELL - 4) * Math.max(0, hp[c]) / sim.s.wallHP, 3);
+      } else if (L > 0) {
+        g.fillStyle = 'rgba(0,0,0,0.45)'; g.font = '10px sans-serif'; g.fillText(L, x * CELL + 3, y * CELL + 11);
+      }
+    }
+    const ov = document.getElementById('overlay').value;
+    if (ov !== 'none' && sim.fields) {
+      const f = ov === 'sens' ? sim.fields.sens : sim.fields.dir;
+      g.strokeStyle = ov === 'sens' ? 'rgba(80,90,100,0.55)' : 'rgba(240,140,0,0.75)'; g.lineWidth = 1;
+      for (let c = 0; c < W * H; c++) {
+        if (f.parent[c] < 0 || rock[c] || base[c]) continue;
+        const cx = (c % W + 0.5) * CELL, cy = (((c / W) | 0) + 0.5) * CELL, dx = f.dirX[c] * CELL * 0.35, dy = f.dirY[c] * CELL * 0.35;
+        g.beginPath(); g.moveTo(cx - dx, cy - dy); g.lineTo(cx + dx, cy + dy); g.stroke();
+        g.beginPath(); g.arc(cx + dx, cy + dy, 1.5, 0, Math.PI * 2); g.fillStyle = g.strokeStyle; g.fill();
+      }
+    }
+    for (const e of sim.enemies) {
+      g.fillStyle = e.state === 'attacking' ? '#d6336c' : (e.state === 'waiting' || e.stuckT >= 0.5) ? '#7048e8' : e.route === 'direct' ? '#f08c00' : '#9aa3ad';
+      g.beginPath(); g.arc(e.x * CELL, e.y * CELL, sim.s.radius * CELL, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 0.5; g.stroke();
+    }
+  }
+
+  function renderState() {
+    const s = WallCrowd.summary(sim), p = prevSummary || s;
+    const rows = [
+      ['Time', `${s.seconds.toFixed(1)} s (tick ${s.tick})`, false],
+      ['Enemies on the map', s.alive, s.alive !== p.alive],
+      ['Still to arrive', s.toSpawn, false],
+      ['Walking', s.walking, s.walking !== p.walking],
+      ['Attacking a wall', s.attacking, s.attacking !== p.attacking],
+      ['Waiting for a slot', s.waiting, s.waiting !== p.waiting],
+      ['Stuck (no progress 0.5 s)', s.stuck, s.stuck !== p.stuck],
+      ['On the sensible route', s.sensible, s.sensible !== p.sensible],
+      ['On the direct route', s.direct, s.direct !== p.direct],
+      ['Leaked into the base', s.leaked, s.leaked !== p.leaked],
+      ['Killed by towers', s.killed, s.killed !== p.killed],
+    ];
+    document.getElementById('stats').innerHTML = rows.map(([k, v, ch]) => `<div class="k">${k}</div><div class="v ${ch ? 'changed' : ''}">${v}</div>`).join('');
+    document.getElementById('walls').innerHTML = s.walls.length
+      ? `<table><tr><th>Cell</th><th>HP</th><th>Attacking</th><th>Waiting</th><th>Falls in</th></tr>${s.walls.map((w) =>
+          `<tr><td>(${w.x}, ${w.y})</td><td><span class="hpbar"><i style="width:${Math.max(0, w.hp) / sim.s.wallHP * 100}%"></i></span> ${Math.ceil(w.hp)}</td><td>${w.attackers}</td><td>${w.waiting}</td><td>${w.attackers ? (w.hp / (w.attackers * sim.s.wallDps)).toFixed(1) + ' s' : '–'}</td></tr>`).join('')}</table>`
+      : '<p style="color:var(--muted)">No walls on the map.</p>';
+    document.getElementById('events').innerHTML = sim.events.slice(-30).reverse().map((e) => `<li>${(e.tick / 60).toFixed(1)} s: ${e.text}</li>`).join('');
+    if (!playing) prevSummary = s;
+  }
+
+  function renderTabs() {
+    const tabs = document.getElementById('tabs');
+    tabs.innerHTML = '';
+    for (const sc of [...Scenarios, { key: 'free', name: 'Free play' }]) {
+      const b = document.createElement('button');
+      b.textContent = sc.name;
+      if (sc.key === (scenario.key)) b.classList.add('active');
+      b.onclick = () => sc.key === 'free' ? (scenario = { ...scenario, key: 'free' }, renderTabs()) : load(sc);
+      tabs.appendChild(b);
+    }
+    const body = document.getElementById('tabBody');
+    if (scenario.key === 'free') {
+      body.innerHTML = `
+        <p>Pick a tool, then click the map. Bodies follow the landing rule (tallest pile within 1 cell) and land on the next tick.</p>
+        <div class="row" id="tools"></div>
+        <div class="row">
+          <button id="spawn50">50 more enemies from the left edge</button>
+          <button id="killA">Tower kills 5 attackers</button>
+          <button id="killP">Tower kills 5 enemies on piles</button>
+        </div>`;
+      const tools = [['inspect', 'Spawn one enemy'], ['wall', 'Paint wall'], ['pile', 'Paint level-2 pile'], ['rock', 'Paint rock'], ['clear', 'Clear cell'], ['body', 'Drop a body']];
+      const tb = document.getElementById('tools');
+      for (const [k, label] of tools) {
+        const b = document.createElement('button'); b.textContent = label; if (k === tool) b.classList.add('primary');
+        b.onclick = () => { tool = k; renderTabs(); }; tb.appendChild(b);
+      }
+      document.getElementById('spawn50').onclick = () => { WallCrowd.addSpawns(sim, 50, 5); render(); };
+      document.getElementById('killA').onclick = () => ui.killAttackers(5);
+      document.getElementById('killP').onclick = () => ui.killOnPiles(5);
+      return;
+    }
+    body.innerHTML = `<p>${scenario.intro}</p><p class="watch"><strong>Watch for:</strong> ${scenario.watch}</p><div class="steps" id="steps"></div>`;
+    const steps = document.getElementById('steps');
+    const restart = document.createElement('button');
+    restart.textContent = 'Reset to the start of this scenario'; restart.onclick = () => load(scenario);
+    steps.appendChild(restart);
+    scenario.steps.forEach((st, i) => {
+      const b = document.createElement('button');
+      b.textContent = `${i + 1}. ${st.label}`;
+      b.disabled = i !== stepIndex;
+      if (i < stepIndex) b.classList.add('done');
+      b.onclick = () => { st.run(ui); stepIndex = i + 1; renderTabs(); };
+      steps.appendChild(b);
+    });
+  }
+
+  function renderSettings() {
+    const box = document.getElementById('settings');
+    box.innerHTML = '';
+    for (const st of SETTINGS) {
+      const lab = document.createElement('label');
+      lab.innerHTML = `${st.label}<small>${st.hint}</small>`;
+      let input;
+      if (st.type === 'select') {
+        input = document.createElement('select');
+        for (const [v, t] of st.options) { const o = document.createElement('option'); o.value = v; o.textContent = t; input.appendChild(o); }
+        input.value = sim.s[st.key];
+        input.onchange = () => ui.set(st.key, input.value);
+      } else if (st.type === 'check') {
+        input = document.createElement('input'); input.type = 'checkbox'; input.checked = sim.s[st.key];
+        input.onchange = () => ui.set(st.key, input.checked);
+      } else {
+        input = document.createElement('input'); input.type = 'number'; input.step = st.step; input.min = st.min; input.value = sim.s[st.key];
+        input.onchange = () => ui.set(st.key, +input.value);
+      }
+      box.appendChild(lab); box.appendChild(input);
+    }
+    const reset = document.createElement('button');
+    reset.textContent = 'Reset rules to defaults';
+    reset.onclick = () => { overrides = {}; load(scenario.key === 'free' ? Scenarios[0] : scenario); };
+    box.appendChild(document.createElement('span')); box.appendChild(reset);
+  }
+
+  canvas.addEventListener('click', (ev) => {
+    const r = canvas.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * canvas.width / CELL, py = (ev.clientY - r.top) / r.height * canvas.height / CELL;
+    const x = Math.floor(px), y = Math.floor(py);
+    if (tool === 'inspect') WallCrowd.spawnAt(sim, px, py);
+    else if (tool === 'body') WallCrowd.dropBody(sim, x, y);
+    else WallCrowd.setCell(sim, x, y, tool);
+    render();
+  });
+
+  document.getElementById('play').onclick = () => { stopAt = null; stopOnFall = false; setPlaying(!playing); };
+  document.getElementById('tick1').onclick = () => ui.ticks(1);
+  document.getElementById('sec1').onclick = () => ui.runFor(1);
+  document.getElementById('restart').onclick = () => load(scenario.key === 'free' ? Scenarios[0] : scenario);
+  document.getElementById('overlay').onchange = render;
+
+  load(Scenarios[0]);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
