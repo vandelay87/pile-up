@@ -655,6 +655,7 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
   const canvas = document.getElementById('view'), g = canvas.getContext('2d');
   let scenario = Scenarios[0], sim, playing = false, stopAt = null, stopOnFall = false, prevSummary = null, stepIndex = 0, tool = 'inspect';
   let overrides = {};
+  const FREE = { key: 'free', name: 'Free play', def: { rows: Scenarios[0].def.rows, spawn: { count: 150, rate: 5 } } };
 
   const SETTINGS = [
     { key: 'attackMode', label: 'Who can attack a wall', hint: 'any enemy touching it, or a fixed number per wall cell', type: 'select', options: [['space', 'limited only by space'], ['slots', 'fixed slots per wall cell']] },
@@ -776,17 +777,17 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
   function renderTabs() {
     const tabs = document.getElementById('tabs');
     tabs.innerHTML = '';
-    for (const sc of [...Scenarios, { key: 'free', name: 'Free play' }]) {
+    for (const sc of [...Scenarios, FREE]) {
       const b = document.createElement('button');
       b.textContent = sc.name;
       if (sc.key === (scenario.key)) b.classList.add('active');
-      b.onclick = () => sc.key === 'free' ? (scenario = { ...scenario, key: 'free' }, renderTabs()) : load(sc);
+      b.onclick = () => { overrides = {}; load(sc); };
       tabs.appendChild(b);
     }
     const body = document.getElementById('tabBody');
     if (scenario.key === 'free') {
       body.innerHTML = `
-        <p>Pick a tool, then click the map. Bodies follow the landing rule (tallest pile within 1 cell) and land on the next tick.</p>
+        <p>The sealed corridor with the rules decided so far (and anything changed in the rules panel). Pick a tool, then click the map. Bodies follow the landing rule (tallest pile within 1 cell) and land on the next tick.</p>
         <div class="row" id="tools"></div>
         <div class="row">
           <button id="spawn50">50 more enemies from the left edge</button>
@@ -842,7 +843,7 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
     }
     const reset = document.createElement('button');
     reset.textContent = 'Reset rules to defaults';
-    reset.onclick = () => { overrides = {}; load(scenario.key === 'free' ? Scenarios[0] : scenario); };
+    reset.onclick = () => { overrides = {}; load(scenario); };
     box.appendChild(document.createElement('span')); box.appendChild(reset);
   }
 
@@ -859,7 +860,7 @@ if (typeof module !== 'undefined') module.exports = Scenarios;
   document.getElementById('play').onclick = () => { stopAt = null; stopOnFall = false; setPlaying(!playing); };
   document.getElementById('tick1').onclick = () => ui.ticks(1);
   document.getElementById('sec1').onclick = () => ui.runFor(1);
-  document.getElementById('restart').onclick = () => load(scenario.key === 'free' ? Scenarios[0] : scenario);
+  document.getElementById('restart').onclick = () => load(scenario);
   document.getElementById('overlay').onchange = render;
 
   load(Scenarios[0]);
