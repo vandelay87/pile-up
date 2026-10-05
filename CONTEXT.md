@@ -51,6 +51,10 @@ _Avoid_: Reckless, personality
 
 ### Flow of play
 
+**Run**:
+One game, from the first wave until the base runs out of lives. A restart begins a new run.
+_Avoid_: Game, match, session
+
 **Wave**:
 One spawned group of enemies, from pressing "next wave" until the last of them dies or leaks.
 _Avoid_: Round, level
