@@ -178,6 +178,9 @@ static func _type_or_range_error(entry: Dictionary, raw: Variant) -> String:
 	var coerced: Variant = _coerce(entry, raw)
 	if coerced < entry["min"] or coerced > entry["max"]:
 		return "%s is outside %s to %s" % [coerced, entry["min"], entry["max"]]
+	var steps: float = (coerced - entry["min"]) / entry["step"]
+	if not is_equal_approx(steps, roundf(steps)):
+		return "%s is not a multiple of %s from %s" % [coerced, entry["step"], entry["min"]]
 	return ""
 
 

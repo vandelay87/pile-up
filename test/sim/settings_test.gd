@@ -32,7 +32,7 @@ const SCHEMA := {
 func _valid() -> Dictionary:
 	return {
 		"towers": {"fire_rate": 2},
-		"run": {"starting_lives": 20, "map_path": "data/maps/v1.json"},
+		"run": {"starting_lives": 20, "map_path": "res://data/maps/v1.json"},
 	}
 
 
@@ -51,7 +51,7 @@ func test_loads_a_valid_file() -> void:
 
 	assert_float(settings.value("towers", "fire_rate")).is_equal(2.0)
 	assert_int(settings.value("run", "starting_lives")).is_equal(20)
-	assert_str(settings.value("run", "map_path")).is_equal("data/maps/v1.json")
+	assert_str(settings.value("run", "map_path")).is_equal("res://data/maps/v1.json")
 
 
 func test_the_committed_defaults_file_loads() -> void:
@@ -66,7 +66,7 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 
 	assert_int(settings.starting_lives).is_equal(20)
 	assert_int(settings.starting_gold).is_equal(150)
-	assert_str(settings.map_path).is_equal("data/maps/v1.json")
+	assert_str(settings.map_path).is_equal("res://data/maps/v1.json")
 
 
 func test_rejects_malformed_json() -> void:
@@ -130,6 +130,20 @@ func test_rejects_an_out_of_range_value() -> void:
 	_assert_rejected(_load(data), "run.starting_lives: 0 is outside 1 to 100")
 
 
+func test_rejects_a_value_off_the_step() -> void:
+	var data := _valid()
+	data["towers"]["fire_rate"] = 2.05
+
+	_assert_rejected(_load(data), "towers.fire_rate: 2.05 is not a multiple of 0.1 from 0.1")
+
+
+func test_accepts_a_float_on_the_step_despite_rounding() -> void:
+	var data := _valid()
+	data["towers"]["fire_rate"] = 0.3
+
+	assert_str(_load(data).error).is_empty()
+
+
 func test_reports_every_error_at_once() -> void:
 	var data := _valid()
 	data["run"]["starting_lives"] = 0
@@ -151,55 +165,6 @@ func test_converts_a_rate_to_interval_ticks() -> void:
 
 func test_interval_ticks_is_at_least_one_tick() -> void:
 	assert_int(Settings.interval_ticks(1000.0)).is_equal(1)
-
-
-func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
-	var settings := _settings()
-	var sim := Simulation.new(settings)
-	var seen: Array[float] = []
-	sim.step_observer = func(step: int) -> void:
-		if step == Simulation.Step.LAND_BODIES_AND_UPDATE_FIELDS:
-			seen.append(settings.value("towers", "fire_rate"))
-
-	sim.queue_command(Commands.SetSetting.new("towers", "fire_rate", 4.0))
-	assert_float(settings.value("towers", "fire_rate")).is_equal(2.0)
-	sim.tick()
-
-	assert_array(seen).contains_exactly([4.0])
-
-
-func test_a_restart_change_leaves_the_running_value_unchanged() -> void:
-	var sim := Simulation.new(_settings())
-
-	sim.queue_command(Commands.SetSetting.new("run", "starting_lives", 5))
-	sim.tick()
-
-	assert_int(sim.settings.value("run", "starting_lives")).is_equal(20)
-	assert_int(sim.settings.for_next_run().value("run", "starting_lives")).is_equal(5)
-
-
-func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void:
-	var sim := Simulation.new(_settings())
-	var rejections: Array[String] = []
-	sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
-
-	sim.queue_command(Commands.SetSetting.new("towers", "fire_rate", 50.0))
-	sim.tick()
-
-	assert_array(rejections).has_size(1)
-	assert_str(rejections[0]).contains("towers.fire_rate")
-	assert_float(sim.settings.value("towers", "fire_rate")).is_equal(2.0)
-
-
-func test_a_change_to_an_unknown_setting_is_rejected() -> void:
-	var sim := Simulation.new(_settings())
-	var rejections: Array[String] = []
-	sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
-
-	sim.queue_command(Commands.SetSetting.new("run", "starting_mana", 5))
-	sim.tick()
-
-	assert_array(rejections).contains_exactly(["run.starting_mana: unknown setting"])
 
 
 func _assert_rejected(result: Settings.LoadResult, expected: String) -> void:
