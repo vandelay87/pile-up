@@ -7,3 +7,21 @@ class Command:
 
 	func apply(_sim: Simulation) -> void:
 		pass
+
+
+class SetSetting:
+	extends Commands.Command
+
+	var _group: String
+	var _key: String
+	var _value: Variant
+
+	func _init(group: String, key: String, value: Variant) -> void:
+		_group = group
+		_key = key
+		_value = value
+
+	func apply(sim: Simulation) -> void:
+		var error := sim.settings.change(_group, _key, _value)
+		if not error.is_empty():
+			sim.reject_command(error)

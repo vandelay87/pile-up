@@ -9,7 +9,7 @@ var _trace: Array[String]
 
 
 func before_test() -> void:
-	_sim = Simulation.new()
+	_sim = Simulation.new(Settings.load_file(Settings.DEFAULTS_PATH).settings)
 	_trace = []
 	_sim.step_observer = func(step: int) -> void: _trace.append("step %d" % step)
 
@@ -41,6 +41,15 @@ func test_command_queued_during_a_tick_is_drained_at_step_0_of_the_next_tick() -
 	assert_array(_trace).contains_exactly(_one_tick_applying("follow-up"))
 
 
+func test_rejected_command_is_reported_after_the_last_step_of_the_tick() -> void:
+	_sim.command_rejected.connect(func(reason: String) -> void: _trace.append(reason))
+	_sim.queue_command(RejectingCommand.new("no"))
+
+	_sim.tick()
+
+	assert_array(_trace).contains_exactly(ONE_TICK + ["no"])
+
+
 func _one_tick_applying(label: String) -> Array[String]:
 	var trace: Array[String] = ONE_TICK.duplicate()
 	trace.insert(1, label)
@@ -63,3 +72,15 @@ class RecordingCommand:
 		_trace.append(_label)
 		if _follow_up != null:
 			sim.queue_command(_follow_up)
+
+
+class RejectingCommand:
+	extends Commands.Command
+
+	var _reason: String
+
+	func _init(reason: String) -> void:
+		_reason = reason
+
+	func apply(sim: Simulation) -> void:
+		sim.reject_command(_reason)

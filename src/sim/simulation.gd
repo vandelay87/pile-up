@@ -1,6 +1,8 @@
 class_name Simulation
 extends RefCounted
 
+signal command_rejected(reason: String)
+
 enum Step {
 	DRAIN_COMMANDS,
 	LAND_BODIES_AND_UPDATE_FIELDS,
@@ -12,13 +14,23 @@ enum Step {
 	CHECK_WAVE_END,
 }
 
+var settings: Settings
 var step_observer := Callable()
 
 var _command_queue: Array[Commands.Command] = []
+var _rejections: Array[String] = []
+
+
+func _init(run_settings: Settings) -> void:
+	settings = run_settings
 
 
 func queue_command(command: Commands.Command) -> void:
 	_command_queue.append(command)
+
+
+func reject_command(reason: String) -> void:
+	_rejections.append(reason)
 
 
 func tick() -> void:
@@ -30,6 +42,14 @@ func tick() -> void:
 	_fire_towers()
 	_remove_dead_and_leaked()
 	_check_wave_end()
+	_emit_signals()
+
+
+func _emit_signals() -> void:
+	var rejections := _rejections
+	_rejections = []
+	for reason in rejections:
+		command_rejected.emit(reason)
 
 
 func _drain_commands() -> void:
