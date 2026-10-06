@@ -41,7 +41,7 @@ func _settings() -> Settings:
 
 func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
 	var settings := _settings()
-	var sim := Simulation.new(settings)
+	var sim := Simulation.new(settings, TestMaps.open_field())
 	var seen: Array[float] = []
 	sim.step_observer = func(step: int) -> void:
 		if step == Simulation.Step.LAND_BODIES_AND_UPDATE_FIELDS:
@@ -55,7 +55,7 @@ func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
 
 
 func test_a_restart_change_leaves_the_running_value_unchanged() -> void:
-	var sim := Simulation.new(_settings())
+	var sim := Simulation.new(_settings(), TestMaps.open_field())
 
 	sim.queue_command(Commands.SetSetting.new("run", "starting_lives", 5))
 	sim.tick()
@@ -65,7 +65,7 @@ func test_a_restart_change_leaves_the_running_value_unchanged() -> void:
 
 
 func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void:
-	var sim := Simulation.new(_settings())
+	var sim := Simulation.new(_settings(), TestMaps.open_field())
 	var rejections: Array[String] = []
 	sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
 
@@ -78,7 +78,7 @@ func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void
 
 
 func test_a_change_to_an_unknown_setting_is_rejected() -> void:
-	var sim := Simulation.new(_settings())
+	var sim := Simulation.new(_settings(), TestMaps.open_field())
 	var rejections: Array[String] = []
 	sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
 
