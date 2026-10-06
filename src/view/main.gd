@@ -18,6 +18,12 @@ func _ready() -> void:
 		_fail("invalid map", loaded_map.error)
 		return
 	_simulation = Simulation.new(loaded.settings, loaded_map.map)
+	print(
+		(
+			"Flow fields: full rebuild of both fields took %.1f ms"
+			% _simulation.routing.last_rebuild_msec
+		)
+	)
 	_draw_map(loaded_map.map)
 	_camera.frame(loaded_map.map)
 

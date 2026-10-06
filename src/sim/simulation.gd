@@ -2,6 +2,7 @@ class_name Simulation
 extends RefCounted
 
 signal command_rejected(reason: String)
+signal fields_changed
 
 enum Step {
 	DRAIN_COMMANDS,
@@ -19,16 +20,19 @@ const TICKS_PER_SECOND := 60
 var settings: Settings
 var map: MapData
 var occupancy: Occupancy
+var routing: Routing
 var step_observer := Callable()
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
+var _fields_changed := false
 
 
 func _init(run_settings: Settings, run_map: MapData) -> void:
 	settings = run_settings
 	map = run_map
 	occupancy = Occupancy.new(map.width, map.height)
+	routing = Routing.new(settings, map, occupancy)
 
 
 func queue_command(command: Commands.Command) -> void:
@@ -37,6 +41,16 @@ func queue_command(command: Commands.Command) -> void:
 
 func reject_command(reason: String) -> void:
 	_rejections.append(reason)
+
+
+func change_setting(group: String, key: String, new_value: Variant) -> void:
+	var error := settings.change(group, key, new_value)
+	if not error.is_empty():
+		reject_command(error)
+		return
+	if group == "routing":
+		routing.rebuild()
+		_fields_changed = true
 
 
 func tick() -> void:
@@ -52,6 +66,9 @@ func tick() -> void:
 
 
 func _emit_signals() -> void:
+	if _fields_changed:
+		_fields_changed = false
+		fields_changed.emit()
 	var rejections := _rejections
 	_rejections = []
 	for reason in rejections:

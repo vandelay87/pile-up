@@ -22,6 +22,4 @@ class SetSetting:
 		_value = value
 
 	func apply(sim: Simulation) -> void:
-		var error := sim.settings.change(_group, _key, _value)
-		if not error.is_empty():
-			sim.reject_command(error)
+		sim.change_setting(_group, _key, _value)

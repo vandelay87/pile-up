@@ -67,6 +67,11 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_int(settings.starting_lives).is_equal(20)
 	assert_int(settings.starting_gold).is_equal(150)
 	assert_str(settings.map_path).is_equal("res://data/maps/v1.json")
+	assert_float(settings.enemy_speed).is_equal_approx(1.5, 1e-6)
+	assert_float(settings.pile_slow(1)).is_equal_approx(0.15, 1e-6)
+	assert_float(settings.pile_slow(4)).is_equal_approx(0.6, 1e-6)
+	assert_int(settings.wall_hp).is_equal(30)
+	assert_float(settings.direct_wall_weight).is_equal_approx(0.1, 1e-6)
 
 
 func test_rejects_malformed_json() -> void:
