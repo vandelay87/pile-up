@@ -1,0 +1,186 @@
+extends GdUnitTestSuite
+
+var _settings: Settings
+
+
+func before_test() -> void:
+	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+
+
+func _enemies(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -> Enemies:
+	var map := TestMaps.from_rows(rows, base)
+	var occupancy := Occupancy.new(map.width, map.height)
+	occupancy.occupy(towers)
+	var routing := Routing.new(_settings, map, occupancy)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	return Enemies.new(_settings, map, occupancy, routing, rng)
+
+
+func _open_field() -> Enemies:
+	return _enemies(["........", "........", "........", "........"], Rect2i(7, 0, 1, 1))
+
+
+func test_ids_stay_valid_across_swap_removes() -> void:
+	var enemies := _open_field()
+	var first := enemies.spawn(Vector2(0.5, 0.5))
+	var second := enemies.spawn(Vector2(1.5, 1.5))
+	var third := enemies.spawn(Vector2(2.5, 2.5))
+
+	enemies.damage(first, 100.0)
+	enemies.remove_dead_and_leaked()
+
+	assert_int(enemies.count).is_equal(2)
+	assert_int(enemies.index_of(first)).is_equal(Enemies.NONE)
+	assert_vector(enemies.positions[enemies.index_of(second)]).is_equal(Vector2(1.5, 1.5))
+	assert_vector(enemies.positions[enemies.index_of(third)]).is_equal(Vector2(2.5, 2.5))
+
+	enemies.damage(third, 100.0)
+	enemies.remove_dead_and_leaked()
+
+	assert_int(enemies.index_of(third)).is_equal(Enemies.NONE)
+	assert_vector(enemies.positions[enemies.index_of(second)]).is_equal(Vector2(1.5, 1.5))
+
+
+func test_removal_returns_the_positions_of_the_dead() -> void:
+	var enemies := _open_field()
+	var dead := enemies.spawn(Vector2(0.5, 0.5))
+	enemies.spawn(Vector2(1.5, 1.5))
+
+	enemies.damage(dead, 10.0)
+	var removal := enemies.remove_dead_and_leaked()
+
+	assert_array(Array(removal.deaths)).contains_exactly([Vector2(0.5, 0.5)])
+	assert_int(removal.leaks).is_equal(0)
+
+
+func test_an_enemy_on_an_open_grid_reaches_the_base_and_leaks_once() -> void:
+	var enemies := _open_field()
+	enemies.spawn(Vector2(0.5, 3.5))
+
+	var leaks := 0
+	for tick in 600:
+		leaks += _tick(enemies).leaks
+
+	assert_int(leaks).is_equal(1)
+	assert_int(enemies.count).is_equal(0)
+
+
+func test_two_overlapping_enemies_separate() -> void:
+	_settings.change("enemies", "heading_offset", 0.0)
+	var enemies := _flowing_north()
+	var left := enemies.spawn(Vector2(3.95, 3.5))
+	var right := enemies.spawn(Vector2(4.05, 3.5))
+
+	_tick(enemies)
+
+	var gap := _position(enemies, right).x - _position(enemies, left).x
+	assert_float(gap).is_greater_equal(2.0 * _settings.separation_radius - 1e-4)
+
+
+func test_a_neighbour_cap_limits_the_neighbours_checked() -> void:
+	_settings.change("enemies", "heading_offset", 0.0)
+	for cap: int in [0, 1]:
+		_settings.change("enemies", "neighbour_cap", cap)
+		var enemies := _flowing_north()
+		var middle := enemies.spawn(Vector2(4.0, 3.5))
+		enemies.spawn(Vector2(3.8, 3.5))
+		enemies.spawn(Vector2(4.2, 3.5))
+
+		_tick(enemies)
+
+		var drift := absf(_position(enemies, middle).x - 4.0)
+		if cap == 0:
+			assert_float(drift).is_less(1e-4)
+		else:
+			assert_float(drift).is_greater(0.05)
+
+
+func test_an_enemy_inside_rock_is_pushed_out_through_the_nearest_side() -> void:
+	var enemies := _enemies(["........", "...#....", "........", "........"], Rect2i(7, 3, 1, 1))
+	var id := enemies.spawn(Vector2(3.2, 1.5))
+
+	_tick(enemies)
+
+	var pos := _position(enemies, id)
+	assert_float(pos.x).is_less_equal(3.0 - _settings.separation_radius + 0.05)
+	assert_float(pos.y).is_between(1.0, 2.0)
+
+
+func test_an_enemy_inside_a_tower_cell_is_pushed_out_through_the_nearest_side() -> void:
+	var towers: Array[Vector2i] = [Vector2i(4, 1)]
+	var enemies := _enemies(
+		["........", "........", "........", "........"], Rect2i(7, 3, 1, 1), towers
+	)
+	var id := enemies.spawn(Vector2(4.5, 1.85))
+
+	_tick(enemies)
+
+	assert_float(_position(enemies, id).y).is_greater_equal(
+		2.0 + _settings.separation_radius - 0.05
+	)
+
+
+func test_a_blocked_nearest_side_is_skipped_for_the_next_nearest_open_side() -> void:
+	var enemies := _enemies(["........", "..##....", "........", "........"], Rect2i(7, 3, 1, 1))
+	var id := enemies.spawn(Vector2(3.1, 1.3))
+
+	_tick(enemies)
+
+	var pos := _position(enemies, id)
+	assert_float(pos.y).is_less_equal(1.0 - _settings.separation_radius + 0.05)
+	assert_float(pos.x).is_between(3.0, 4.0)
+
+
+func test_nearest_to_base_in_range_picks_the_lowest_field_value_in_range() -> void:
+	var enemies := _open_field()
+	enemies.spawn(Vector2(1.5, 1.5))
+	var nearer := enemies.spawn(Vector2(5.5, 1.5))
+	enemies.spawn(Vector2(6.5, 3.5))
+	enemies.rebuild_spatial_hash()
+
+	assert_int(enemies.nearest_to_base_in_range(Vector2(3.5, 1.5), 3.0)).is_equal(nearer)
+
+
+func test_nearest_to_base_in_range_breaks_ties_by_lowest_id() -> void:
+	var enemies := _flowing_north()
+	var removed := enemies.spawn(Vector2(0.5, 3.5))
+	var lower := enemies.spawn(Vector2(2.5, 2.5))
+	enemies.spawn(Vector2(5.5, 2.5))
+	enemies.damage(removed, 100.0)
+	enemies.remove_dead_and_leaked()
+	enemies.rebuild_spatial_hash()
+
+	assert_int(enemies.nearest_to_base_in_range(Vector2(4.0, 2.5), 3.0)).is_equal(lower)
+
+
+func test_nearest_to_base_in_range_skips_enemies_at_zero_hp() -> void:
+	var enemies := _open_field()
+	var farther := enemies.spawn(Vector2(1.5, 1.5))
+	var nearer := enemies.spawn(Vector2(5.5, 1.5))
+	enemies.damage(nearer, _settings.enemy_hp)
+	enemies.rebuild_spatial_hash()
+
+	assert_int(enemies.nearest_to_base_in_range(Vector2(3.5, 1.5), 3.0)).is_equal(farther)
+
+
+func test_nearest_to_base_in_range_is_none_when_nothing_is_in_range() -> void:
+	var enemies := _open_field()
+	enemies.spawn(Vector2(0.5, 3.5))
+	enemies.rebuild_spatial_hash()
+
+	assert_int(enemies.nearest_to_base_in_range(Vector2(6.5, 0.5), 2.0)).is_equal(Enemies.NONE)
+
+
+func _flowing_north() -> Enemies:
+	return _enemies(["........", "........", "........", "........"], Rect2i(0, 0, 8, 1))
+
+
+func _position(enemies: Enemies, id: int) -> Vector2:
+	return enemies.positions[enemies.index_of(id)]
+
+
+func _tick(enemies: Enemies) -> Enemies.Removal:
+	enemies.rebuild_spatial_hash()
+	enemies.move()
+	return enemies.remove_dead_and_leaked()
