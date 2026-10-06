@@ -1,4 +1,20 @@
 {
+	"enemies": {
+		"speed": 1.5,
+		"wall_damage": 1
+	},
+	"piles": {
+		"slow_level_1": 15,
+		"slow_level_2": 30,
+		"slow_level_3": 45,
+		"slow_level_4": 60
+	},
+	"routing": {
+		"sensible_pile_weight": 1,
+		"sensible_wall_weight": 1,
+		"direct_pile_weight": 0,
+		"direct_wall_weight": 0.1
+	},
 	"run": {
 		"starting_lives": 20,
 		"starting_gold": 150,

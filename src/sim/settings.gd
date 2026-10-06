@@ -6,6 +6,105 @@ enum Apply { LIVE, RESTART }
 const DEFAULTS_PATH := "res://data/settings/defaults.json"
 
 const SCHEMA := {
+	"enemies":
+	{
+		"speed":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.1,
+			"max": 10.0,
+			"step": 0.1,
+			"unit": "cells/s",
+			"apply": Apply.LIVE,
+		},
+		"wall_damage":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.1,
+			"max": 100.0,
+			"step": 0.1,
+			"unit": "HP/s",
+			"apply": Apply.LIVE,
+		},
+	},
+	"piles":
+	{
+		"slow_level_1":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 95,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"slow_level_2":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 95,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"slow_level_3":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 95,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"slow_level_4":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 95,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+	},
+	"routing":
+	{
+		"sensible_pile_weight":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 5.0,
+			"step": 0.05,
+			"unit": "weight",
+			"apply": Apply.LIVE,
+		},
+		"sensible_wall_weight":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 5.0,
+			"step": 0.05,
+			"unit": "weight",
+			"apply": Apply.LIVE,
+		},
+		"direct_pile_weight":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 5.0,
+			"step": 0.05,
+			"unit": "weight",
+			"apply": Apply.LIVE,
+		},
+		"direct_wall_weight":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 5.0,
+			"step": 0.05,
+			"unit": "weight",
+			"apply": Apply.LIVE,
+		},
+	},
 	"run":
 	{
 		"starting_lives":
@@ -30,6 +129,24 @@ const SCHEMA := {
 	},
 }
 
+var enemy_speed: float:
+	get:
+		return value("enemies", "speed")
+var wall_damage: float:
+	get:
+		return value("enemies", "wall_damage")
+var sensible_pile_weight: float:
+	get:
+		return value("routing", "sensible_pile_weight")
+var sensible_wall_weight: float:
+	get:
+		return value("routing", "sensible_wall_weight")
+var direct_pile_weight: float:
+	get:
+		return value("routing", "direct_pile_weight")
+var direct_wall_weight: float:
+	get:
+		return value("routing", "direct_wall_weight")
 var starting_lives: int:
 	get:
 		return value("run", "starting_lives")
@@ -117,6 +234,11 @@ static func ticks_from_seconds(seconds: float) -> int:
 
 static func interval_ticks(per_second: float) -> int:
 	return maxi(1, roundi(Simulation.TICKS_PER_SECOND / per_second))
+
+
+func pile_slow(level: int) -> float:
+	var percent: int = value("piles", "slow_level_%d" % level)
+	return percent / 100.0
 
 
 func value(group: String, key: String) -> Variant:
