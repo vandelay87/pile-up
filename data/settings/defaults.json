@@ -7,8 +7,7 @@
 		"slow_level_1": 15,
 		"slow_level_2": 30,
 		"slow_level_3": 45,
-		"slow_level_4": 60,
-		"wall_hp": 30
+		"slow_level_4": 60
 	},
 	"routing": {
 		"sensible_pile_weight": 1,

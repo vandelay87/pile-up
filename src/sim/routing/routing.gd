@@ -62,28 +62,25 @@ func parent(route: Route, cell: Vector2i) -> Vector2i:
 
 func sample_direction(route: Route, pos: Vector2) -> Vector2:
 	var field := _fields[route]
+	var corner := _blend_corner(pos)
+	var weights := _blend_weights(field, corner, pos)
 	var blended := Vector2.ZERO
-	var corner := Vector2i((pos - Vector2(0.5, 0.5)).floor())
-	var fraction := pos - Vector2(0.5, 0.5) - Vector2(corner)
-	for offset: Vector2i in _BLEND_CORNERS:
-		var cell := corner + offset
-		if _reachable(field, cell):
-			blended += field.directions[_index(cell)] * _blend_weight(fraction, offset)
+	for i in _BLEND_CORNERS.size():
+		if weights[i] > 0.0:
+			blended += field.directions[_index(corner + _BLEND_CORNERS[i])] * weights[i]
 	return blended.normalized()
 
 
 func sample_value(route: Route, pos: Vector2) -> float:
 	var field := _fields[route]
+	var corner := _blend_corner(pos)
+	var weights := _blend_weights(field, corner, pos)
 	var total := 0.0
 	var total_weight := 0.0
-	var corner := Vector2i((pos - Vector2(0.5, 0.5)).floor())
-	var fraction := pos - Vector2(0.5, 0.5) - Vector2(corner)
-	for offset: Vector2i in _BLEND_CORNERS:
-		var cell := corner + offset
-		if _reachable(field, cell):
-			var weight := _blend_weight(fraction, offset)
-			total += field.values[_index(cell)] * weight
-			total_weight += weight
+	for i in _BLEND_CORNERS.size():
+		if weights[i] > 0.0:
+			total += field.values[_index(corner + _BLEND_CORNERS[i])] * weights[i]
+			total_weight += weights[i]
 	return total / total_weight if total_weight > 0.0 else UNREACHABLE
 
 
@@ -176,8 +173,8 @@ func _terrain_factors() -> PackedFloat64Array:
 	for y in _map.height:
 		for x in _map.width:
 			var cell := Vector2i(x, y)
-			var blocked := _map.is_rock(cell) or _occupancy.is_occupied(cell)
-			factors[_index(cell)] = INF if blocked else 1.0
+			var impassable := _map.is_rock(cell) or _occupancy.is_occupied(cell)
+			factors[_index(cell)] = INF if impassable else 1.0
 	return factors
 
 
@@ -185,10 +182,21 @@ func _reachable(field: Field, cell: Vector2i) -> bool:
 	return _map.in_bounds(cell) and field.values[_index(cell)] != UNREACHABLE
 
 
-static func _blend_weight(fraction: Vector2, offset: Vector2i) -> float:
-	var weight_x := fraction.x if offset.x == 1 else 1.0 - fraction.x
-	var weight_y := fraction.y if offset.y == 1 else 1.0 - fraction.y
-	return weight_x * weight_y
+static func _blend_corner(pos: Vector2) -> Vector2i:
+	return Vector2i((pos - Vector2(0.5, 0.5)).floor())
+
+
+func _blend_weights(field: Field, corner: Vector2i, pos: Vector2) -> PackedFloat64Array:
+	var fraction := pos - Vector2(0.5, 0.5) - Vector2(corner)
+	var weights := PackedFloat64Array()
+	for offset in _BLEND_CORNERS:
+		var weight := 0.0
+		if _reachable(field, corner + offset):
+			var weight_x := fraction.x if offset.x == 1 else 1.0 - fraction.x
+			var weight_y := fraction.y if offset.y == 1 else 1.0 - fraction.y
+			weight = weight_x * weight_y
+		weights.append(weight)
+	return weights
 
 
 func _index(cell: Vector2i) -> int:

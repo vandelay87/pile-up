@@ -65,15 +65,6 @@ const SCHEMA := {
 			"unit": "percent",
 			"apply": Apply.LIVE,
 		},
-		"wall_hp":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 1000,
-			"step": 1,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
 	},
 	"routing":
 	{
@@ -144,9 +135,6 @@ var enemy_speed: float:
 var wall_damage: float:
 	get:
 		return value("enemies", "wall_damage")
-var wall_hp: int:
-	get:
-		return value("piles", "wall_hp")
 var sensible_pile_weight: float:
 	get:
 		return value("routing", "sensible_pile_weight")
