@@ -164,6 +164,15 @@ func test_nearest_to_base_in_range_skips_enemies_at_zero_hp() -> void:
 	assert_int(enemies.nearest_to_base_in_range(Vector2(3.5, 1.5), 3.0)).is_equal(farther)
 
 
+func test_nearest_to_base_in_range_finds_an_enemy_whose_field_value_is_unreachable() -> void:
+	var rows: Array[String] = ["........", ".###....", ".###....", ".###...."]
+	var enemies := _enemies(rows, Rect2i(7, 0, 1, 1))
+	var inside_rock := enemies.spawn(Vector2(2.5, 2.5))
+	enemies.rebuild_spatial_hash()
+
+	assert_int(enemies.nearest_to_base_in_range(Vector2(4.5, 2.5), 3.0)).is_equal(inside_rock)
+
+
 func test_nearest_to_base_in_range_is_none_when_nothing_is_in_range() -> void:
 	var enemies := _open_field()
 	enemies.spawn(Vector2(0.5, 3.5))

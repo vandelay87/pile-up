@@ -87,9 +87,10 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 					continue
 				if positions[i].distance_squared_to(pos) > reach_squared:
 					continue
-				var value := _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
-				if value < best_value or (value == best_value and ids[i] < best_id):
-					best_value = value
+				var field_value := _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
+				var ties_lower := field_value == best_value and ids[i] < best_id
+				if best_id == NONE or field_value < best_value or ties_lower:
+					best_value = field_value
 					best_id = ids[i]
 	return best_id
 
@@ -170,7 +171,7 @@ func _resolve_collision(pos: Vector2, radius: float) -> Vector2:
 	for y in range(low.y, high.y + 1):
 		for x in range(low.x, high.x + 1):
 			var blocked := Vector2i(x, y)
-			if not _is_blocked(blocked):
+			if not _is_impassable(blocked):
 				continue
 			var closest := pos.clamp(Vector2(blocked), Vector2(blocked + Vector2i.ONE))
 			var away := pos - closest
@@ -186,37 +187,19 @@ func _resolve_collision(pos: Vector2, radius: float) -> Vector2:
 
 func _leave_through_nearest_open_face(pos: Vector2, cell: Vector2i, radius: float) -> Vector2:
 	var inside := pos - Vector2(cell)
+	var face_distances: Array[float] = [inside.x, 1.0 - inside.x, inside.y, 1.0 - inside.y]
 	var best_face := Vector2i.ZERO
 	var best_distance := INF
-	for face in _FACES:
-		if _is_blocked(cell + face):
-			continue
-		var distance: float
-		match face:
-			Vector2i.LEFT:
-				distance = inside.x
-			Vector2i.RIGHT:
-				distance = 1.0 - inside.x
-			Vector2i.UP:
-				distance = inside.y
-			_:
-				distance = 1.0 - inside.y
-		if distance < best_distance:
-			best_distance = distance
-			best_face = face
-	match best_face:
-		Vector2i.LEFT:
-			pos.x = cell.x - radius
-		Vector2i.RIGHT:
-			pos.x = cell.x + 1 + radius
-		Vector2i.UP:
-			pos.y = cell.y - radius
-		Vector2i.DOWN:
-			pos.y = cell.y + 1 + radius
-	return pos
+	for k in _FACES.size():
+		if not _is_impassable(cell + _FACES[k]) and face_distances[k] < best_distance:
+			best_distance = face_distances[k]
+			best_face = _FACES[k]
+	if best_face == Vector2i.ZERO:
+		return pos
+	return pos + Vector2(best_face) * (best_distance + radius)
 
 
-func _is_blocked(cell: Vector2i) -> bool:
+func _is_impassable(cell: Vector2i) -> bool:
 	return not _map.in_bounds(cell) or _map.is_rock(cell) or _occupancy.is_occupied(cell)
 
 
