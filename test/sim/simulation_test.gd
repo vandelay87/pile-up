@@ -4,14 +4,16 @@ const ONE_TICK: Array[String] = [
 	"step 0", "step 1", "step 2", "step 3", "step 4", "step 5", "step 6", "step 7"
 ]
 
-const BURST_TICKS := 120
+const WAVE_TICKS := 120
 
 var _sim: Simulation
 var _trace: Array[String]
 
 
 func before_test() -> void:
-	_sim = Simulation.new(Settings.from_json("{}", {}).settings, TestMaps.open_field())
+	_sim = Simulation.new(
+		Settings.load_file(Settings.DEFAULTS_PATH).settings, TestMaps.open_field()
+	)
 	_trace = []
 	_sim.step_observer = func(step: int) -> void: _trace.append("step %d" % step)
 
@@ -53,20 +55,20 @@ func test_rejected_command_is_reported_after_the_last_step_of_the_tick() -> void
 
 
 func test_the_same_seed_gives_identical_positions_after_n_ticks() -> void:
-	var first := _enemy_positions_after_burst(7)
-	var second := _enemy_positions_after_burst(7)
+	var first := _enemy_positions_after_wave_start(7)
+	var second := _enemy_positions_after_wave_start(7)
 
-	assert_int(first.size()).is_equal(40)
+	assert_int(first.size()).is_equal(20)
 	assert_array(Array(second)).is_equal(Array(first))
 
 
 func test_a_different_seed_gives_different_positions() -> void:
-	assert_array(Array(_enemy_positions_after_burst(8))).is_not_equal(
-		Array(_enemy_positions_after_burst(7))
+	assert_array(Array(_enemy_positions_after_wave_start(8))).is_not_equal(
+		Array(_enemy_positions_after_wave_start(7))
 	)
 
 
-func _enemy_positions_after_burst(run_seed: int) -> PackedVector2Array:
+func _enemy_positions_after_wave_start(run_seed: int) -> PackedVector2Array:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 	var rows: Array[String] = []
 	for y in 16:
@@ -74,8 +76,8 @@ func _enemy_positions_after_burst(run_seed: int) -> PackedVector2Array:
 	var edges: Array[String] = ["N", "E", "S", "W"]
 	var map := TestMaps.from_rows(rows, Rect2i(7, 7, 2, 2), edges)
 	var sim := Simulation.new(settings, map, run_seed)
-	sim.queue_command(Commands.SpawnBurst.new(40))
-	for tick in BURST_TICKS:
+	sim.queue_command(Commands.NextWave.new())
+	for tick in WAVE_TICKS:
 		sim.tick()
 	return sim.enemies.positions.slice(0, sim.enemies.count)
 

@@ -13,6 +13,30 @@ class TimeControl:
 	extends Commands.Command
 
 
+class Play:
+	extends Commands.Command
+
+	func label() -> String:
+		return ""
+
+
+class NextWave:
+	extends Commands.Play
+
+	func label() -> String:
+		return "next wave"
+
+	func apply(sim: Simulation) -> void:
+		sim.next_wave()
+
+
+class Restart:
+	extends Commands.Command
+
+	func apply(sim: Simulation) -> void:
+		sim.request_restart()
+
+
 class SetSetting:
 	extends Commands.Command
 
@@ -27,18 +51,6 @@ class SetSetting:
 
 	func apply(sim: Simulation) -> void:
 		sim.change_setting(_group, _key, _value)
-
-
-class SpawnBurst:
-	extends Commands.Command
-
-	var _count: int
-
-	func _init(count: int) -> void:
-		_count = count
-
-	func apply(sim: Simulation) -> void:
-		sim.spawn_burst(_count)
 
 
 class SetPaused:
@@ -73,24 +85,30 @@ class StepOneTick:
 
 
 class AddGold:
-	extends Commands.Command
+	extends Commands.Play
 
 	var _amount: int
 
 	func _init(amount: int) -> void:
 		_amount = amount
 
+	func label() -> String:
+		return "add gold"
+
 	func apply(sim: Simulation) -> void:
 		sim.add_gold(_amount)
 
 
 class JumpToWave:
-	extends Commands.Command
+	extends Commands.Play
 
 	var _wave: int
 
 	func _init(wave: int) -> void:
 		_wave = wave
+
+	func label() -> String:
+		return "jump to wave"
 
 	func apply(sim: Simulation) -> void:
 		sim.jump_to_wave(_wave)

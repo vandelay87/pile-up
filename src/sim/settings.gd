@@ -159,6 +159,54 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 	},
+	"waves":
+	{
+		"wave_1_size":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "enemies",
+			"apply": Apply.RESTART,
+		},
+		"growth":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 2.0,
+			"step": 0.01,
+			"unit": "× enemies per wave",
+			"apply": Apply.LIVE,
+		},
+		"hp_growth":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 2.0,
+			"step": 0.01,
+			"unit": "× HP per wave",
+			"apply": Apply.LIVE,
+		},
+		"spawn_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 120.0,
+			"step": 0.5,
+			"unit": "enemies/s",
+			"apply": Apply.LIVE,
+		},
+		"second_edge_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+	},
 	"run":
 	{
 		"starting_lives":
@@ -223,6 +271,22 @@ var direct_pile_weight: float:
 var direct_wall_weight: float:
 	get:
 		return value("routing", "direct_wall_weight")
+var wave_1_size: int:
+	get:
+		return value("waves", "wave_1_size")
+var wave_growth: float:
+	get:
+		return value("waves", "growth")
+var hp_growth: float:
+	get:
+		return value("waves", "hp_growth")
+var spawn_rate: float:
+	get:
+		return value("waves", "spawn_rate")
+var second_edge_chance: float:
+	get:
+		var percent: int = value("waves", "second_edge_chance")
+		return percent / 100.0
 var starting_lives: int:
 	get:
 		return value("run", "starting_lives")

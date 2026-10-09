@@ -76,6 +76,11 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_float(settings.separation_radius).is_equal_approx(0.3, 1e-6)
 	assert_float(settings.separation_push).is_equal_approx(0.5, 1e-6)
 	assert_int(settings.neighbour_cap).is_equal(0)
+	assert_int(settings.wave_1_size).is_equal(20)
+	assert_float(settings.wave_growth).is_equal_approx(1.2, 1e-6)
+	assert_float(settings.hp_growth).is_equal_approx(1.05, 1e-6)
+	assert_float(settings.spawn_rate).is_equal_approx(10.0, 1e-6)
+	assert_float(settings.second_edge_chance).is_equal_approx(0.5, 1e-6)
 
 
 func test_converts_enemy_speed_and_heading_offset_to_tick_units() -> void:

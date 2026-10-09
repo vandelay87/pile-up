@@ -4,7 +4,9 @@ var _sim: Simulation
 
 
 func before_test() -> void:
-	_sim = Simulation.new(Settings.from_json("{}", {}).settings, TestMaps.open_field())
+	_sim = Simulation.new(
+		Settings.load_file(Settings.DEFAULTS_PATH).settings, TestMaps.open_field()
+	)
 
 
 func test_pause_stops_ticks_advancing() -> void:
@@ -43,7 +45,7 @@ func test_speed_n_runs_n_ticks_per_frame() -> void:
 
 func test_a_seed_and_recorded_commands_replay_to_an_identical_state() -> void:
 	var frames := {
-		0: [Commands.SpawnBurst.new(40)],
+		0: [Commands.NextWave.new()],
 		5: [Commands.SetSetting.new("enemies", "speed", 3.0), Commands.SetSpeed.new(4)],
 		10: [Commands.SetPaused.new(true)],
 		12:

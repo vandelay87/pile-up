@@ -16,6 +16,7 @@ var _heatmaps: Array[bool] = [false, false]
 func setup(routing: Routing, map: MapData) -> void:
 	_routing = routing
 	_map = map
+	queue_redraw()
 
 
 func show_arrows(route: Routing.Route, shown: bool) -> void:

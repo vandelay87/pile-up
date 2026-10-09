@@ -1,40 +1,21 @@
 extends GdUnitTestSuite
 
-const SCHEMA := {
-	"towers":
-	{
-		"fire_rate":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.1,
-			"max": 20.0,
-			"step": 0.1,
-			"unit": "shots/s",
-			"apply": Settings.Apply.LIVE,
-		},
-	},
-	"run":
-	{
-		"starting_lives":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 100,
-			"step": 1,
-			"unit": "lives",
-			"apply": Settings.Apply.RESTART,
-		},
-		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Settings.Apply.RESTART},
-	},
+const FIRE_RATE := {
+	"type": TYPE_FLOAT,
+	"min": 0.1,
+	"max": 20.0,
+	"step": 0.1,
+	"unit": "shots/s",
+	"apply": Settings.Apply.LIVE,
 }
 
 
 func _settings() -> Settings:
-	var data := {
-		"towers": {"fire_rate": 2},
-		"run": {"starting_lives": 20, "map_path": "res://data/maps/v1.json"},
-	}
-	var result := Settings.from_json(JSON.stringify(data), SCHEMA)
+	var schema := Settings.SCHEMA.duplicate(true)
+	schema["towers"] = {"fire_rate": FIRE_RATE}
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Settings.DEFAULTS_PATH))
+	data["towers"] = {"fire_rate": 2}
+	var result := Settings.from_json(JSON.stringify(data), schema)
 	assert_str(result.error).is_empty()
 	return result.settings
 

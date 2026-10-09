@@ -4,6 +4,7 @@ extends RefCounted
 
 const INNER_RADIUS := 6.0
 const OUTER_RADIUS := 14.0
+const LIVES := 1_000_000
 
 var _sim: Simulation
 var _rng := RandomNumberGenerator.new()
@@ -12,6 +13,7 @@ var _centre: Vector2
 
 func _init(sim: Simulation, crowd_seed: int) -> void:
 	_sim = sim
+	_sim.run_state.lives = LIVES
 	_rng.seed = crowd_seed
 	_centre = Vector2(sim.map.base.get_center())
 
@@ -30,7 +32,7 @@ static func digest(sim: Simulation) -> int:
 
 func top_up(target: int) -> void:
 	while _sim.enemies.count < target:
-		_sim.enemies.spawn(_free_spot())
+		_sim.enemies.spawn(_free_spot(), _sim.settings.enemy_hp)
 
 
 func _free_spot() -> Vector2:
