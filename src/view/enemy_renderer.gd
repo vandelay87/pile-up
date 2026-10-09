@@ -6,16 +6,22 @@ const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
 
 var _enemies: Enemies
+var _piles: Piles
+var _map: MapData
 var _parent: RID
 var _texture: Texture2D
 var _items: Array[RID] = []
+var _bodies: Array[RID] = []
+var _lifts := PackedFloat32Array()
 var _shown := 0
 var _flash_ends := {}
 var _flashed_items: Array[RID] = []
 
 
-func setup(enemies: Enemies, parent: CanvasItem) -> void:
-	_enemies = enemies
+func setup(simulation: Simulation, parent: CanvasItem) -> void:
+	_enemies = simulation.enemies
+	_piles = simulation.piles
+	_map = simulation.map
 	_parent = parent.get_canvas_item()
 	_texture = load(Atlas.PATH)
 	_flash_ends.clear()
@@ -30,7 +36,7 @@ func _process(_delta: float) -> void:
 		return
 	var count := _enemies.count
 	while _items.size() < count:
-		_items.append(_create_item())
+		_create_item()
 	for i in range(count, _shown):
 		RenderingServer.canvas_item_set_visible(_items[i], false)
 	for i in range(_shown, count):
@@ -41,7 +47,31 @@ func _process(_delta: float) -> void:
 	for i in count:
 		var foot := GridTransform.grid_to_world(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, foot))
+		var lift := _lift_at(positions[i])
+		if lift != _lifts[i]:
+			_lifts[i] = lift
+			RenderingServer.canvas_item_set_transform(
+				_bodies[i], Transform2D(0.0, Vector2(0, -lift))
+			)
 	_draw_flashes()
+
+
+func _lift_at(pos: Vector2) -> float:
+	var shifted := pos - Vector2(0.5, 0.5)
+	var corner := Vector2i(shifted.floor())
+	var fraction := shifted - Vector2(corner)
+	var levels := _piles.levels
+	var height := 0.0
+	for i in 4:
+		var x := clampi(corner.x + (i & 1), 0, _map.width - 1)
+		var y := clampi(corner.y + (i >> 1), 0, _map.height - 1)
+		var level := levels[y * _map.width + x]
+		if level == 0:
+			continue
+		var weight_x := fraction.x if i & 1 else 1.0 - fraction.x
+		var weight_y := fraction.y if i >> 1 else 1.0 - fraction.y
+		height += level * weight_x * weight_y
+	return height * Atlas.PILE_SLAB_HEIGHT
 
 
 func _draw_flashes() -> void:
@@ -58,17 +88,23 @@ func _draw_flashes() -> void:
 		_flashed_items.append(_items[index])
 
 
-func _create_item() -> RID:
+func _create_item() -> void:
 	var item := RenderingServer.canvas_item_create()
 	RenderingServer.canvas_item_set_parent(item, _parent)
-	var region := Rect2(Atlas.ENEMY_REGION)
-	var rect := Rect2(Vector2(-region.size.x / 2.0, -region.size.y), region.size)
-	RenderingServer.canvas_item_add_texture_rect_region(item, rect, _texture.get_rid(), region)
 	RenderingServer.canvas_item_set_modulate(item, TINT)
 	RenderingServer.canvas_item_set_visible(item, false)
-	return item
+	var body := RenderingServer.canvas_item_create()
+	RenderingServer.canvas_item_set_parent(body, item)
+	var region := Rect2(Atlas.ENEMY_REGION)
+	var rect := Rect2(Vector2(-region.size.x / 2.0, -region.size.y), region.size)
+	RenderingServer.canvas_item_add_texture_rect_region(body, rect, _texture.get_rid(), region)
+	_items.append(item)
+	_bodies.append(body)
+	_lifts.append(0.0)
 
 
 func _exit_tree() -> void:
+	for body in _bodies:
+		RenderingServer.free_rid(body)
 	for item in _items:
 		RenderingServer.free_rid(item)

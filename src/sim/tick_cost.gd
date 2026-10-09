@@ -13,6 +13,10 @@ func record(cost_msec: float, now_msec: int) -> void:
 	_trim(now_msec)
 
 
+func last_msec() -> float:
+	return _costs[-1] if not _costs.is_empty() else 0.0
+
+
 func mean_msec(now_msec: int) -> float:
 	_trim(now_msec)
 	if _costs.is_empty():

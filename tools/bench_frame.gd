@@ -46,7 +46,7 @@ func _process(_delta: float) -> void:
 	_frame += 1
 	if _frame <= WARMUP_FRAMES:
 		return
-	var tick := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	var tick := _main.simulation.tick_cost.last_msec()
 	var process := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
 	var render := (
 		RenderingServer.viewport_get_measured_render_time_cpu(_viewport)

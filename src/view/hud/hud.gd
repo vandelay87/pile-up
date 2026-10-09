@@ -94,13 +94,21 @@ func _show_lives(lives: int) -> void:
 	_lives.text = "Lives %d" % lives
 
 
-func _show_phase(phase: Waves.Phase) -> void:
+func _process(_delta: float) -> void:
+	if _simulation == null:
+		return
+	_next_wave.disabled = (
+		_simulation.waves.phase == Waves.Phase.WAVE
+		or _simulation.routing.is_rebuilding()
+		or _simulation.run_state.is_game_over
+	)
+
+
+func _show_phase(_phase: Waves.Phase) -> void:
 	_wave.text = "Wave %d" % _simulation.run_state.wave
-	_next_wave.disabled = phase == Waves.Phase.WAVE
 
 
 func _show_game_over() -> void:
-	_next_wave.disabled = true
 	_reached.text = "Reached wave %d" % _simulation.run_state.wave
 	_game_over.visible = true
 

@@ -34,6 +34,7 @@ static func digest(sim: Simulation) -> int:
 			enemies.ids.slice(0, enemies.count),
 			enemies.positions.slice(0, enemies.count),
 			enemies.hp.slice(0, enemies.count),
+			sim.piles.levels,
 		]
 	)
 
@@ -41,6 +42,10 @@ static func digest(sim: Simulation) -> int:
 func top_up(target: int) -> void:
 	while _sim.enemies.count < target:
 		_sim.enemies.spawn(_free_spot(), _sim.settings.enemy_hp)
+
+
+func drop_body() -> void:
+	_sim.piles.queue_bodies(PackedVector2Array([_free_spot()]))
 
 
 func _free_spot() -> Vector2:
