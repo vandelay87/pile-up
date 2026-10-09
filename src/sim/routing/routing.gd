@@ -16,10 +16,13 @@ const _OFFSETS: Array[Vector2i] = [
 	Vector2i(-1, -1),
 ]
 const _NO_OFFSET := 8
-const _OFFSET_BY_DELTA: Array[int] = [7, 3, 6, 1, _NO_OFFSET, 0, 5, 2, 4]
 const _REGION := 1
 const _INVALID := 2
-const _DIRTY := 4
+
+static var _dxs := PackedInt32Array()
+static var _dys := PackedInt32Array()
+static var _steps := PackedFloat64Array()
+static var _directions := PackedVector2Array()
 
 var last_rebuild_msec: float
 var last_update_msec: float
@@ -36,9 +39,6 @@ var _builds_stale := false
 var _blend_cells := PackedInt32Array([0, 0, 0, 0])
 var _blend_weights := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var _marks := PackedByteArray()
-var _dxs := PackedInt32Array()
-var _dys := PackedInt32Array()
-var _steps := PackedFloat64Array()
 
 
 class Field:
@@ -46,6 +46,7 @@ class Field:
 
 	var values := PackedFloat64Array()
 	var parents := PackedInt32Array()
+	var parent_offsets := PackedByteArray()
 	var directions := PackedVector2Array()
 
 
@@ -73,11 +74,16 @@ func _init(
 	_occupancy = run_occupancy
 	_piles = run_piles
 	_marks.resize(_map.width * _map.height)
+	_rebuild_now()
+
+
+static func _static_init() -> void:
 	for offset in _OFFSETS:
 		_dxs.append(offset.x)
 		_dys.append(offset.y)
 		_steps.append(Vector2(offset).length())
-	rebuild()
+		_directions.append(Vector2(offset).normalized())
+	_directions.append(Vector2.ZERO)
 
 
 func _notification(what: int) -> void:
@@ -86,7 +92,15 @@ func _notification(what: int) -> void:
 			WorkerThreadPool.wait_for_task_completion(task)
 
 
-func rebuild() -> void:
+func rebuild() -> bool:
+	if is_rebuilding():
+		_builds_stale = true
+		return false
+	_rebuild_now()
+	return true
+
+
+func _rebuild_now() -> void:
 	var started := Time.get_ticks_usec()
 	_factors = [_terrain_factors(Route.SENSIBLE), _terrain_factors(Route.DIRECT)]
 	_fields = [
@@ -94,14 +108,6 @@ func rebuild() -> void:
 		_build_field(_map, _factors[Route.DIRECT]),
 	]
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
-
-
-func refresh() -> bool:
-	if is_rebuilding():
-		_builds_stale = true
-		return false
-	rebuild()
-	return true
 
 
 func update(cells: Array[Vector2i]) -> bool:
@@ -230,15 +236,36 @@ func _wait_for_builds() -> void:
 func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 	var field := _fields[route]
 	var factors := _factors[route]
-	var values := field.values
-	var parents := field.parents
+	var region := _apply_factors(route, factors, cells)
+	if region.is_empty():
+		return false
+	var invalid := _invalidate(field, factors, region)
+	var changed := invalid.duplicate()
+	var heap := _Heap.new(64)
+	for seeds: PackedInt32Array in [region, invalid]:
+		for cell in seeds:
+			if _reseed(field, factors, cell, heap):
+				changed.append(cell)
+	_settle(_map.width, _map.height, factors, field, heap, changed)
+	for cell in changed:
+		field.directions[cell] = _directions[field.parent_offsets[cell]]
+	for cell in region:
+		_marks[cell] = 0
+	for cell in invalid:
+		_marks[cell] = 0
+	return true
+
+
+func _apply_factors(
+	route: Route, factors: PackedFloat64Array, cells: Array[Vector2i]
+) -> PackedInt32Array:
+	var level_factors := _level_factors(route)
 	var width := _map.width
 	var height := _map.height
-
 	var region := PackedInt32Array()
 	for cell in cells:
 		var index := _index(cell)
-		var factor := _cell_factor(route, index)
+		var factor := _cell_factor(level_factors, index)
 		if factor == factors[index]:
 			continue
 		factors[index] = factor
@@ -248,20 +275,29 @@ func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 				if _marks[near] & _REGION == 0:
 					_marks[near] |= _REGION
 					region.append(near)
-	if region.is_empty():
-		return false
+	return region
 
+
+func _invalidate(
+	field: Field, factors: PackedFloat64Array, region: PackedInt32Array
+) -> PackedInt32Array:
+	var values := field.values
+	var parents := field.parents
 	var invalid := PackedInt32Array()
 	for cell in region:
 		if values[cell] == UNREACHABLE:
 			continue
-		var parent_index := parents[cell]
-		if factors[cell] == INF:
+		var k := field.parent_offsets[cell]
+		if (
+			factors[cell] == INF
+			or (k != _NO_OFFSET and _cost_via(factors, values, cell, k) > values[cell])
+		):
+			_marks[cell] |= _INVALID
 			invalid.append(cell)
-		elif parent_index >= 0 and _candidate(factors, values, cell, parent_index) > values[cell]:
-			invalid.append(cell)
-	for cell in invalid:
-		_marks[cell] |= _INVALID
+	var width := _map.width
+	var height := _map.height
+	var dxs := _dxs
+	var dys := _dys
 	var next := 0
 	while next < invalid.size():
 		var cell := invalid[next]
@@ -269,8 +305,8 @@ func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 		var x := cell % width
 		var y := cell / width
 		for k in 8:
-			var nx := x - _dxs[k]
-			var ny := y - _dys[k]
+			var nx := x - dxs[k]
+			var ny := y - dys[k]
 			if nx < 0 or ny < 0 or nx >= width or ny >= height:
 				continue
 			var child := ny * width + nx
@@ -279,155 +315,115 @@ func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 				invalid.append(child)
 	for cell in invalid:
 		values[cell] = UNREACHABLE
-		parents[cell] = -1
+		_set_parent(field, cell, _NO_OFFSET, width)
+	return invalid
 
-	var dirty := invalid.duplicate()
-	for cell in dirty:
-		_marks[cell] |= _DIRTY
-	var heap := _Heap.new(64)
-	for seeds: PackedInt32Array in [region, invalid]:
-		for cell in seeds:
-			if factors[cell] == INF or values[cell] == 0.0:
-				continue
-			var best := UNREACHABLE
-			var best_parent := -1
-			var x := cell % width
-			var y := cell / width
-			for k in 8:
-				var dx := _dxs[k]
-				var px := x + dx
-				var py := y + _dys[k]
-				if px < 0 or py < 0 or px >= width or py >= height:
-					continue
-				var parent_index := py * width + px
-				var entry_cost := factors[parent_index]
-				if entry_cost == INF or values[parent_index] == UNREACHABLE:
-					continue
-				if k >= 4 and (factors[cell + dx] == INF or factors[parent_index - dx] == INF):
-					continue
-				var candidate := values[parent_index] + _steps[k] * entry_cost
-				if candidate < best:
-					best = candidate
-					best_parent = parent_index
-			if best > values[cell] or (best == values[cell] and parents[cell] == best_parent):
-				continue
-			if best < values[cell]:
-				values[cell] = best
-				heap.push(best, cell)
-			parents[cell] = best_parent
-			if _marks[cell] & _DIRTY == 0:
-				_marks[cell] |= _DIRTY
-				dirty.append(cell)
 
-	while not heap.is_empty():
-		var current := heap.peek_value()
-		var cell := heap.pop()
-		if current > values[cell]:
+func _reseed(field: Field, factors: PackedFloat64Array, cell: int, heap: _Heap) -> bool:
+	var values := field.values
+	if factors[cell] == INF or values[cell] == 0.0:
+		return false
+	var width := _map.width
+	var height := _map.height
+	var x := cell % width
+	var y := cell / width
+	var dxs := _dxs
+	var dys := _dys
+	var steps := _steps
+	var best := UNREACHABLE
+	var best_k := _NO_OFFSET
+	for k in 8:
+		var dx := dxs[k]
+		var px := x + dx
+		var py := y + dys[k]
+		if px < 0 or py < 0 or px >= width or py >= height:
 			continue
-		var x := cell % width
-		var y := cell / width
-		var entry_cost := factors[cell]
-		for k in 8:
-			var dx := _dxs[k]
-			var nx := x - dx
-			var ny := y - _dys[k]
-			if nx < 0 or ny < 0 or nx >= width or ny >= height:
-				continue
-			var neighbour := ny * width + nx
-			if factors[neighbour] == INF:
-				continue
-			if k >= 4 and (factors[neighbour + dx] == INF or factors[cell - dx] == INF):
-				continue
-			var candidate := current + _steps[k] * entry_cost
-			if candidate < values[neighbour]:
-				values[neighbour] = candidate
-				heap.push(candidate, neighbour)
-			elif candidate > values[neighbour]:
-				continue
-			elif k >= _offset_of(neighbour, parents[neighbour]):
-				continue
-			parents[neighbour] = cell
-			if _marks[neighbour] & _DIRTY == 0:
-				_marks[neighbour] |= _DIRTY
-				dirty.append(neighbour)
-
-	var directions := field.directions
-	for cell in dirty:
-		var parent_index := parents[cell]
-		if parent_index < 0:
-			directions[cell] = Vector2.ZERO
-		else:
-			directions[cell] = (
-				Vector2(parent_index % width - cell % width, parent_index / width - cell / width)
-				. normalized()
-			)
-	for cell in region:
-		_marks[cell] = 0
-	for cell in dirty:
-		_marks[cell] = 0
+		var parent_index := py * width + px
+		var entry_cost := factors[parent_index]
+		if entry_cost == INF or values[parent_index] == UNREACHABLE:
+			continue
+		if k >= 4 and (factors[cell + dx] == INF or factors[parent_index - dx] == INF):
+			continue
+		var cost := values[parent_index] + steps[k] * entry_cost
+		if cost < best:
+			best = cost
+			best_k = k
+	if best > values[cell] or (best == values[cell] and field.parent_offsets[cell] == best_k):
+		return false
+	if best < values[cell]:
+		values[cell] = best
+		heap.push(best, cell)
+	_set_parent(field, cell, best_k, width)
 	return true
 
 
-func _candidate(
-	factors: PackedFloat64Array, values: PackedFloat64Array, cell: int, parent_index: int
-) -> float:
+func _cost_via(factors: PackedFloat64Array, values: PackedFloat64Array, cell: int, k: int) -> float:
+	var width := _map.width
+	var dx := _dxs[k]
+	var px := cell % width + dx
+	var py := cell / width + _dys[k]
+	if px < 0 or py < 0 or px >= width or py >= _map.height:
+		return UNREACHABLE
+	var parent_index := py * width + px
 	var entry_cost := factors[parent_index]
 	if entry_cost == INF or factors[cell] == INF or values[parent_index] == UNREACHABLE:
 		return UNREACHABLE
-	var k := _offset_of(cell, parent_index)
-	if k >= 4:
-		var dx := _dxs[k]
-		if factors[cell + dx] == INF or factors[parent_index - dx] == INF:
-			return UNREACHABLE
+	if k >= 4 and (factors[cell + dx] == INF or factors[parent_index - dx] == INF):
+		return UNREACHABLE
 	return values[parent_index] + _steps[k] * entry_cost
 
 
-func _offset_of(cell: int, parent_index: int) -> int:
-	if parent_index < 0:
-		return _NO_OFFSET
-	var width := _map.width
-	var dx := parent_index % width - cell % width
-	var dy := parent_index / width - cell / width
-	return _OFFSET_BY_DELTA[(dy + 1) * 3 + dx + 1]
+func _level_factors(route: Route) -> PackedFloat64Array:
+	var level_factors := PackedFloat64Array([1.0])
+	for level in range(1, Piles.WALL_LEVEL):
+		level_factors.append(pile_factor(route, level))
+	return level_factors
 
 
-func _cell_factor(route: Route, index: int) -> float:
+func _cell_factor(level_factors: PackedFloat64Array, index: int) -> float:
 	if _map.rock[index] == 1 or _occupancy.occupied[index] == 1:
 		return INF
-	var level := _piles.levels[index]
-	return 1.0 if level == 0 else pile_factor(route, level)
+	return level_factors[_piles.levels[index]]
 
 
 static func _build_field(map: MapData, factors: PackedFloat64Array) -> Field:
 	var width := map.width
-	var height := map.height
-	var count := width * height
-	var offsets := PackedInt32Array()
-	var dxs := PackedInt32Array()
-	var dys := PackedInt32Array()
-	var steps := PackedFloat64Array()
-	for offset in _OFFSETS:
-		offsets.append(offset.y * width + offset.x)
-		dxs.append(offset.x)
-		dys.append(offset.y)
-		steps.append(Vector2(offset).length())
-
-	var values := PackedFloat64Array()
-	values.resize(count)
-	values.fill(UNREACHABLE)
-	var parents := PackedInt32Array()
-	parents.resize(count)
-	parents.fill(-1)
-	var parent_offsets := PackedByteArray()
-	parent_offsets.resize(count)
-	parent_offsets.fill(_NO_OFFSET)
+	var count := width * map.height
+	var field := Field.new()
+	field.values.resize(count)
+	field.values.fill(UNREACHABLE)
+	field.parents.resize(count)
+	field.parents.fill(-1)
+	field.parent_offsets.resize(count)
+	field.parent_offsets.fill(_NO_OFFSET)
+	field.directions.resize(count)
 
 	var heap := _Heap.new(count)
 	for cell in map.base_cells():
 		var base_index := cell.y * width + cell.x
-		values[base_index] = 0.0
+		field.values[base_index] = 0.0
 		heap.push(0.0, base_index)
+	_settle(width, map.height, factors, field, heap, PackedInt32Array())
 
+	for cell in count:
+		field.directions[cell] = _directions[field.parent_offsets[cell]]
+	return field
+
+
+static func _settle(
+	width: int,
+	height: int,
+	factors: PackedFloat64Array,
+	field: Field,
+	heap: _Heap,
+	changed: PackedInt32Array
+) -> void:
+	var values := field.values
+	var parents := field.parents
+	var parent_offsets := field.parent_offsets
+	var dxs := _dxs
+	var dys := _dys
+	var steps := _steps
 	while not heap.is_empty():
 		var current := heap.peek_value()
 		var cell := heap.pop()
@@ -442,7 +438,7 @@ static func _build_field(map: MapData, factors: PackedFloat64Array) -> Field:
 			var ny := y - dys[k]
 			if nx < 0 or ny < 0 or nx >= width or ny >= height:
 				continue
-			var neighbour := cell - offsets[k]
+			var neighbour := ny * width + nx
 			if factors[neighbour] == INF:
 				continue
 			if k >= 4 and (factors[neighbour + dx] == INF or factors[cell - dx] == INF):
@@ -450,28 +446,17 @@ static func _build_field(map: MapData, factors: PackedFloat64Array) -> Field:
 			var candidate := current + steps[k] * entry_cost
 			if candidate < values[neighbour]:
 				values[neighbour] = candidate
-				parents[neighbour] = cell
-				parent_offsets[neighbour] = k
 				heap.push(candidate, neighbour)
-			elif candidate == values[neighbour] and k < parent_offsets[neighbour]:
-				parents[neighbour] = cell
-				parent_offsets[neighbour] = k
+			elif candidate > values[neighbour] or k >= parent_offsets[neighbour]:
+				continue
+			parents[neighbour] = cell
+			parent_offsets[neighbour] = k
+			changed.append(neighbour)
 
-	var directions := PackedVector2Array()
-	directions.resize(count)
-	for cell in count:
-		var parent_index := parents[cell]
-		if parent_index >= 0:
-			var to_parent := Vector2(
-				parent_index % width - cell % width, parent_index / width - cell / width
-			)
-			directions[cell] = to_parent.normalized()
 
-	var field := Field.new()
-	field.values = values
-	field.parents = parents
-	field.directions = directions
-	return field
+static func _set_parent(field: Field, cell: int, k: int, width: int) -> void:
+	field.parent_offsets[cell] = k
+	field.parents[cell] = -1 if k == _NO_OFFSET else cell + _dys[k] * width + _dxs[k]
 
 
 func _reachable(factors: PackedFloat64Array) -> PackedByteArray:
@@ -506,9 +491,7 @@ func _reachable(factors: PackedFloat64Array) -> PackedByteArray:
 
 
 func _terrain_factors(route: Route) -> PackedFloat64Array:
-	var level_factors := PackedFloat64Array([1.0])
-	for level in range(1, Piles.WALL_LEVEL):
-		level_factors.append(pile_factor(route, level))
+	var level_factors := _level_factors(route)
 	var rock := _map.rock
 	var occupied := _occupancy.occupied
 	var levels := _piles.levels

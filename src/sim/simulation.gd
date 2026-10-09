@@ -89,7 +89,7 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if not error.is_empty():
 		reject_command(error)
 		return
-	if group in ["routing", "piles"] and routing.refresh():
+	if group in ["routing", "piles"] and routing.rebuild():
 		_fields_changed = true
 
 

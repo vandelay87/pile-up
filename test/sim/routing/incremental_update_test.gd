@@ -84,6 +84,22 @@ func test_a_pile_rising_and_falling_at_a_tower_corner_equals_a_full_rebuild() ->
 		assert_bool(_matches_full_rebuild()).is_true()
 
 
+func test_a_tower_cutting_a_diagonal_parent_edge_equals_a_full_rebuild() -> void:
+	var map := TestMaps.from_rows(["....", "....", "...."], Rect2i(0, 0, 1, 1))
+	var occupancy := Occupancy.new(map.width, map.height)
+	var piles := Piles.new(map, occupancy)
+	var routing := Routing.new(_settings, map, occupancy, piles)
+	var corner: Array[Vector2i] = [Vector2i(1, 0)]
+	assert_vector(routing.parent(Routing.Route.SENSIBLE, Vector2i(1, 1))).is_equal(Vector2i.ZERO)
+
+	occupancy.occupy(corner)
+	routing.update(corner)
+
+	var rebuilt := Routing.new(_settings, map, occupancy, piles)
+	assert_vector(routing.parent(Routing.Route.SENSIBLE, Vector2i(1, 1))).is_equal(Vector2i(0, 1))
+	assert_bool(FieldChecks.routings_match(routing, rebuilt, map)).is_true()
+
+
 func test_changes_batched_in_one_update_equal_applying_them_one_by_one() -> void:
 	var one_by_one := Routing.new(_settings, _map, _occupancy, _piles)
 	for batch_round in 20:
