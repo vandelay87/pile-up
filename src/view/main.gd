@@ -3,7 +3,11 @@ extends Node
 
 const DEBUG_BURST_SIZE := 300
 
-var simulation: Simulation
+var simulation: Simulation:
+	get:
+		return _simulation
+
+var _simulation: Simulation
 
 @onready var _terrain: TileMapLayer = $Terrain
 @onready var _base: TileMapLayer = $World/Base
@@ -23,28 +27,28 @@ func _ready() -> void:
 		_fail("invalid map", loaded_map.error)
 		return
 	var run_seed := randi()
-	simulation = Simulation.new(loaded.settings, loaded_map.map, run_seed)
+	_simulation = Simulation.new(loaded.settings, loaded_map.map, run_seed)
 	print("Run seed: %d" % run_seed)
 	print(
 		(
 			"Flow fields: full rebuild of both fields took %.1f ms"
-			% simulation.routing.last_rebuild_msec
+			% _simulation.routing.last_rebuild_msec
 		)
 	)
 	_draw_map(loaded_map.map)
 	_camera.frame(loaded_map.map)
-	_enemy_renderer.setup(simulation.enemies, _world)
+	_enemy_renderer.setup(_simulation.enemies, _world)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if simulation != null and key.pressed and not key.echo and key.keycode == KEY_B:
-		simulation.queue_command(Commands.SpawnBurst.new(DEBUG_BURST_SIZE))
+	if _simulation != null and key.pressed and not key.echo and key.keycode == KEY_B:
+		_simulation.queue_command(Commands.SpawnBurst.new(DEBUG_BURST_SIZE))
 
 
 func _physics_process(_delta: float) -> void:
-	if simulation != null:
-		simulation.tick()
+	if _simulation != null:
+		_simulation.tick()
 
 
 func _draw_map(map: MapData) -> void:

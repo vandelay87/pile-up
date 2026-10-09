@@ -1,6 +1,6 @@
 # Runs the real Main scene with vsync off and a dense crowd near the base, raising the enemy
 # count until the p99 frame time no longer holds 60 fps, then prints the Performance table.
-# Run in the foreground, or in movie mode so macOS does not throttle a background window:
+# Run with:
 # godot --path . tools/bench_frame.tscn --write-movie <scratch>/bench.avi --fixed-fps 60
 extends Node
 
@@ -82,7 +82,7 @@ func _finish_count() -> void:
 
 
 func _row(frame_p99: float, holds: bool) -> String:
-	var cells := [
+	var values := [
 		_with_commas(_count),
 		_mean(_tick_msec),
 		_p99(_tick_msec),
@@ -90,7 +90,7 @@ func _row(frame_p99: float, holds: bool) -> String:
 		frame_p99,
 		"yes" if holds else "no",
 	]
-	return "| %s | %.2f / %.2f ms | %.2f / %.2f ms | %s |" % cells
+	return "| %s | %.2f / %.2f ms | %.2f / %.2f ms | %s |" % values
 
 
 func _print_table() -> void:
@@ -128,9 +128,15 @@ func _print_table() -> void:
 	print(
 		(
 			"Largest count that holds 60 fps, in steps of %d: %s."
-			% [COUNT_STEP, _with_commas(_largest_holding)]
+			% [COUNT_STEP, _largest_holding_text()]
 		)
 	)
+
+
+func _largest_holding_text() -> String:
+	if _largest_holding == 0:
+		return "under %s" % _with_commas(FIRST_COUNT)
+	return _with_commas(_largest_holding)
 
 
 func _mean(samples: PackedFloat64Array) -> float:

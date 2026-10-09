@@ -3,6 +3,8 @@ extends GdUnitTestSuite
 const SIZE := 40
 const BASE := Rect2i(18, 18, 4, 4)
 const ROCK := Rect2i(30, 10, 2, 20)
+const CROWD := 200
+const TICKS_TO_LEAK := 600
 
 var _settings: Settings
 
@@ -25,7 +27,7 @@ func _run(crowd_seed: int, ticks: int) -> Simulation:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, crowd_seed)
 	for t in ticks:
-		crowd.top_up(200)
+		crowd.top_up(CROWD)
 		sim.tick()
 	return sim
 
@@ -57,14 +59,14 @@ func test_top_up_spawns_on_clear_cells_in_a_ring_around_the_base() -> void:
 func test_top_up_replaces_enemies_that_leaked() -> void:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, 1)
-	crowd.top_up(200)
-	for t in 600:
+	crowd.top_up(CROWD)
+	for t in TICKS_TO_LEAK:
 		sim.tick()
-	assert_int(sim.enemies.count).is_less(200)
+	assert_int(sim.enemies.count).is_less(CROWD)
 
-	crowd.top_up(200)
+	crowd.top_up(CROWD)
 
-	assert_int(sim.enemies.count).is_equal(200)
+	assert_int(sim.enemies.count).is_equal(CROWD)
 
 
 func test_the_same_seed_reaches_the_same_state() -> void:

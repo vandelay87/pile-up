@@ -12,7 +12,7 @@ const MEASURED_TICKS := 600
 const BUDGET_MSEC := 30.0
 
 
-class Result:
+class RunResult:
 	extends RefCounted
 
 	var digest: int
@@ -49,10 +49,10 @@ func _init() -> void:
 	quit(1 if failed else 0)
 
 
-func _run(settings: Settings, map: MapData) -> Result:
+func _run(settings: Settings, map: MapData) -> RunResult:
 	var sim := Simulation.new(settings, map, RUN_SEED)
 	var crowd := BenchCrowd.new(sim, CROWD_SEED)
-	var result := Result.new()
+	var result := RunResult.new()
 	for t in WARMUP_TICKS + MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
 		var started := Time.get_ticks_usec()
