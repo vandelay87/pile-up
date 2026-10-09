@@ -21,6 +21,13 @@
 		"direct_pile_weight": 0,
 		"direct_wall_weight": 0.1
 	},
+	"waves": {
+		"wave_1_size": 20,
+		"growth": 1.2,
+		"hp_growth": 1.05,
+		"spawn_rate": 10,
+		"second_edge_chance": 50
+	},
 	"run": {
 		"starting_lives": 20,
 		"starting_gold": 150,

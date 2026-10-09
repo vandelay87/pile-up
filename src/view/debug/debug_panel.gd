@@ -12,6 +12,9 @@ var _rows: Array[Row] = []
 var _status := Label.new()
 var _overlays := VBoxContainer.new()
 var _box := VBoxContainer.new()
+var _pause := Button.new()
+var _speeds: Array[Button] = []
+var _built := false
 
 
 class Row:
@@ -82,8 +85,17 @@ class Row:
 
 func setup(simulation: Simulation) -> void:
 	_simulation = simulation
-	_file_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
 	_simulation.command_rejected.connect(_show_status.bind(ERROR_COLOUR))
+	if not _built:
+		_build()
+	_pause.set_pressed_no_signal(_simulation.paused)
+	for k in Simulation.SPEEDS.size():
+		_speeds[k].set_pressed_no_signal(Simulation.SPEEDS[k] == _simulation.speed)
+
+
+func _build() -> void:
+	_built = true
+	_file_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
 	_add_time_controls()
 	_add_cheats()
 	_box.add_child(_section("Overlays", _overlays))
@@ -121,11 +133,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _add_time_controls() -> void:
 	var row := HBoxContainer.new()
-	var pause := Button.new()
-	pause.text = "Pause"
-	pause.toggle_mode = true
-	pause.toggled.connect(func(pressed: bool) -> void: _send(Commands.SetPaused.new(pressed)))
-	row.add_child(pause)
+	_pause.text = "Pause"
+	_pause.toggle_mode = true
+	_pause.toggled.connect(func(pressed: bool) -> void: _send(Commands.SetPaused.new(pressed)))
+	row.add_child(_pause)
 	var step := Button.new()
 	step.text = "Step"
 	step.pressed.connect(func() -> void: _send(Commands.StepOneTick.new()))
@@ -136,8 +147,8 @@ func _add_time_controls() -> void:
 		button.text = "×%d" % speed
 		button.toggle_mode = true
 		button.button_group = speeds
-		button.button_pressed = speed == _simulation.speed
 		button.pressed.connect(func() -> void: _send(Commands.SetSpeed.new(speed)))
+		_speeds.append(button)
 		row.add_child(button)
 	_box.add_child(row)
 

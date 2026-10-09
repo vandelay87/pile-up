@@ -3,6 +3,12 @@ extends RefCounted
 
 signal command_rejected(reason: String)
 signal fields_changed
+signal gold_changed(gold: int)
+signal lives_changed(lives: int)
+signal phase_changed(phase: Waves.Phase)
+signal wave_started(edges: PackedStringArray)
+signal game_over
+signal restart_requested
 
 enum Step {
 	DRAIN_COMMANDS,
@@ -23,6 +29,8 @@ var map: MapData
 var occupancy: Occupancy
 var routing: Routing
 var enemies: Enemies
+var waves: Waves
+var run_state: RunState
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -33,8 +41,13 @@ var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
 var _run_seed: int
-var _debug_rng: RandomNumberGenerator
 var _pending_steps := 0
+var _wave_started := false
+var _restart_requested := false
+var _reported_gold: int
+var _reported_lives: int
+var _reported_phase := Waves.Phase.BUILD
+var _reported_game_over := false
 
 
 func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
@@ -44,7 +57,10 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	routing = Routing.new(settings, map, occupancy)
 	enemies = Enemies.new(settings, map, occupancy, routing, _system_rng("enemies"))
-	_debug_rng = _system_rng("debug")
+	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
+	run_state = RunState.new(settings)
+	_reported_gold = run_state.gold
+	_reported_lives = run_state.lives
 
 
 func queue_command(command: Commands.Command) -> void:
@@ -65,23 +81,27 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 		_fields_changed = true
 
 
-func spawn_burst(count: int) -> void:
-	var edges := map.spawn_edges
-	for n in count:
-		var cells := map.spawn_cells(edges[n % edges.size()])
-		var cell := cells[_debug_rng.randi_range(0, cells.size() - 1)]
-		var jitter := Vector2(
-			_debug_rng.randf_range(-0.25, 0.25), _debug_rng.randf_range(-0.25, 0.25)
-		)
-		enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter)
+func next_wave() -> void:
+	_start_wave(run_state.wave + 1, Commands.NextWave.LABEL)
 
 
-func add_gold(_amount: int) -> void:
-	reject_command("add gold: needs waves and run state")
+func jump_to_wave(wave: int) -> void:
+	if wave < 1:
+		reject_command("%s: the wave must be at least 1" % Commands.JumpToWave.LABEL)
+		return
+	_start_wave(wave, Commands.JumpToWave.LABEL)
 
 
-func jump_to_wave(_wave: int) -> void:
-	reject_command("jump to wave: needs waves and run state")
+func add_gold(amount: int) -> void:
+	run_state.add_gold(amount)
+
+
+func request_restart() -> void:
+	_restart_requested = true
+
+
+func next_run(new_seed: int) -> Simulation:
+	return Simulation.new(settings.for_next_run(), map, new_seed)
 
 
 func set_paused(value: bool) -> void:
@@ -118,6 +138,10 @@ func run_frame() -> void:
 
 func tick() -> void:
 	_drain_commands()
+	if run_state.is_game_over:
+		tick_count += 1
+		_emit_signals()
+		return
 	_land_bodies_and_update_fields()
 	_spawn_enemies()
 	_rebuild_spatial_hash()
@@ -130,6 +154,18 @@ func tick() -> void:
 
 
 func _emit_signals() -> void:
+	if run_state.gold != _reported_gold:
+		_reported_gold = run_state.gold
+		gold_changed.emit(_reported_gold)
+	if run_state.lives != _reported_lives:
+		_reported_lives = run_state.lives
+		lives_changed.emit(_reported_lives)
+	if waves.phase != _reported_phase:
+		_reported_phase = waves.phase
+		phase_changed.emit(_reported_phase)
+	if _wave_started:
+		_wave_started = false
+		wave_started.emit(waves.edges)
 	if _fields_changed:
 		_fields_changed = false
 		fields_changed.emit()
@@ -137,6 +173,12 @@ func _emit_signals() -> void:
 	_rejections = []
 	for reason in rejections:
 		command_rejected.emit(reason)
+	if run_state.is_game_over and not _reported_game_over:
+		_reported_game_over = true
+		game_over.emit()
+	if _restart_requested:
+		_restart_requested = false
+		restart_requested.emit()
 
 
 func _drain_commands() -> void:
@@ -144,14 +186,18 @@ func _drain_commands() -> void:
 	var commands := _command_queue
 	_command_queue = []
 	for command in commands:
-		command.apply(self)
+		if run_state.is_game_over and command is Commands.Play:
+			var play := command as Commands.Play
+			reject_command("%s: the run is over" % play.label())
+		else:
+			command.apply(self)
 
 
 func _drain_time_controls() -> void:
 	var commands := _command_queue
 	_command_queue = []
 	for command in commands:
-		if command is Commands.TimeControl:
+		if command is Commands.TimeControl or command is Commands.Restart:
 			command.apply(self)
 		else:
 			_command_queue.append(command)
@@ -163,6 +209,7 @@ func _land_bodies_and_update_fields() -> void:
 
 func _spawn_enemies() -> void:
 	_observe(Step.SPAWN_ENEMIES)
+	waves.spawn()
 
 
 func _rebuild_spatial_hash() -> void:
@@ -181,11 +228,26 @@ func _fire_towers() -> void:
 
 func _remove_dead_and_leaked() -> void:
 	_observe(Step.REMOVE_DEAD_AND_LEAKED)
-	enemies.remove_dead_and_leaked()
+	var removal := enemies.remove_dead_and_leaked()
+	run_state.record_removals(removal.deaths.size(), removal.leaks)
 
 
 func _check_wave_end() -> void:
 	_observe(Step.CHECK_WAVE_END)
+	if not run_state.is_game_over:
+		waves.check_end()
+
+
+func _start_wave(wave: int, label: String) -> void:
+	if waves.phase == Waves.Phase.WAVE:
+		reject_command("%s: a wave is already running" % label)
+		return
+	if map.spawn_edges.is_empty():
+		reject_command("%s: the map has no spawn edges" % label)
+		return
+	run_state.wave = wave
+	waves.start(wave)
+	_wave_started = true
 
 
 func _system_rng(system: String) -> RandomNumberGenerator:

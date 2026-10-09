@@ -18,6 +18,7 @@ func setup(enemies: Enemies, parent: CanvasItem) -> void:
 	_enemies = enemies
 	_parent = parent.get_canvas_item()
 	_texture = load(Atlas.PATH)
+	_flash_ends.clear()
 
 
 func flash(id: int) -> void:

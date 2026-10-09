@@ -1,13 +1,12 @@
 class_name Main
 extends Node
 
-const DEBUG_BURST_SIZE := 300
-
 var simulation: Simulation:
 	get:
 		return _simulation
 
 var _simulation: Simulation
+var _map: MapData
 
 @onready var _terrain: TileMapLayer = $Terrain
 @onready var _base: TileMapLayer = $World/Base
@@ -17,6 +16,8 @@ var _simulation: Simulation
 @onready var _flow_overlay: FlowOverlay = $FlowOverlay
 @onready var _debug_panel: DebugPanel = $DebugPanel
 @onready var _stats_readout: StatsReadout = $StatsReadout
+@onready var _hud: Hud = $Hud
+@onready var _edge_highlight: EdgeHighlight = $EdgeHighlight
 
 
 func _ready() -> void:
@@ -29,25 +30,18 @@ func _ready() -> void:
 	if loaded_map.map == null:
 		_fail("invalid map", loaded_map.error)
 		return
-	var run_seed := randi()
-	_simulation = Simulation.new(loaded.settings, loaded_map.map, run_seed)
-	print("Run seed: %d" % run_seed)
+	_map = loaded_map.map
+	_draw_map(_map)
+	_camera.frame(_map)
+	_edge_highlight.setup(_map)
+	_add_overlays()
+	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
 		(
 			"Flow fields: full rebuild of both fields took %.1f ms"
 			% _simulation.routing.last_rebuild_msec
 		)
 	)
-	_draw_map(loaded_map.map)
-	_camera.frame(loaded_map.map)
-	_enemy_renderer.setup(_simulation.enemies, _world)
-	_setup_debug(loaded_map.map)
-
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if _simulation != null and key.pressed and not key.echo and key.keycode == KEY_B:
-		_simulation.queue_command(Commands.SpawnBurst.new(DEBUG_BURST_SIZE))
 
 
 func _physics_process(_delta: float) -> void:
@@ -55,10 +49,30 @@ func _physics_process(_delta: float) -> void:
 		_simulation.run_frame()
 
 
-func _setup_debug(map: MapData) -> void:
-	_flow_overlay.setup(_simulation.routing, map)
+func _start_run(simulation: Simulation) -> void:
+	_simulation = simulation
+	_simulation.restart_requested.connect(_restart, CONNECT_DEFERRED)
+	_simulation.wave_started.connect(_edge_highlight.announce)
 	_simulation.fields_changed.connect(_flow_overlay.queue_redraw)
+	_enemy_renderer.setup(_simulation.enemies, _world)
+	_flow_overlay.setup(_simulation.routing, _map)
+	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
+	_stats_readout.setup(_simulation)
+	_hud.setup(_simulation)
+
+
+func _restart() -> void:
+	_start_run(_simulation.next_run(_new_seed()))
+
+
+func _new_seed() -> int:
+	var run_seed := randi()
+	print("Run seed: %d" % run_seed)
+	return run_seed
+
+
+func _add_overlays() -> void:
 	for route: Routing.Route in Routing.Route.values():
 		var key: String = Routing.Route.find_key(route)
 		var route_name := key.capitalize()
@@ -68,7 +82,6 @@ func _setup_debug(map: MapData) -> void:
 		_debug_panel.add_overlay(
 			"Field heatmap: %s" % route_name, _flow_overlay.show_heatmap.bind(route)
 		)
-	_stats_readout.setup(_simulation)
 
 
 func _draw_map(map: MapData) -> void:
