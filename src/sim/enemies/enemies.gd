@@ -5,6 +5,7 @@ const NONE := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
 const _PROGRESS := 0.02
+const _ROLL_STEPS := 40
 const _FACES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 
 var count := 0
@@ -14,6 +15,8 @@ var hp := PackedFloat32Array()
 var leaked := PackedByteArray()
 var heading_offsets := PackedFloat32Array()
 var wall_targets := PackedInt32Array()
+var routes := PackedByteArray()
+var last_rolled_cells := PackedInt32Array()
 
 var _settings: Settings
 var _map: MapData
@@ -65,6 +68,8 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	leaked[count] = 0
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	wall_targets[count] = NONE
+	routes[count] = Routing.Route.SENSIBLE
+	last_rolled_cells[count] = NONE
 	_best_values[count] = INF
 	_stuck_ticks[count] = 0
 	_index_by_id[id] = count
@@ -133,6 +138,8 @@ func move() -> void:
 	var cap := _settings.neighbour_cap
 	var reach := radius + _settings.wall_reach
 	var jam_ticks := _settings.jam_ticks
+	var sensible_parents := _routing.parents(Routing.Route.SENSIBLE)
+	var direct_parents := _routing.parents(Routing.Route.DIRECT)
 	for i in count:
 		wall_targets[i] = _wall_target(i, reach, jam_ticks)
 	_moved.resize(count)
@@ -142,9 +149,7 @@ func move() -> void:
 		if wall_targets[i] != NONE:
 			_moved[i] = pos + separation
 			continue
-		var heading := _routing.sample_direction(Routing.Route.SENSIBLE, pos).rotated(
-			heading_offsets[i]
-		)
+		var heading := _routing.sample_direction(routes[i], pos).rotated(heading_offsets[i])
 		_moved[i] = pos + heading * steps[levels[_cell_index(pos)]] + separation
 	for i in count:
 		var pos := _moved[i]
@@ -156,10 +161,46 @@ func move() -> void:
 		positions[i] = pos
 		if _map.is_base(Vector2i(pos.floor())):
 			leaked[i] = 1
+		if routes[i] == Routing.Route.SENSIBLE:
+			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
+		elif _is_past_obstacle(i, pos):
+			routes[i] = Routing.Route.SENSIBLE
 	var damage_per_tick := _settings.wall_damage_per_tick
 	for i in count:
 		if wall_targets[i] != NONE:
 			_piles.damage_wall(_cell_of(wall_targets[i]), damage_per_tick)
+
+
+func _roll_route(
+	i: int, cell: int, sensible_parents: PackedInt32Array, direct_parents: PackedInt32Array
+) -> void:
+	var next := direct_parents[cell]
+	if next < 0 or next == sensible_parents[cell]:
+		return
+	var obstacle := _first_pile_on_chain(next, direct_parents)
+	if obstacle == NONE or obstacle == last_rolled_cells[i]:
+		return
+	last_rolled_cells[i] = obstacle
+	var is_wall := _is_wall(obstacle)
+	var chance := _settings.wall_roll_chance if is_wall else _settings.pile_roll_chance
+	if chance > 0.0 and _rng.randf() <= chance:
+		routes[i] = Routing.Route.DIRECT
+
+
+func _is_past_obstacle(i: int, pos: Vector2) -> bool:
+	var obstacle_value := _routing.value(Routing.Route.DIRECT, _cell_of(last_rolled_cells[i]))
+	return _routing.sample_value(Routing.Route.DIRECT, pos) < obstacle_value
+
+
+func _first_pile_on_chain(cell: int, chain_parents: PackedInt32Array) -> int:
+	var levels := _piles.levels
+	for _step in _ROLL_STEPS:
+		if levels[cell] > 0:
+			return cell
+		cell = chain_parents[cell]
+		if cell < 0:
+			return NONE
+	return NONE
 
 
 func _wall_target(i: int, reach: float, jam_ticks: int) -> int:
@@ -174,25 +215,26 @@ func _wall_target(i: int, reach: float, jam_ticks: int) -> int:
 		_best_values[i] = INF
 		_stuck_ticks[i] = 0
 		return NONE
-	var field_value := _routing.sample_value(Routing.Route.SENSIBLE, pos)
+	var route := routes[i] as Routing.Route
+	var field_value := _routing.sample_value(route, pos)
 	if field_value < _best_values[i] - _PROGRESS:
 		_best_values[i] = field_value
 		_stuck_ticks[i] = 0
 	else:
 		_stuck_ticks[i] += 1
-	if _stuck_ticks[i] >= jam_ticks or _route_crosses_wall(pos):
+	if _stuck_ticks[i] >= jam_ticks or _route_crosses_wall(route, pos):
 		_stuck_ticks[i] = 0
 		return nearest
 	return NONE
 
 
-func _route_crosses_wall(pos: Vector2) -> bool:
-	var next := _routing.parent(Routing.Route.SENSIBLE, Vector2i(pos.floor()))
+func _route_crosses_wall(route: Routing.Route, pos: Vector2) -> bool:
+	var next := _routing.parent(route, Vector2i(pos.floor()))
 	if next == Routing.NO_PARENT:
 		return false
 	if _is_wall(_index(next)):
 		return true
-	var after := _routing.parent(Routing.Route.SENSIBLE, next)
+	var after := _routing.parent(route, next)
 	return after != Routing.NO_PARENT and _is_wall(_index(after))
 
 
@@ -344,6 +386,8 @@ func _swap_remove(index: int) -> void:
 	leaked[index] = leaked[count]
 	heading_offsets[index] = heading_offsets[count]
 	wall_targets[index] = wall_targets[count]
+	routes[index] = routes[count]
+	last_rolled_cells[index] = last_rolled_cells[count]
 	_best_values[index] = _best_values[count]
 	_stuck_ticks[index] = _stuck_ticks[count]
 	_index_by_id[ids[index]] = index
@@ -357,5 +401,7 @@ func _grow() -> void:
 	leaked.resize(capacity)
 	heading_offsets.resize(capacity)
 	wall_targets.resize(capacity)
+	routes.resize(capacity)
+	last_rolled_cells.resize(capacity)
 	_best_values.resize(capacity)
 	_stuck_ticks.resize(capacity)
