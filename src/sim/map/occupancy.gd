@@ -1,6 +1,10 @@
 class_name Occupancy
 extends RefCounted
 
+var cells: PackedByteArray:
+	get:
+		return _occupied
+
 var _width: int
 var _occupied := PackedByteArray()
 

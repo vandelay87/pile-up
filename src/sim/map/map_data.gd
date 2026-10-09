@@ -19,6 +19,9 @@ var base: Rect2i:
 var spawn_edges: PackedStringArray:
 	get:
 		return _spawn_edges
+var rock: PackedByteArray:
+	get:
+		return _rock
 
 var _width: int
 var _height: int

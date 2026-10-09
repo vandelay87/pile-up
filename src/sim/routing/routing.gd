@@ -312,15 +312,14 @@ func _terrain_factors(route: Route) -> PackedFloat64Array:
 	var level_factors := PackedFloat64Array([1.0])
 	for level in range(1, Piles.WALL_LEVEL):
 		level_factors.append(pile_factor(route, level))
+	var rock := _map.rock
+	var occupied := _occupancy.cells
 	var levels := _piles.levels
 	var factors := PackedFloat64Array()
-	factors.resize(_map.width * _map.height)
-	for y in _map.height:
-		for x in _map.width:
-			var cell := Vector2i(x, y)
-			var index := _index(cell)
-			var impassable := _map.is_rock(cell) or _occupancy.is_occupied(cell)
-			factors[index] = INF if impassable else level_factors[levels[index]]
+	factors.resize(levels.size())
+	for index in levels.size():
+		var impassable := rock[index] == 1 or occupied[index] == 1
+		factors[index] = INF if impassable else level_factors[levels[index]]
 	return factors
 
 
