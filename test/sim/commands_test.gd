@@ -1,27 +1,8 @@
 extends GdUnitTestSuite
 
-const FIRE_RATE := {
-	"type": TYPE_FLOAT,
-	"min": 0.1,
-	"max": 20.0,
-	"step": 0.1,
-	"unit": "shots/s",
-	"apply": Settings.Apply.LIVE,
-}
-
-
-func _settings() -> Settings:
-	var schema := Settings.SCHEMA.duplicate(true)
-	schema["towers"] = {"fire_rate": FIRE_RATE}
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Settings.DEFAULTS_PATH))
-	data["towers"] = {"fire_rate": 2}
-	var result := Settings.from_json(JSON.stringify(data), schema)
-	assert_str(result.error).is_empty()
-	return result.settings
-
 
 func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
-	var settings := _settings()
+	var settings := _defaults()
 	var sim := Simulation.new(settings, TestMaps.open_field())
 	var seen: Array[float] = []
 	sim.step_observer = func(step: int) -> void:
@@ -36,7 +17,7 @@ func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
 
 
 func test_a_restart_change_leaves_the_running_value_unchanged() -> void:
-	var sim := Simulation.new(_settings(), TestMaps.open_field())
+	var sim := Simulation.new(_defaults(), TestMaps.open_field())
 
 	sim.queue_command(Commands.SetSetting.new("run", "starting_lives", 5))
 	sim.tick()
@@ -46,7 +27,7 @@ func test_a_restart_change_leaves_the_running_value_unchanged() -> void:
 
 
 func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void:
-	var sim := Simulation.new(_settings(), TestMaps.open_field())
+	var sim := Simulation.new(_defaults(), TestMaps.open_field())
 	var rejections: Array[String] = []
 	sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
 
@@ -59,7 +40,7 @@ func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void
 
 
 func test_a_change_to_an_unknown_setting_is_rejected() -> void:
-	var sim := Simulation.new(_settings(), TestMaps.open_field())
+	var sim := Simulation.new(_defaults(), TestMaps.open_field())
 	var rejections: Array[String] = []
 	sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
 
