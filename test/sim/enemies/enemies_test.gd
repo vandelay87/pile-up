@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 
 var _settings: Settings
+var _piles: Piles
 
 
 func before_test() -> void:
@@ -11,10 +12,11 @@ func _enemies(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -
 	var map := TestMaps.from_rows(rows, base)
 	var occupancy := Occupancy.new(map.width, map.height)
 	occupancy.occupy(towers)
-	var routing := Routing.new(_settings, map, occupancy)
+	_piles = Piles.new(map, occupancy)
+	var routing := Routing.new(_settings, map, occupancy, _piles)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	return Enemies.new(_settings, map, occupancy, routing, rng)
+	return Enemies.new(_settings, map, occupancy, _piles, routing, rng)
 
 
 func _open_field() -> Enemies:
@@ -193,3 +195,22 @@ func _tick(enemies: Enemies) -> Enemies.Removal:
 	enemies.rebuild_spatial_hash()
 	enemies.move()
 	return enemies.remove_dead_and_leaked()
+
+
+func test_an_enemy_on_a_level_2_pile_moves_at_70_percent_speed() -> void:
+	_settings.change("enemies", "heading_offset", 0.0)
+	var enemies := _open_field()
+	_piles.levels[1 * 8 + 2] = 2
+	var on_clear := enemies.spawn(Vector2(2.5, 2.5), _settings.enemy_hp)
+	var on_pile := enemies.spawn(Vector2(2.5, 1.5), _settings.enemy_hp)
+	var clear_start := enemies.positions[0]
+	var pile_start := enemies.positions[1]
+
+	enemies.rebuild_spatial_hash()
+	enemies.move()
+
+	var step := _settings.enemy_speed_per_tick
+	var clear_moved := enemies.positions[enemies.index_of(on_clear)].distance_to(clear_start)
+	var pile_moved := enemies.positions[enemies.index_of(on_pile)].distance_to(pile_start)
+	assert_float(clear_moved).is_equal_approx(step, 1e-5)
+	assert_float(pile_moved).is_equal_approx(step * 0.7, 1e-5)

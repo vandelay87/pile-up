@@ -34,11 +34,12 @@ func _process(_delta: float) -> void:
 		return
 	var now := Time.get_ticks_msec()
 	_label.text = (
-		"%d fps\n%d enemies\ntick %.2f ms mean, %.2f ms max"
+		"%d fps\n%d enemies\ntick %.2f ms mean, %.2f ms max\ndecay rebuild in flight: %s"
 		% [
 			Engine.get_frames_per_second(),
 			_simulation.enemies.count,
 			_simulation.tick_cost.mean_msec(now),
 			_simulation.tick_cost.max_msec(now),
+			"yes" if _simulation.is_decay_rebuild_in_flight() else "no",
 		]
 	)

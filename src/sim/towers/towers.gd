@@ -12,6 +12,7 @@ var built: Array[Tower] = []
 var _settings: Settings
 var _map: MapData
 var _occupancy: Occupancy
+var _piles: Piles
 var _routing: Routing
 var _enemies: Enemies
 var _run_state: RunState
@@ -49,6 +50,7 @@ func _init(
 	run_settings: Settings,
 	run_map: MapData,
 	run_occupancy: Occupancy,
+	run_piles: Piles,
 	run_routing: Routing,
 	run_enemies: Enemies,
 	run_state: RunState,
@@ -56,6 +58,7 @@ func _init(
 	_settings = run_settings
 	_map = run_map
 	_occupancy = run_occupancy
+	_piles = run_piles
 	_routing = run_routing
 	_enemies = run_enemies
 	_run_state = run_state
@@ -119,5 +122,7 @@ func _placement_error(origin: Vector2i) -> String:
 		if not _map.in_bounds(cell):
 			return OFF_MAP
 		if _map.is_rock(cell) or _map.is_base(cell) or _occupancy.is_occupied(cell):
+			return OCCUPIED
+		if _piles.level(cell) > 0:
 			return OCCUPIED
 	return ""

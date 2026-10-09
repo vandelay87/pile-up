@@ -5,11 +5,16 @@ const DIRECT := Routing.Route.DIRECT
 const DIAGONAL := sqrt(2.0)
 
 
-func _routing(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -> Routing:
+func _routing(
+	rows: Array[String], base: Rect2i, towers: Array[Vector2i] = [], piles: Dictionary = {}
+) -> Routing:
 	var map := TestMaps.from_rows(rows, base)
 	var occupancy := Occupancy.new(map.width, map.height)
 	occupancy.occupy(towers)
-	return Routing.new(_settings(), map, occupancy)
+	var run_piles := Piles.new(map, occupancy)
+	for cell: Vector2i in piles:
+		run_piles.levels[cell.y * map.width + cell.x] = piles[cell]
+	return Routing.new(_settings(), map, occupancy, run_piles)
 
 
 func _settings() -> Settings:
@@ -128,7 +133,8 @@ func test_cost_factors_follow_route_weight_settings() -> void:
 	settings.change("routing", "sensible_pile_weight", 2.0)
 	settings.change("routing", "direct_wall_weight", 0.5)
 	var map := TestMaps.from_rows(["..."], Rect2i(0, 0, 1, 1))
-	var routing := Routing.new(settings, map, Occupancy.new(map.width, map.height))
+	var occupancy := Occupancy.new(map.width, map.height)
+	var routing := Routing.new(settings, map, occupancy, Piles.new(map, occupancy))
 
 	assert_float(routing.pile_factor(SENSIBLE, 4)).is_equal_approx(4.0, 1e-6)
 	assert_float(routing.wall_factor(DIRECT, 30.0)).is_equal_approx(23.5, 1e-6)
@@ -168,3 +174,36 @@ func test_value_sampling_blends_the_field_and_skips_impassable_cells() -> void:
 	assert_float(routing.sample_value(SENSIBLE, Vector2(2.5, 0.5))).is_equal_approx(2.0, 1e-6)
 	assert_float(routing.sample_value(SENSIBLE, Vector2(2.0, 0.5))).is_equal_approx(1.5, 1e-6)
 	assert_float(routing.sample_value(SENSIBLE, Vector2(1.5, 1.0))).is_equal_approx(1.0, 1e-6)
+
+
+func test_a_pile_costs_its_pile_factor_to_enter_on_each_route() -> void:
+	var routing := _routing(["....."], Rect2i(0, 0, 1, 1), [], {Vector2i(2, 0): 2})
+
+	var sensible := 2.0 + routing.pile_factor(SENSIBLE, 2)
+	assert_float(routing.value(SENSIBLE, Vector2i(3, 0))).is_equal_approx(sensible, 1e-6)
+	assert_float(routing.value(DIRECT, Vector2i(3, 0))).is_equal_approx(3.0, 1e-6)
+	assert_float(routing.value(SENSIBLE, Vector2i(2, 0))).is_equal_approx(2.0, 1e-6)
+
+
+func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
+	var map := TestMaps.from_rows(["......", "......", "......"], Rect2i(0, 0, 1, 1))
+	var occupancy := Occupancy.new(map.width, map.height)
+	var piles := Piles.new(map, occupancy)
+	var routing := Routing.new(_settings(), map, occupancy, piles)
+	routing.start_rebuild()
+
+	occupancy.occupy([Vector2i(2, 0), Vector2i(2, 1)] as Array[Vector2i])
+	var updated_now := routing.update()
+	var swapped_stale := routing.finish_rebuild()
+	var swapped_restart := routing.finish_rebuild()
+
+	assert_bool(updated_now).is_false()
+	assert_bool(swapped_stale).is_false()
+	assert_bool(swapped_restart).is_true()
+	assert_bool(routing.is_rebuilding()).is_false()
+	var rebuilt := Routing.new(_settings(), map, occupancy, piles)
+	for route: Routing.Route in [SENSIBLE, DIRECT]:
+		for y in map.height:
+			for x in map.width:
+				var cell := Vector2i(x, y)
+				assert_float(routing.value(route, cell)).is_equal(rebuilt.value(route, cell))

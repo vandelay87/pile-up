@@ -10,6 +10,7 @@ var _map: MapData
 
 @onready var _terrain: TileMapLayer = $Terrain
 @onready var _base: TileMapLayer = $World/Base
+@onready var _pile_layer: PileLayer = $World/Piles
 @onready var _camera: MapCamera = $Camera
 @onready var _world: Node2D = $World
 @onready var _enemy_renderer: EnemyRenderer = $EnemyRenderer
@@ -22,6 +23,7 @@ var _map: MapData
 @onready var _tracers: Tracers = $Tracers
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
+@onready var _pile_overlay: PileOverlay = $PileOverlay
 
 
 func _ready() -> void:
@@ -59,7 +61,8 @@ func _start_run(simulation: Simulation) -> void:
 	_simulation.restart_requested.connect(_restart, CONNECT_DEFERRED)
 	_simulation.wave_started.connect(_edge_highlight.announce)
 	_simulation.fields_changed.connect(_flow_overlay.queue_redraw)
-	_enemy_renderer.setup(_simulation.enemies, _world)
+	_pile_layer.setup(_simulation)
+	_enemy_renderer.setup(_simulation, _world)
 	_flow_overlay.setup(_simulation.routing, _map)
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
@@ -69,6 +72,7 @@ func _start_run(simulation: Simulation) -> void:
 	_tracers.setup(_simulation, _enemy_renderer)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)
+	_pile_overlay.setup(_simulation)
 
 
 func _restart() -> void:
@@ -91,6 +95,7 @@ func _add_overlays() -> void:
 		_debug_panel.add_overlay(
 			"Field heatmap: %s" % route_name, _flow_overlay.show_heatmap.bind(route)
 		)
+	_debug_panel.add_overlay("Pile labels", _pile_overlay.show_labels)
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 
 
@@ -98,6 +103,7 @@ func _draw_map(map: MapData) -> void:
 	var tile_set := Atlas.make_tile_set()
 	_terrain.tile_set = tile_set
 	_base.tile_set = tile_set
+	_pile_layer.tile_set = tile_set
 	for y in map.height:
 		for x in map.width:
 			var cell := Vector2i(x, y)

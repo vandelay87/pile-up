@@ -15,8 +15,9 @@ func before_test() -> void:
 		rows.append("................")
 	_map = TestMaps.from_rows(rows, Rect2i(7, 7, 2, 2), EDGES)
 	var occupancy := Occupancy.new(_map.width, _map.height)
-	var routing := Routing.new(_settings, _map, occupancy)
-	_enemies = Enemies.new(_settings, _map, occupancy, routing, _rng(1))
+	var piles := Piles.new(_map, occupancy)
+	var routing := Routing.new(_settings, _map, occupancy, piles)
+	_enemies = Enemies.new(_settings, _map, occupancy, piles, routing, _rng(1))
 
 
 func _waves(run_seed: int = 1) -> Waves:

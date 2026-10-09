@@ -16,6 +16,7 @@ var heading_offsets := PackedFloat32Array()
 var _settings: Settings
 var _map: MapData
 var _occupancy: Occupancy
+var _piles: Piles
 var _routing: Routing
 var _rng: RandomNumberGenerator
 var _next_id := 0
@@ -36,12 +37,14 @@ func _init(
 	run_settings: Settings,
 	run_map: MapData,
 	run_occupancy: Occupancy,
+	run_piles: Piles,
 	run_routing: Routing,
 	rng: RandomNumberGenerator,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_occupancy = run_occupancy
+	_piles = run_piles
 	_routing = run_routing
 	_rng = rng
 	_bucket_starts.resize(_map.width * _map.height + 1)
@@ -113,6 +116,10 @@ func move() -> void:
 	if count == 0:
 		return
 	var step := _settings.enemy_speed_per_tick
+	var steps := PackedFloat64Array([step])
+	for level in range(1, Piles.WALL_LEVEL):
+		steps.append(step * (1.0 - _settings.pile_slow(level)))
+	var levels := _piles.levels
 	var radius := _settings.separation_radius
 	var push := _settings.separation_push
 	var cap := _settings.neighbour_cap
@@ -123,7 +130,7 @@ func move() -> void:
 			heading_offsets[i]
 		)
 		var separation := _separation(i, radius, push, cap).limit_length(radius)
-		_moved[i] = pos + heading * step + separation
+		_moved[i] = pos + heading * steps[levels[_cell_index(pos)]] + separation
 	for i in count:
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:

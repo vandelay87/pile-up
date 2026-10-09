@@ -21,7 +21,11 @@ var last_rebuild_msec: float
 var _settings: Settings
 var _map: MapData
 var _occupancy: Occupancy
+var _piles: Piles
 var _fields: Array[Field] = []
+var _builds: Array[_FieldBuild] = []
+var _build_tasks := PackedInt64Array()
+var _builds_stale := false
 var _blend_cells := PackedInt32Array([0, 0, 0, 0])
 var _blend_weights := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 
@@ -34,22 +38,80 @@ class Field:
 	var directions := PackedVector2Array()
 
 
-func _init(run_settings: Settings, run_map: MapData, run_occupancy: Occupancy) -> void:
+class _FieldBuild:
+	extends RefCounted
+
+	var field: Field
+
+	var _map: MapData
+	var _factors: PackedFloat64Array
+
+	func _init(map: MapData, factors: PackedFloat64Array) -> void:
+		_map = map
+		_factors = factors
+
+	func run() -> void:
+		field = Routing._build_field(_map, _factors)
+
+
+func _init(
+	run_settings: Settings, run_map: MapData, run_occupancy: Occupancy, run_piles: Piles
+) -> void:
 	_settings = run_settings
 	_map = run_map
 	_occupancy = run_occupancy
+	_piles = run_piles
 	rebuild()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for task in _build_tasks:
+			WorkerThreadPool.wait_for_task_completion(task)
 
 
 func rebuild() -> void:
 	var started := Time.get_ticks_usec()
-	var factors := _terrain_factors()
-	_fields = [_build_field(factors), _build_field(factors)]
+	_fields = [
+		_build_field(_map, _terrain_factors(Route.SENSIBLE)),
+		_build_field(_map, _terrain_factors(Route.DIRECT)),
+	]
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
 
 
+func update() -> bool:
+	if is_rebuilding():
+		_builds_stale = true
+		return false
+	rebuild()
+	return true
+
+
+func start_rebuild() -> void:
+	if is_rebuilding():
+		_builds_stale = true
+		return
+	_start_builds()
+
+
+func is_rebuilding() -> bool:
+	return not _builds.is_empty()
+
+
+func finish_rebuild() -> bool:
+	if not is_rebuilding():
+		return false
+	_wait_for_builds()
+	if _builds_stale:
+		_start_builds()
+		return false
+	_fields = [_builds[Route.SENSIBLE].field, _builds[Route.DIRECT].field]
+	_builds.clear()
+	return true
+
+
 func would_block(cells: Array[Vector2i], enemy_positions: PackedVector2Array) -> bool:
-	var current := _terrain_factors()
+	var current := _terrain_factors(Route.SENSIBLE)
 	var factors := current.duplicate()
 	for cell in cells:
 		factors[_index(cell)] = INF
@@ -120,9 +182,24 @@ func wall_factor(route: Route, hp: float) -> float:
 	return 1.0 + weight * break_time_in_cells
 
 
-func _build_field(factors: PackedFloat64Array) -> Field:
-	var width := _map.width
-	var height := _map.height
+func _start_builds() -> void:
+	_builds_stale = false
+	_builds.clear()
+	for route: Route in Route.values():
+		var build := _FieldBuild.new(_map, _terrain_factors(route))
+		_builds.append(build)
+		_build_tasks.append(WorkerThreadPool.add_task(build.run))
+
+
+func _wait_for_builds() -> void:
+	for task in _build_tasks:
+		WorkerThreadPool.wait_for_task_completion(task)
+	_build_tasks.clear()
+
+
+static func _build_field(map: MapData, factors: PackedFloat64Array) -> Field:
+	var width := map.width
+	var height := map.height
 	var count := width * height
 	var offsets := PackedInt32Array()
 	var dxs := PackedInt32Array()
@@ -142,9 +219,10 @@ func _build_field(factors: PackedFloat64Array) -> Field:
 	parents.fill(-1)
 
 	var heap := _Heap.new(count)
-	for cell in _map.base_cells():
-		values[_index(cell)] = 0.0
-		heap.push(0.0, _index(cell))
+	for cell in map.base_cells():
+		var base_index := cell.y * width + cell.x
+		values[base_index] = 0.0
+		heap.push(0.0, base_index)
 
 	while not heap.is_empty():
 		var current := heap.peek_value()
@@ -219,14 +297,18 @@ func _reachable(factors: PackedFloat64Array) -> PackedByteArray:
 	return reached
 
 
-func _terrain_factors() -> PackedFloat64Array:
+func _terrain_factors(route: Route) -> PackedFloat64Array:
+	var level_factors := PackedFloat64Array([1.0])
+	for level in range(1, Piles.WALL_LEVEL):
+		level_factors.append(pile_factor(route, level))
+	var rock := _map.rock
+	var occupied := _occupancy.occupied
+	var levels := _piles.levels
 	var factors := PackedFloat64Array()
-	factors.resize(_map.width * _map.height)
-	for y in _map.height:
-		for x in _map.width:
-			var cell := Vector2i(x, y)
-			var impassable := _map.is_rock(cell) or _occupancy.is_occupied(cell)
-			factors[_index(cell)] = INF if impassable else 1.0
+	factors.resize(levels.size())
+	for index in levels.size():
+		var impassable := rock[index] == 1 or occupied[index] == 1
+		factors[index] = INF if impassable else level_factors[levels[index]]
 	return factors
 
 

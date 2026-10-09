@@ -7,7 +7,6 @@ const ROCK := Color(0.24, 0.22, 0.24)
 const BASE := Color(0.3, 0.47, 0.8)
 const PILE := Color(0.66, 0.53, 0.42)
 const WHITE := Color(1, 1, 1)
-const SLAB_HEIGHT := 6
 const BASE_HEIGHT := 48
 const TOWER_HEIGHT := 56
 
@@ -47,8 +46,8 @@ func _draw_pile(image: Image, level: int) -> void:
 	var color := PILE.darkened(0.12 * (level - 1))
 	for slab in level:
 		var half := Vector2(Atlas.UNIT) / 2.0 * (0.8 - 0.08 * slab)
-		var centre := foot - Vector2(0, SLAB_HEIGHT * slab)
-		_draw_box(image, centre, half, SLAB_HEIGHT - 1, color)
+		var centre := foot - Vector2(0, Atlas.PILE_SLAB_HEIGHT * slab)
+		_draw_box(image, centre, half, Atlas.PILE_SLAB_HEIGHT - 1, color)
 
 
 func _draw_box_tile(image: Image, area: Rect2i, height: int, color: Color) -> void:

@@ -2,6 +2,7 @@ class_name Simulation
 extends RefCounted
 
 signal command_rejected(reason: String)
+signal pile_changed(cells: Array[Vector2i])
 signal fields_changed
 signal gold_changed(gold: int)
 signal lives_changed(lives: int)
@@ -25,10 +26,12 @@ enum Step {
 
 const TICKS_PER_SECOND := 60
 const SPEEDS: Array[int] = [1, 2, 4]
+const DECAY_REBUILD_TICKS := 12
 
 var settings: Settings
 var map: MapData
 var occupancy: Occupancy
+var piles: Piles
 var routing: Routing
 var enemies: Enemies
 var waves: Waves
@@ -44,6 +47,8 @@ var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
 var _fields_stale := false
+var _decay_due := false
+var _rebuild_swap_tick := 0
 var _placed: Array[Vector2i] = []
 var _shots: Array[Towers.Shot] = []
 var _run_seed: int
@@ -61,11 +66,12 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	map = run_map
 	_run_seed = run_seed
 	occupancy = Occupancy.new(map.width, map.height)
-	routing = Routing.new(settings, map, occupancy)
-	enemies = Enemies.new(settings, map, occupancy, routing, _system_rng("enemies"))
+	piles = Piles.new(map, occupancy)
+	routing = Routing.new(settings, map, occupancy, piles)
+	enemies = Enemies.new(settings, map, occupancy, piles, routing, _system_rng("enemies"))
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
 	run_state = RunState.new(settings)
-	towers = Towers.new(settings, map, occupancy, routing, enemies, run_state)
+	towers = Towers.new(settings, map, occupancy, piles, routing, enemies, run_state)
 	_reported_gold = run_state.gold
 	_reported_lives = run_state.lives
 
@@ -83,8 +89,7 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if not error.is_empty():
 		reject_command(error)
 		return
-	if group == "routing":
-		routing.rebuild()
+	if group in ["routing", "piles"] and routing.update():
 		_fields_changed = true
 
 
@@ -97,6 +102,14 @@ func jump_to_wave(wave: int) -> void:
 		reject_command("%s: the wave must be at least 1" % Commands.JumpToWave.LABEL)
 		return
 	_start_wave(wave, Commands.JumpToWave.LABEL)
+
+
+func decay_piles() -> void:
+	_decay_due = true
+
+
+func is_decay_rebuild_in_flight() -> bool:
+	return _decay_due or routing.is_rebuilding()
 
 
 func build_tower(origin: Vector2i) -> void:
@@ -180,6 +193,8 @@ func _emit_signals() -> void:
 	_placed = []
 	for origin in placed:
 		tower_placed.emit(origin)
+	if not piles.changed.is_empty():
+		pile_changed.emit(piles.take_changes())
 	if not _shots.is_empty():
 		var shots := _shots
 		_shots = []
@@ -229,10 +244,24 @@ func _drain_time_controls() -> void:
 
 func _land_bodies_and_update_fields() -> void:
 	_observe(Step.LAND_BODIES_AND_UPDATE_FIELDS)
+	piles.land()
+	if not piles.changed.is_empty():
+		_fields_stale = true
+	if _decay_due:
+		_decay_due = false
+		_fields_stale = false
+		piles.decay()
+		routing.start_rebuild()
+		_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
+	elif routing.is_rebuilding() and tick_count >= _rebuild_swap_tick:
+		if routing.finish_rebuild():
+			_fields_changed = true
+		else:
+			_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
 	if _fields_stale:
 		_fields_stale = false
-		routing.rebuild()
-		_fields_changed = true
+		if routing.update():
+			_fields_changed = true
 
 
 func _spawn_enemies() -> void:
@@ -258,13 +287,14 @@ func _fire_towers() -> void:
 func _remove_dead_and_leaked() -> void:
 	_observe(Step.REMOVE_DEAD_AND_LEAKED)
 	var removal := enemies.remove_dead_and_leaked()
+	piles.queue_bodies(removal.deaths)
 	run_state.record_removals(removal.deaths.size(), removal.leaks)
 
 
 func _check_wave_end() -> void:
 	_observe(Step.CHECK_WAVE_END)
-	if not run_state.is_game_over:
-		waves.check_end()
+	if not run_state.is_game_over and waves.check_end():
+		decay_piles()
 
 
 func _start_wave(wave: int, label: String) -> void:
@@ -273,6 +303,9 @@ func _start_wave(wave: int, label: String) -> void:
 		return
 	if map.spawn_edges.is_empty():
 		reject_command("%s: the map has no spawn edges" % label)
+		return
+	if is_decay_rebuild_in_flight():
+		reject_command("%s: the fields are still rebuilding after decay" % label)
 		return
 	run_state.wave = wave
 	waves.start(wave)
