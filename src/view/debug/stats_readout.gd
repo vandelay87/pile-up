@@ -23,11 +23,10 @@ func _ready() -> void:
 	add_child(_label)
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key != null and key.pressed and not key.echo and key.keycode == KEY_F2:
+	if key.pressed and not key.echo and key.keycode == KEY_F2:
 		visible = not visible
-		get_viewport().set_input_as_handled()
 
 
 func _process(_delta: float) -> void:

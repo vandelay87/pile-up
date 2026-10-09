@@ -9,6 +9,10 @@ class Command:
 		pass
 
 
+class TimeControl:
+	extends Commands.Command
+
+
 class SetSetting:
 	extends Commands.Command
 
@@ -38,7 +42,7 @@ class SpawnBurst:
 
 
 class SetPaused:
-	extends Commands.Command
+	extends Commands.TimeControl
 
 	var _paused: bool
 
@@ -50,7 +54,7 @@ class SetPaused:
 
 
 class SetSpeed:
-	extends Commands.Command
+	extends Commands.TimeControl
 
 	var _speed: int
 
@@ -61,11 +65,11 @@ class SetSpeed:
 		sim.set_speed(_speed)
 
 
-class Step:
-	extends Commands.Command
+class StepOneTick:
+	extends Commands.TimeControl
 
 	func apply(sim: Simulation) -> void:
-		sim.step()
+		sim.step_one_tick()
 
 
 class AddGold:

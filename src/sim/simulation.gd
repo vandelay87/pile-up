@@ -86,6 +86,7 @@ func jump_to_wave(_wave: int) -> void:
 
 func set_paused(value: bool) -> void:
 	paused = value
+	_pending_steps = 0
 
 
 func set_speed(value: int) -> void:
@@ -95,22 +96,23 @@ func set_speed(value: int) -> void:
 	speed = value
 
 
-func step() -> void:
-	_pending_steps += 1
+func step_one_tick() -> void:
+	if paused:
+		_pending_steps += 1
 
 
 func run_frame() -> void:
 	if paused:
-		_drain_commands()
+		_drain_time_controls()
 		_emit_signals()
-	var stepping := paused
-	var ticks := _pending_steps if stepping else speed
+	var was_paused := paused
+	var ticks := _pending_steps if was_paused else speed
 	_pending_steps = 0
 	for n in ticks:
 		var started := Time.get_ticks_usec()
 		tick()
 		tick_cost.record((Time.get_ticks_usec() - started) / 1000.0, Time.get_ticks_msec())
-		if paused and not stepping:
+		if paused and not was_paused:
 			break
 
 
@@ -143,6 +145,16 @@ func _drain_commands() -> void:
 	_command_queue = []
 	for command in commands:
 		command.apply(self)
+
+
+func _drain_time_controls() -> void:
+	var commands := _command_queue
+	_command_queue = []
+	for command in commands:
+		if command is Commands.TimeControl:
+			command.apply(self)
+		else:
+			_command_queue.append(command)
 
 
 func _land_bodies_and_update_fields() -> void:

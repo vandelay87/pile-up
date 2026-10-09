@@ -10,6 +10,7 @@ var _costs := PackedFloat64Array()
 func record(cost_msec: float, now_msec: int) -> void:
 	_times.append(now_msec)
 	_costs.append(cost_msec)
+	_trim(now_msec)
 
 
 func mean_msec(now_msec: int) -> float:
