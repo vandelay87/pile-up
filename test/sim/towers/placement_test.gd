@@ -41,6 +41,18 @@ func test_a_placement_overlapping_rock_base_or_a_tower_is_rejected_as_occupied()
 	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 0))).is_false()
 
 
+func test_a_placement_overlapping_a_pile_is_rejected_as_occupied() -> void:
+	var sim := _sim(_open_rows())
+	sim.piles.queue_bodies(PackedVector2Array([Vector2(1.5, 6.5)]))
+	sim.tick()
+
+	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 5)))
+	sim.tick()
+
+	assert_array(_events).contains_exactly(["build tower: occupied"])
+	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 5))).is_false()
+
+
 func test_a_placement_off_the_map_is_rejected() -> void:
 	var sim := _sim(_open_rows())
 
