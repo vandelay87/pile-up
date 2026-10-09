@@ -79,3 +79,23 @@ func test_a_decayed_wall_rebuilt_to_level_5_has_full_hp() -> void:
 	_piles.land()
 
 	assert_float(_piles.wall_hp(WALL)).is_equal(30.0)
+
+
+func test_walls_nearby_counts_the_walls_in_each_cells_3x3_block() -> void:
+	assert_int(_nearby(Vector2i(1, 1))).is_equal(1)
+	assert_int(_nearby(Vector2i(3, 3))).is_equal(1)
+	assert_int(_nearby(Vector2i(4, 2))).is_equal(0)
+
+	_piles.damage_wall(WALL, _settings.wall_hp)
+	assert_int(_nearby(Vector2i(1, 1))).is_equal(0)
+
+	_piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
+	_piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
+	_piles.land()
+	assert_int(_nearby(Vector2i(2, 2))).is_equal(1)
+	_piles.decay()
+	assert_int(_nearby(Vector2i(2, 2))).is_equal(0)
+
+
+func _nearby(cell: Vector2i) -> int:
+	return _piles.walls_nearby[cell.y * 8 + cell.x]

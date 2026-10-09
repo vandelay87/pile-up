@@ -6,6 +6,7 @@ const FALLEN_WALL_LEVEL := 3
 
 var levels := PackedByteArray()
 var wall_hps := PackedFloat64Array()
+var walls_nearby := PackedByteArray()
 var changed: Array[Vector2i] = []
 
 var _settings: Settings
@@ -22,6 +23,7 @@ func _init(run_settings: Settings, run_map: MapData, run_occupancy: Occupancy) -
 	_occupancy = run_occupancy
 	levels.resize(_map.width * _map.height)
 	wall_hps.resize(_map.width * _map.height)
+	walls_nearby.resize(_map.width * _map.height)
 	_changed_mask.resize(_map.width * _map.height)
 
 
@@ -46,6 +48,7 @@ func land() -> void:
 		levels[index] += 1
 		if levels[index] == WALL_LEVEL:
 			wall_hps[index] = _settings.wall_hp
+			_count_wall(cell, 1)
 		_mark_changed(cell)
 		_field_changes.append(cell)
 	_queued.clear()
@@ -60,6 +63,7 @@ func damage_wall(cell: Vector2i, amount: float) -> void:
 	if wall_hps[index] <= 0.0:
 		wall_hps[index] = 0.0
 		levels[index] = FALLEN_WALL_LEVEL
+		_count_wall(cell, -1)
 	elif _bucket(wall_hps[index]) == bucket:
 		return
 	_mark_changed(cell)
@@ -73,9 +77,12 @@ func bucketed_wall_hp(cell: Vector2i) -> float:
 func decay() -> void:
 	for index in levels.size():
 		if levels[index] > 0:
+			var cell := Vector2i(index % _map.width, index / _map.width)
+			if levels[index] == WALL_LEVEL:
+				_count_wall(cell, -1)
 			levels[index] -= 1
 			wall_hps[index] = 0.0
-			_mark_changed(Vector2i(index % _map.width, index / _map.width))
+			_mark_changed(cell)
 
 
 func clear_changes() -> void:
@@ -140,6 +147,12 @@ func _nearest_valid(from: Vector2i) -> Vector2i:
 					best = cell
 		ring += 1
 	return best
+
+
+func _count_wall(cell: Vector2i, change: int) -> void:
+	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
+		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
+			walls_nearby[y * _map.width + x] += change
 
 
 func _mark_changed(cell: Vector2i) -> void:

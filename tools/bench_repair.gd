@@ -1,6 +1,7 @@
 # Times the incremental field updates headless under a heavy wave: a dense crowd near the base,
 # with a body landing in it every tick, four times the v1 kill rate bench_sim uses, and a tower
-# built just outside the crowd every TOWER_INTERVAL ticks.
+# built just outside the crowd every TOWER_INTERVAL ticks. Walls form in the crowd and its attacks
+# change their HP buckets and break them.
 # Run with: godot --headless --script res://tools/bench_repair.gd
 extends SceneTree
 
@@ -15,8 +16,11 @@ const TOWER_RADIUS := 17.0
 var _sim: Simulation
 var _landed := false
 var _tower_built := false
+var _wall_hit := false
+var _levels_before := PackedByteArray()
 var _landing_msec := PackedFloat64Array()
 var _tower_msec := PackedFloat64Array()
+var _wall_msec := PackedFloat64Array()
 
 
 func _init() -> void:
@@ -27,7 +31,7 @@ func _init() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = TOWER_SEED
 	var centre := Vector2(map.base.get_center())
-	_sim.pile_changed.connect(func(_cells: Array[Vector2i]) -> void: _landed = true)
+	_sim.pile_changed.connect(_on_pile_changed)
 	_sim.tower_placed.connect(func(_origin: Vector2i) -> void: _tower_built = true)
 	for t in MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
@@ -36,11 +40,16 @@ func _init() -> void:
 			var spot := centre + Vector2.from_angle(rng.randf() * TAU) * TOWER_RADIUS
 			_sim.add_gold(settings.tower_cost)
 			_sim.queue_command(Commands.BuildTower.new(Towers.origin_at(spot)))
+		var wall_update := _wall_hit
 		_landed = false
 		_tower_built = false
+		_wall_hit = false
+		_levels_before = _sim.piles.levels.duplicate()
 		_sim.tick()
 		if _tower_built:
 			_tower_msec.append(_sim.routing.last_update_msec)
+		elif wall_update:
+			_wall_msec.append(_sim.routing.last_update_msec)
 		elif _landed:
 			_landing_msec.append(_sim.routing.last_update_msec)
 
@@ -56,7 +65,16 @@ func _init() -> void:
 	print("|---|---|---|---|---|")
 	print(_row("Bodies landed", _landing_msec))
 	print(_row("Tower built", _tower_msec))
+	print(_row("Wall hit or broken", _wall_msec))
 	quit()
+
+
+func _on_pile_changed(cells: Array[Vector2i]) -> void:
+	for cell in cells:
+		if _levels_before[cell.y * _sim.map.width + cell.x] == Piles.WALL_LEVEL:
+			_wall_hit = true
+		else:
+			_landed = true
 
 
 func _row(label: String, samples: PackedFloat64Array) -> String:
