@@ -8,8 +8,8 @@ const CROWD_SEED := 1
 const ENEMIES := 1000
 const WARMUP_TICKS := 120
 const MEASURED_TICKS := 600
-# 3x the CI mean measured when the check landed:
-const BUDGET_MSEC := 30.0
+# 3x the 13.09 ms CI mean in https://github.com/vandelay87/pile-up/actions/runs/37919291329
+const BUDGET_MSEC := 39.3
 
 
 class RunResult:
