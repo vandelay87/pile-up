@@ -27,7 +27,7 @@ func test_a_placement_overlapping_rock_base_or_a_tower_is_rejected_as_occupied()
 	var rows := _open_rows()
 	rows[1] = ".#........"
 	var sim := _sim(rows)
-	sim.queue_command(Commands.BuildTower.new(Vector2i(7, 0)))
+	sim.queue_command(Commands.BuildTower.new(Vector2i(7, 1)))
 	sim.tick()
 	_events.clear()
 
@@ -56,14 +56,14 @@ func test_a_placement_without_enough_gold_is_rejected() -> void:
 	_settings.change("towers", "cost", 60)
 	var sim := _sim(_open_rows())
 
-	for origin: Vector2i in [Vector2i(0, 0), Vector2i(0, 2), Vector2i(0, 4)]:
+	for origin: Vector2i in [Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)]:
 		sim.queue_command(Commands.BuildTower.new(origin))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(
-		["gold 30", "placed (0, 0)", "placed (0, 2)", "build tower: not enough gold"]
+		["gold 30", "placed (0, 2)", "placed (0, 4)", "build tower: not enough gold"]
 	)
-	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 4))).is_false()
+	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 6))).is_false()
 
 
 func test_a_placement_that_cuts_a_spawn_edge_off_from_the_base_is_rejected() -> void:
@@ -100,6 +100,25 @@ func test_the_same_placement_is_accepted_with_no_enemy_behind_it() -> void:
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["gold 100", "placed (2, 6)"])
+
+
+func test_a_placement_covering_a_spawn_cell_is_rejected() -> void:
+	var sim := _sim(_open_rows())
+
+	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 0)))
+	sim.tick()
+
+	assert_array(_events).contains_exactly(["build tower: blocked"])
+
+
+func test_a_placement_on_top_of_a_live_enemy_is_rejected() -> void:
+	var sim := _sim(_open_rows())
+	sim.enemies.spawn(Vector2(1.5, 6.5), _settings.enemy_hp)
+
+	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 6)))
+	sim.tick()
+
+	assert_array(_events).contains_exactly(["build tower: blocked"])
 
 
 func test_a_route_left_only_through_a_cut_corner_counts_as_blocked() -> void:

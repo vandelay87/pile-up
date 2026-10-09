@@ -29,7 +29,7 @@ class Tower:
 	func _init(tower_id: int, origin: Vector2i) -> void:
 		id = tower_id
 		cell = origin
-		centre = Vector2(origin) + Vector2(FOOTPRINT) / 2.0
+		centre = Towers.centre_of(origin)
 
 
 class Shot:
@@ -59,6 +59,14 @@ func _init(
 	_routing = run_routing
 	_enemies = run_enemies
 	_run_state = run_state
+
+
+static func centre_of(origin: Vector2i) -> Vector2:
+	return Vector2(origin) + Vector2(FOOTPRINT) / 2.0
+
+
+static func origin_at(centre: Vector2) -> Vector2i:
+	return Vector2i((centre - Vector2(FOOTPRINT) / 2.0).round())
 
 
 static func footprint(origin: Vector2i) -> Array[Vector2i]:

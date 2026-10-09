@@ -49,7 +49,8 @@ func rebuild() -> void:
 
 
 func would_block(cells: Array[Vector2i], enemy_positions: PackedVector2Array) -> bool:
-	var factors := _terrain_factors()
+	var current := _terrain_factors()
+	var factors := current.duplicate()
 	for cell in cells:
 		factors[_index(cell)] = INF
 	var reached := _reachable(factors)
@@ -62,7 +63,7 @@ func would_block(cells: Array[Vector2i], enemy_positions: PackedVector2Array) ->
 			must_reach.append(cell)
 	for cell in must_reach:
 		var index := _index(cell)
-		if factors[index] != INF and reached[index] == 0:
+		if current[index] != INF and reached[index] == 0:
 			return true
 	return false
 

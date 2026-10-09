@@ -26,6 +26,6 @@ func _add(origin: Vector2i) -> void:
 	sprite.centered = false
 	sprite.offset = -Vector2(region.size.x / 2.0, region.size.y - Atlas.UNIT.y)
 	sprite.modulate = TINT
-	sprite.position = GridTransform.grid_to_world(Vector2(origin) + Vector2(Towers.FOOTPRINT) / 2.0)
+	sprite.position = GridTransform.grid_to_world(Towers.centre_of(origin))
 	_parent.add_child(sprite)
 	_sprites.append(sprite)

@@ -18,6 +18,7 @@ func setup(simulation: Simulation) -> void:
 	_simulation = simulation
 	_simulation.command_rejected.connect(_on_rejected)
 	_blocked = false
+	leave()
 
 
 func enter() -> void:
@@ -80,7 +81,7 @@ func _draw() -> void:
 	outline.append(outline[0])
 	draw_polyline(outline, colour, 2.0)
 
-	var circle := GridTransform.circle(corner + size / 2.0, _simulation.settings.tower_range)
+	var circle := GridTransform.circle(Towers.centre_of(_origin), _simulation.settings.tower_range)
 	draw_polyline(circle, Color(colour, RANGE_ALPHA), 1.5)
 
 
@@ -97,5 +98,4 @@ func _on_rejected(reason: String) -> void:
 
 
 func _origin_under(point: Vector2) -> Vector2i:
-	var grid := GridTransform.world_to_grid(point)
-	return Vector2i((grid - Vector2(Towers.FOOTPRINT) / 2.0).round())
+	return Towers.origin_at(GridTransform.world_to_grid(point))

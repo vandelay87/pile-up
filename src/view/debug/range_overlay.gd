@@ -9,17 +9,13 @@ var _shown := false
 
 func setup(simulation: Simulation) -> void:
 	_simulation = simulation
+	_simulation.tower_placed.connect(func(_origin: Vector2i) -> void: queue_redraw())
 	queue_redraw()
 
 
 func show_ranges(shown: bool) -> void:
 	_shown = shown
 	queue_redraw()
-
-
-func _process(_delta: float) -> void:
-	if _shown:
-		queue_redraw()
 
 
 func _draw() -> void:
