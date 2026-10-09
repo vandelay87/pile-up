@@ -66,7 +66,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	map = run_map
 	_run_seed = run_seed
 	occupancy = Occupancy.new(map.width, map.height)
-	piles = Piles.new(map, occupancy)
+	piles = Piles.new(settings, map, occupancy)
 	routing = Routing.new(settings, map, occupancy, piles)
 	enemies = Enemies.new(settings, map, occupancy, piles, routing, _system_rng("enemies"))
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
@@ -89,7 +89,8 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if not error.is_empty():
 		reject_command(error)
 		return
-	if group in ["routing", "piles"] and routing.rebuild():
+	var costs_walls := group == "enemies" and key in ["speed", "wall_damage"]
+	if (group in ["routing", "piles"] or costs_walls) and routing.rebuild():
 		_fields_changed = true
 
 
@@ -245,7 +246,7 @@ func _drain_time_controls() -> void:
 func _land_bodies_and_update_fields() -> void:
 	_observe(Step.LAND_BODIES_AND_UPDATE_FIELDS)
 	piles.land()
-	_changed_cells.append_array(piles.changed)
+	_changed_cells.append_array(piles.take_field_changes())
 	if _decay_due:
 		_decay_due = false
 		_changed_cells.clear()

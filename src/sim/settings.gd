@@ -80,6 +80,24 @@ const SCHEMA := {
 			"unit": "HP/s",
 			"apply": Apply.LIVE,
 		},
+		"wall_reach":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 1.0,
+			"step": 0.05,
+			"unit": "cells",
+			"apply": Apply.LIVE,
+		},
+		"jam_seconds":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.05,
+			"max": 10.0,
+			"step": 0.05,
+			"unit": "s",
+			"apply": Apply.LIVE,
+		},
 	},
 	"piles":
 	{
@@ -119,6 +137,15 @@ const SCHEMA := {
 			"unit": "percent",
 			"apply": Apply.LIVE,
 		},
+		"wall_hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
 	},
 	"routing":
 	{
@@ -156,6 +183,15 @@ const SCHEMA := {
 			"max": 5.0,
 			"step": 0.05,
 			"unit": "weight",
+			"apply": Apply.LIVE,
+		},
+		"wall_hp_bucket":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 100.0,
+			"step": 1.0,
+			"unit": "HP",
 			"apply": Apply.LIVE,
 		},
 	},
@@ -310,6 +346,22 @@ var enemy_speed_per_tick: float:
 var wall_damage: float:
 	get:
 		return value("enemies", "wall_damage")
+var wall_damage_per_tick: float:
+	get:
+		return wall_damage / Simulation.TICKS_PER_SECOND
+var wall_reach: float:
+	get:
+		return value("enemies", "wall_reach")
+var jam_ticks: int:
+	get:
+		var seconds: float = value("enemies", "jam_seconds")
+		return ticks_from_seconds(seconds)
+var wall_hp: float:
+	get:
+		return value("piles", "wall_hp")
+var wall_hp_bucket: float:
+	get:
+		return value("routing", "wall_hp_bucket")
 var sensible_pile_weight: float:
 	get:
 		return value("routing", "sensible_pile_weight")
