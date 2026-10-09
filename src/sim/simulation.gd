@@ -21,18 +21,24 @@ var settings: Settings
 var map: MapData
 var occupancy: Occupancy
 var routing: Routing
+var enemies: Enemies
 var step_observer := Callable()
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
+var _run_seed: int
+var _debug_rng: RandomNumberGenerator
 
 
-func _init(run_settings: Settings, run_map: MapData) -> void:
+func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	settings = run_settings
 	map = run_map
+	_run_seed = run_seed
 	occupancy = Occupancy.new(map.width, map.height)
 	routing = Routing.new(settings, map, occupancy)
+	enemies = Enemies.new(settings, map, occupancy, routing, _system_rng("enemies"))
+	_debug_rng = _system_rng("debug")
 
 
 func queue_command(command: Commands.Command) -> void:
@@ -51,6 +57,17 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if group == "routing":
 		routing.rebuild()
 		_fields_changed = true
+
+
+func spawn_burst(count: int) -> void:
+	var edges := map.spawn_edges
+	for n in count:
+		var cells := map.spawn_cells(edges[n % edges.size()])
+		var cell := cells[_debug_rng.randi_range(0, cells.size() - 1)]
+		var jitter := Vector2(
+			_debug_rng.randf_range(-0.25, 0.25), _debug_rng.randf_range(-0.25, 0.25)
+		)
+		enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter)
 
 
 func tick() -> void:
@@ -93,10 +110,12 @@ func _spawn_enemies() -> void:
 
 func _rebuild_spatial_hash() -> void:
 	_observe(Step.REBUILD_SPATIAL_HASH)
+	enemies.rebuild_spatial_hash()
 
 
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
+	enemies.move()
 
 
 func _fire_towers() -> void:
@@ -105,10 +124,17 @@ func _fire_towers() -> void:
 
 func _remove_dead_and_leaked() -> void:
 	_observe(Step.REMOVE_DEAD_AND_LEAKED)
+	enemies.remove_dead_and_leaked()
 
 
 func _check_wave_end() -> void:
 	_observe(Step.CHECK_WAVE_END)
+
+
+func _system_rng(system: String) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([_run_seed, system])
+	return rng
 
 
 func _observe(step: Step) -> void:

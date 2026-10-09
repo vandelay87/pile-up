@@ -8,6 +8,60 @@ const DEFAULTS_PATH := "res://data/settings/defaults.json"
 const SCHEMA := {
 	"enemies":
 	{
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 1000.0,
+			"step": 0.5,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"bounty":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 1,
+			"unit": "gold",
+			"apply": Apply.LIVE,
+		},
+		"separation_radius":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.05,
+			"max": 1.0,
+			"step": 0.05,
+			"unit": "cells",
+			"apply": Apply.LIVE,
+		},
+		"separation_push":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 1.0,
+			"step": 0.05,
+			"unit": "overlap/tick",
+			"apply": Apply.LIVE,
+		},
+		"neighbour_cap":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 64,
+			"step": 1,
+			"unit": "neighbours (0 = off)",
+			"apply": Apply.LIVE,
+		},
+		"heading_offset":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 45.0,
+			"step": 1.0,
+			"unit": "degrees",
+			"apply": Apply.LIVE,
+		},
 		"speed":
 		{
 			"type": TYPE_FLOAT,
@@ -129,9 +183,31 @@ const SCHEMA := {
 	},
 }
 
+var enemy_hp: float:
+	get:
+		return value("enemies", "hp")
+var enemy_bounty: int:
+	get:
+		return value("enemies", "bounty")
+var separation_radius: float:
+	get:
+		return value("enemies", "separation_radius")
+var separation_push: float:
+	get:
+		return value("enemies", "separation_push")
+var neighbour_cap: int:
+	get:
+		return value("enemies", "neighbour_cap")
+var heading_offset_radians: float:
+	get:
+		var degrees: float = value("enemies", "heading_offset")
+		return deg_to_rad(degrees)
 var enemy_speed: float:
 	get:
 		return value("enemies", "speed")
+var enemy_speed_per_tick: float:
+	get:
+		return enemy_speed / Simulation.TICKS_PER_SECOND
 var wall_damage: float:
 	get:
 		return value("enemies", "wall_damage")

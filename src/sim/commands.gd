@@ -23,3 +23,15 @@ class SetSetting:
 
 	func apply(sim: Simulation) -> void:
 		sim.change_setting(_group, _key, _value)
+
+
+class SpawnBurst:
+	extends Commands.Command
+
+	var _count: int
+
+	func _init(count: int) -> void:
+		_count = count
+
+	func apply(sim: Simulation) -> void:
+		sim.spawn_burst(_count)

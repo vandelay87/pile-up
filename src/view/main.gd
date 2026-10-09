@@ -1,10 +1,14 @@
 extends Node
 
+const DEBUG_BURST_SIZE := 300
+
 var _simulation: Simulation
 
 @onready var _terrain: TileMapLayer = $Terrain
 @onready var _base: TileMapLayer = $World/Base
 @onready var _camera: MapCamera = $Camera
+@onready var _world: Node2D = $World
+@onready var _enemy_renderer: EnemyRenderer = $EnemyRenderer
 
 
 func _ready() -> void:
@@ -17,7 +21,9 @@ func _ready() -> void:
 	if loaded_map.map == null:
 		_fail("invalid map", loaded_map.error)
 		return
-	_simulation = Simulation.new(loaded.settings, loaded_map.map)
+	var run_seed := randi()
+	_simulation = Simulation.new(loaded.settings, loaded_map.map, run_seed)
+	print("Run seed: %d" % run_seed)
 	print(
 		(
 			"Flow fields: full rebuild of both fields took %.1f ms"
@@ -26,6 +32,13 @@ func _ready() -> void:
 	)
 	_draw_map(loaded_map.map)
 	_camera.frame(loaded_map.map)
+	_enemy_renderer.setup(_simulation.enemies, _world)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if _simulation != null and key.pressed and not key.echo and key.keycode == KEY_B:
+		_simulation.queue_command(Commands.SpawnBurst.new(DEBUG_BURST_SIZE))
 
 
 func _physics_process(_delta: float) -> void:

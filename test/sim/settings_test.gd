@@ -71,6 +71,18 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_float(settings.pile_slow(1)).is_equal_approx(0.15, 1e-6)
 	assert_float(settings.pile_slow(4)).is_equal_approx(0.6, 1e-6)
 	assert_float(settings.direct_wall_weight).is_equal_approx(0.1, 1e-6)
+	assert_float(settings.enemy_hp).is_equal_approx(10.0, 1e-6)
+	assert_int(settings.enemy_bounty).is_equal(1)
+	assert_float(settings.separation_radius).is_equal_approx(0.3, 1e-6)
+	assert_float(settings.separation_push).is_equal_approx(0.5, 1e-6)
+	assert_int(settings.neighbour_cap).is_equal(0)
+
+
+func test_converts_enemy_speed_and_heading_offset_to_tick_units() -> void:
+	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+
+	assert_float(settings.enemy_speed_per_tick).is_equal_approx(0.025, 1e-6)
+	assert_float(settings.heading_offset_radians).is_equal_approx(deg_to_rad(10.0), 1e-6)
 
 
 func test_rejects_malformed_json() -> void:
