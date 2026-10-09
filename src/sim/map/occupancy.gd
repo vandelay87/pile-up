@@ -1,7 +1,7 @@
 class_name Occupancy
 extends RefCounted
 
-var cells: PackedByteArray:
+var occupied: PackedByteArray:
 	get:
 		return _occupied
 

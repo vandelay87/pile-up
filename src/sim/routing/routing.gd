@@ -313,7 +313,7 @@ func _terrain_factors(route: Route) -> PackedFloat64Array:
 	for level in range(1, Piles.WALL_LEVEL):
 		level_factors.append(pile_factor(route, level))
 	var rock := _map.rock
-	var occupied := _occupancy.cells
+	var occupied := _occupancy.occupied
 	var levels := _piles.levels
 	var factors := PackedFloat64Array()
 	factors.resize(levels.size())

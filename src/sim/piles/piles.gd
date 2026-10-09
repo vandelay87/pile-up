@@ -2,7 +2,7 @@ class_name Piles
 extends RefCounted
 
 const WALL_LEVEL := 5
-const MAX_LEVEL := WALL_LEVEL - 1
+const MAX_LANDING_LEVEL := WALL_LEVEL - 1
 
 var levels := PackedByteArray()
 var changed: Array[Vector2i] = []
@@ -32,7 +32,7 @@ func land() -> void:
 	for pos in _queued:
 		var cell := _landing_cell(Vector2i(pos.floor()))
 		var index := _index(cell)
-		if levels[index] < MAX_LEVEL:
+		if levels[index] < MAX_LANDING_LEVEL:
 			levels[index] += 1
 			_mark_changed(cell)
 	_queued.clear()

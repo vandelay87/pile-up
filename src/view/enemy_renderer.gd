@@ -11,7 +11,7 @@ var _map: MapData
 var _parent: RID
 var _texture: Texture2D
 var _items: Array[RID] = []
-var _bodies: Array[RID] = []
+var _sprites: Array[RID] = []
 var _lifts := PackedFloat32Array()
 var _shown := 0
 var _flash_ends := {}
@@ -51,7 +51,7 @@ func _process(_delta: float) -> void:
 		if lift != _lifts[i]:
 			_lifts[i] = lift
 			RenderingServer.canvas_item_set_transform(
-				_bodies[i], Transform2D(0.0, Vector2(0, -lift))
+				_sprites[i], Transform2D(0.0, Vector2(0, -lift))
 			)
 	_draw_flashes()
 
@@ -93,18 +93,18 @@ func _create_item() -> void:
 	RenderingServer.canvas_item_set_parent(item, _parent)
 	RenderingServer.canvas_item_set_modulate(item, TINT)
 	RenderingServer.canvas_item_set_visible(item, false)
-	var body := RenderingServer.canvas_item_create()
-	RenderingServer.canvas_item_set_parent(body, item)
+	var sprite := RenderingServer.canvas_item_create()
+	RenderingServer.canvas_item_set_parent(sprite, item)
 	var region := Rect2(Atlas.ENEMY_REGION)
 	var rect := Rect2(Vector2(-region.size.x / 2.0, -region.size.y), region.size)
-	RenderingServer.canvas_item_add_texture_rect_region(body, rect, _texture.get_rid(), region)
+	RenderingServer.canvas_item_add_texture_rect_region(sprite, rect, _texture.get_rid(), region)
 	_items.append(item)
-	_bodies.append(body)
+	_sprites.append(sprite)
 	_lifts.append(0.0)
 
 
 func _exit_tree() -> void:
-	for body in _bodies:
-		RenderingServer.free_rid(body)
+	for sprite in _sprites:
+		RenderingServer.free_rid(sprite)
 	for item in _items:
 		RenderingServer.free_rid(item)
