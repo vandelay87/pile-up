@@ -194,11 +194,12 @@ func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
 
 	occupancy.occupy([Vector2i(2, 0), Vector2i(2, 1)] as Array[Vector2i])
 	var updated_now := routing.update()
-	routing.wait_for_rebuild()
-	var swapped := routing.finish_rebuild()
+	var swapped_stale := routing.finish_rebuild()
+	var swapped_restart := routing.finish_rebuild()
 
 	assert_bool(updated_now).is_false()
-	assert_bool(swapped).is_true()
+	assert_bool(swapped_stale).is_false()
+	assert_bool(swapped_restart).is_true()
 	assert_bool(routing.is_rebuilding()).is_false()
 	var rebuilt := Routing.new(_settings(), map, occupancy, piles)
 	for route: Routing.Route in [SENSIBLE, DIRECT]:

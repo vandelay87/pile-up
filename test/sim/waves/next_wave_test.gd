@@ -62,8 +62,8 @@ func test_the_phase_returns_to_build_when_the_wave_ends() -> void:
 
 	assert_int(_sim.enemies.count).is_equal(0)
 	assert_array(_events).contains_exactly(["phase BUILD"])
-	_sim.routing.wait_for_rebuild()
-	_sim.tick()
+	for tick in Simulation.DECAY_REBUILD_TICKS + 1:
+		_sim.tick()
 	_sim.queue_command(Commands.NextWave.new())
 	_sim.tick()
 	assert_int(_sim.run_state.wave).is_equal(2)

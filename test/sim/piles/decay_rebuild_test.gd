@@ -25,12 +25,24 @@ func before_test() -> void:
 	_sim.tick()
 
 
-func test_wave_end_decays_the_piles_and_starts_a_rebuild() -> void:
+func test_wave_end_decays_the_piles_at_step_1_of_the_next_tick_and_starts_a_rebuild() -> void:
 	_play_wave()
+	assert_int(_sim.piles.level(Vector2i(1, 6))).is_equal(2)
+
+	_sim.tick()
 
 	assert_int(_sim.piles.level(Vector2i(1, 6))).is_equal(1)
 	assert_bool(_sim.routing.is_rebuilding()).is_true()
 	assert_array(_events).contains(["piles [(1, 6)]"])
+
+
+func test_a_body_from_the_last_kill_lands_before_the_wave_decay() -> void:
+	_play_wave()
+	_sim.piles.queue_bodies(PackedVector2Array([Vector2(5.5, 1.5)]))
+
+	_sim.tick()
+
+	assert_int(_sim.piles.level(Vector2i(5, 1))).is_equal(0)
 
 
 func test_next_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> void:
@@ -53,9 +65,13 @@ func test_jump_to_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> voi
 	assert_array(_events).contains(["jump to wave: the fields are still rebuilding after decay"])
 
 
-func test_the_finished_rebuild_is_swapped_in_at_step_1_and_equals_a_full_rebuild() -> void:
+func test_the_rebuild_swaps_in_at_a_fixed_tick_however_soon_the_worker_finishes() -> void:
 	_play_wave()
-	_sim.routing.wait_for_rebuild()
+	_sim.tick()
+	OS.delay_msec(500)
+	for tick in Simulation.DECAY_REBUILD_TICKS - 1:
+		_sim.tick()
+	assert_bool(_sim.routing.is_rebuilding()).is_true()
 	assert_bool(FieldChecks.matches_full_rebuild(_sim)).is_false()
 	var swapped: Array[bool] = []
 	_sim.step_observer = func(step: int) -> void:
@@ -72,13 +88,16 @@ func test_the_finished_rebuild_is_swapped_in_at_step_1_and_equals_a_full_rebuild
 	assert_int(_sim.run_state.wave).is_equal(2)
 
 
-func test_a_tower_built_during_the_rebuild_is_in_the_swapped_in_fields() -> void:
+func test_a_tower_built_during_the_rebuild_restarts_it_and_is_in_the_swapped_in_fields() -> void:
 	_play_wave()
+	_sim.tick()
 
 	_sim.queue_command(Commands.BuildTower.new(Vector2i(5, 5)))
-	_sim.tick()
-	_sim.routing.wait_for_rebuild()
-	_sim.tick()
+	for tick in Simulation.DECAY_REBUILD_TICKS:
+		_sim.tick()
+	assert_bool(_sim.routing.is_rebuilding()).is_true()
+	for tick in Simulation.DECAY_REBUILD_TICKS:
+		_sim.tick()
 
 	assert_bool(_sim.occupancy.is_occupied(Vector2i(5, 5))).is_true()
 	assert_bool(_sim.routing.is_rebuilding()).is_false()

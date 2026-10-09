@@ -101,9 +101,6 @@ func is_rebuilding() -> bool:
 func finish_rebuild() -> bool:
 	if not is_rebuilding():
 		return false
-	for task in _build_tasks:
-		if not WorkerThreadPool.is_task_completed(task):
-			return false
 	_wait_for_builds()
 	if _builds_stale:
 		_start_builds()
@@ -111,14 +108,6 @@ func finish_rebuild() -> bool:
 	_fields = [_builds[Route.SENSIBLE].field, _builds[Route.DIRECT].field]
 	_builds.clear()
 	return true
-
-
-func wait_for_rebuild() -> void:
-	while is_rebuilding():
-		_wait_for_builds()
-		if not _builds_stale:
-			return
-		_start_builds()
 
 
 func would_block(cells: Array[Vector2i], enemy_positions: PackedVector2Array) -> bool:

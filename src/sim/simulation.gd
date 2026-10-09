@@ -26,6 +26,7 @@ enum Step {
 
 const TICKS_PER_SECOND := 60
 const SPEEDS: Array[int] = [1, 2, 4]
+const DECAY_REBUILD_TICKS := 12
 
 var settings: Settings
 var map: MapData
@@ -46,6 +47,8 @@ var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
 var _fields_stale := false
+var _decay_due := false
+var _rebuild_swap_tick := 0
 var _placed: Array[Vector2i] = []
 var _shots: Array[Towers.Shot] = []
 var _run_seed: int
@@ -99,6 +102,14 @@ func jump_to_wave(wave: int) -> void:
 		reject_command("%s: the wave must be at least 1" % Commands.JumpToWave.LABEL)
 		return
 	_start_wave(wave, Commands.JumpToWave.LABEL)
+
+
+func decay_piles() -> void:
+	_decay_due = true
+
+
+func is_decay_rebuild_in_flight() -> bool:
+	return _decay_due or routing.is_rebuilding()
 
 
 func build_tower(origin: Vector2i) -> void:
@@ -236,8 +247,17 @@ func _land_bodies_and_update_fields() -> void:
 	piles.land()
 	if not piles.changed.is_empty():
 		_fields_stale = true
-	if routing.finish_rebuild():
-		_fields_changed = true
+	if _decay_due:
+		_decay_due = false
+		_fields_stale = false
+		piles.decay()
+		routing.start_rebuild()
+		_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
+	elif routing.is_rebuilding() and tick_count >= _rebuild_swap_tick:
+		if routing.finish_rebuild():
+			_fields_changed = true
+		else:
+			_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
 	if _fields_stale:
 		_fields_stale = false
 		if routing.update():
@@ -274,8 +294,7 @@ func _remove_dead_and_leaked() -> void:
 func _check_wave_end() -> void:
 	_observe(Step.CHECK_WAVE_END)
 	if not run_state.is_game_over and waves.check_end():
-		piles.decay()
-		routing.start_rebuild()
+		decay_piles()
 
 
 func _start_wave(wave: int, label: String) -> void:
@@ -285,7 +304,7 @@ func _start_wave(wave: int, label: String) -> void:
 	if map.spawn_edges.is_empty():
 		reject_command("%s: the map has no spawn edges" % label)
 		return
-	if routing.is_rebuilding():
+	if is_decay_rebuild_in_flight():
 		reject_command("%s: the fields are still rebuilding after decay" % label)
 		return
 	run_state.wave = wave

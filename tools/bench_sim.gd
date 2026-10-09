@@ -1,9 +1,7 @@
 # Times the tick driver headless with a dense crowd near the base, and checks that two runs
 # with the same seed end in the same state. A body drops into the crowd every BODY_INTERVAL ticks,
 # about the kill rate of a v1 wave, and every DECAY_INTERVAL ticks the piles decay and the fields
-# rebuild on the worker. The rebuild is waited for outside the
-# timed region so it swaps in on the next tick in both runs. Exits non-zero when either check
-# fails.
+# rebuild on the worker. Exits non-zero when either check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
 
@@ -63,16 +61,11 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 		crowd.top_up(ENEMIES)
 		if t % BODY_INTERVAL == 0:
 			crowd.drop_body()
-		var decay_usec := 0
 		if t % DECAY_INTERVAL == DECAY_INTERVAL - 1:
-			var decay_started := Time.get_ticks_usec()
-			sim.piles.decay()
-			sim.routing.start_rebuild()
-			decay_usec = Time.get_ticks_usec() - decay_started
-			sim.routing.wait_for_rebuild()
+			sim.decay_piles()
 		var started := Time.get_ticks_usec()
 		sim.tick()
 		if t >= WARMUP_TICKS:
-			result.tick_msec.append((Time.get_ticks_usec() - started + decay_usec) / 1000.0)
+			result.tick_msec.append((Time.get_ticks_usec() - started) / 1000.0)
 	result.digest = BenchCrowd.digest(sim)
 	return result

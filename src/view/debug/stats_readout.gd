@@ -40,6 +40,6 @@ func _process(_delta: float) -> void:
 			_simulation.enemies.count,
 			_simulation.tick_cost.mean_msec(now),
 			_simulation.tick_cost.max_msec(now),
-			"yes" if _simulation.routing.is_rebuilding() else "no",
+			"yes" if _simulation.is_decay_rebuild_in_flight() else "no",
 		]
 	)

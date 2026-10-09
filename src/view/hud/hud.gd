@@ -99,7 +99,7 @@ func _process(_delta: float) -> void:
 		return
 	_next_wave.disabled = (
 		_simulation.waves.phase == Waves.Phase.WAVE
-		or _simulation.routing.is_rebuilding()
+		or _simulation.is_decay_rebuild_in_flight()
 		or _simulation.run_state.is_game_over
 	)
 
