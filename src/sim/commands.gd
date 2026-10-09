@@ -32,6 +32,23 @@ class NextWave:
 		sim.next_wave()
 
 
+class BuildTower:
+	extends Commands.Play
+
+	const LABEL := "build tower"
+
+	var _origin: Vector2i
+
+	func _init(origin: Vector2i) -> void:
+		_origin = origin
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.build_tower(_origin)
+
+
 class Restart:
 	extends Commands.Command
 

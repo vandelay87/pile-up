@@ -48,6 +48,26 @@ func rebuild() -> void:
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
 
 
+func would_block(cells: Array[Vector2i], enemy_positions: PackedVector2Array) -> bool:
+	var current := _terrain_factors()
+	var factors := current.duplicate()
+	for cell in cells:
+		factors[_index(cell)] = INF
+	var reached := _reachable(factors)
+	var must_reach: Array[Vector2i] = []
+	for edge in _map.spawn_edges:
+		must_reach.append_array(_map.spawn_cells(edge))
+	for pos in enemy_positions:
+		var cell := Vector2i(pos.floor())
+		if _map.in_bounds(cell) and value(Route.SENSIBLE, cell) != UNREACHABLE:
+			must_reach.append(cell)
+	for cell in must_reach:
+		var index := _index(cell)
+		if current[index] != INF and reached[index] == 0:
+			return true
+	return false
+
+
 func value(route: Route, cell: Vector2i) -> float:
 	return _fields[route].values[_index(cell)]
 
@@ -166,6 +186,37 @@ func _build_field(factors: PackedFloat64Array) -> Field:
 	field.parents = parents
 	field.directions = directions
 	return field
+
+
+func _reachable(factors: PackedFloat64Array) -> PackedByteArray:
+	var width := _map.width
+	var height := _map.height
+	var reached := PackedByteArray()
+	reached.resize(width * height)
+	var frontier := PackedInt32Array()
+	for cell in _map.base_cells():
+		reached[_index(cell)] = 1
+		frontier.append(_index(cell))
+	var next := 0
+	while next < frontier.size():
+		var cell := frontier[next]
+		next += 1
+		var x := cell % width
+		var y := cell / width
+		for k in 8:
+			var offset := _OFFSETS[k]
+			var nx := x + offset.x
+			var ny := y + offset.y
+			if nx < 0 or ny < 0 or nx >= width or ny >= height:
+				continue
+			var neighbour := ny * width + nx
+			if reached[neighbour] == 1 or factors[neighbour] == INF:
+				continue
+			if k >= 4 and (factors[y * width + nx] == INF or factors[ny * width + x] == INF):
+				continue
+			reached[neighbour] = 1
+			frontier.append(neighbour)
+	return reached
 
 
 func _terrain_factors() -> PackedFloat64Array:

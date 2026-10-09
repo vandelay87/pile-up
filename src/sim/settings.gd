@@ -207,6 +207,45 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 	},
+	"towers":
+	{
+		"damage":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"fire_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.1,
+			"max": 20.0,
+			"step": 0.1,
+			"unit": "shots/s",
+			"apply": Apply.LIVE,
+		},
+		"range":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 30.0,
+			"step": 0.5,
+			"unit": "cells",
+			"apply": Apply.LIVE,
+		},
+		"cost":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1000,
+			"step": 5,
+			"unit": "gold",
+			"apply": Apply.LIVE,
+		},
+	},
 	"run":
 	{
 		"starting_lives":
@@ -228,6 +267,18 @@ const SCHEMA := {
 			"apply": Apply.RESTART,
 		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
+	},
+	"view":
+	{
+		"tracer_speed":
+		{
+			"type": TYPE_FLOAT,
+			"min": 5.0,
+			"max": 200.0,
+			"step": 5.0,
+			"unit": "cells/s",
+			"apply": Apply.LIVE,
+		},
 	},
 }
 
@@ -287,6 +338,22 @@ var second_edge_chance: float:
 	get:
 		var percent: int = value("waves", "second_edge_chance")
 		return percent / 100.0
+var tower_damage: float:
+	get:
+		return value("towers", "damage")
+var tower_cooldown_ticks: int:
+	get:
+		var per_second: float = value("towers", "fire_rate")
+		return interval_ticks(per_second)
+var tower_range: float:
+	get:
+		return value("towers", "range")
+var tower_cost: int:
+	get:
+		return value("towers", "cost")
+var tracer_speed: float:
+	get:
+		return value("view", "tracer_speed")
 var starting_lives: int:
 	get:
 		return value("run", "starting_lives")

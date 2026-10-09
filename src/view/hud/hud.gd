@@ -1,13 +1,20 @@
 class_name Hud
 extends CanvasLayer
 
+signal tower_requested
+
 const MARGIN := 8.0
+const TOAST_HOLD_SECONDS := 1.5
+const TOAST_FADE_SECONDS := 0.5
 
 var _simulation: Simulation
 var _gold := Label.new()
 var _lives := Label.new()
 var _wave := Label.new()
 var _next_wave := Button.new()
+var _tower := Button.new()
+var _toast := Label.new()
+var _toast_tween: Tween
 var _game_over := PanelContainer.new()
 var _reached := Label.new()
 
@@ -18,6 +25,7 @@ func setup(simulation: Simulation) -> void:
 	_simulation.lives_changed.connect(_show_lives)
 	_simulation.phase_changed.connect(_show_phase)
 	_simulation.game_over.connect(_show_game_over)
+	_simulation.command_rejected.connect(_show_toast)
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_lives(run_state.lives)
@@ -35,6 +43,9 @@ func _ready() -> void:
 	_next_wave.text = "Next wave"
 	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
 	bar.add_child(_next_wave)
+	_tower.focus_mode = Control.FOCUS_NONE
+	_tower.pressed.connect(tower_requested.emit)
+	bar.add_child(_tower)
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.position.y += MARGIN
@@ -62,9 +73,21 @@ func _ready() -> void:
 	_game_over.visible = false
 	add_child(_game_over)
 
+	_toast.add_theme_constant_override("outline_size", 4)
+	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
+	_toast.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
+	_toast.add_theme_font_size_override("font_size", 20)
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE)
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_toast.position.y -= MARGIN * 6
+	_toast.modulate.a = 0.0
+	add_child(_toast)
+
 
 func _show_gold(gold: int) -> void:
 	_gold.text = "Gold %d" % gold
+	_tower.text = "Tower (%d gold) [T]" % _simulation.settings.tower_cost
 
 
 func _show_lives(lives: int) -> void:
@@ -80,6 +103,16 @@ func _show_game_over() -> void:
 	_next_wave.disabled = true
 	_reached.text = "Reached wave %d" % _simulation.run_state.wave
 	_game_over.visible = true
+
+
+func _show_toast(reason: String) -> void:
+	_toast.text = reason[0].to_upper() + reason.substr(1)
+	if _toast_tween != null:
+		_toast_tween.kill()
+	_toast.modulate.a = 1.0
+	_toast_tween = create_tween()
+	_toast_tween.tween_interval(TOAST_HOLD_SECONDS)
+	_toast_tween.tween_property(_toast, "modulate:a", 0.0, TOAST_FADE_SECONDS)
 
 
 func _send(command: Commands.Command) -> void:

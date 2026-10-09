@@ -28,9 +28,18 @@
 		"spawn_rate": 10,
 		"second_edge_chance": 50
 	},
+	"towers": {
+		"damage": 3,
+		"fire_rate": 2,
+		"range": 8,
+		"cost": 50
+	},
 	"run": {
 		"starting_lives": 20,
 		"starting_gold": 150,
 		"map_path": "res://data/maps/v1.json"
+	},
+	"view": {
+		"tracer_speed": 60
 	}
 }

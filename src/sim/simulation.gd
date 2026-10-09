@@ -5,6 +5,8 @@ signal command_rejected(reason: String)
 signal fields_changed
 signal gold_changed(gold: int)
 signal lives_changed(lives: int)
+signal tower_placed(origin: Vector2i)
+signal shots_fired(shots: Array[Towers.Shot])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
 signal game_over
@@ -30,6 +32,7 @@ var occupancy: Occupancy
 var routing: Routing
 var enemies: Enemies
 var waves: Waves
+var towers: Towers
 var run_state: RunState
 var step_observer := Callable()
 var tick_count := 0
@@ -40,6 +43,9 @@ var tick_cost := TickCost.new()
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
+var _fields_stale := false
+var _placed: Array[Vector2i] = []
+var _shots: Array[Towers.Shot] = []
 var _run_seed: int
 var _pending_steps := 0
 var _wave_started := false
@@ -59,6 +65,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	enemies = Enemies.new(settings, map, occupancy, routing, _system_rng("enemies"))
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
 	run_state = RunState.new(settings)
+	towers = Towers.new(settings, map, occupancy, routing, enemies, run_state)
 	_reported_gold = run_state.gold
 	_reported_lives = run_state.lives
 
@@ -90,6 +97,15 @@ func jump_to_wave(wave: int) -> void:
 		reject_command("%s: the wave must be at least 1" % Commands.JumpToWave.LABEL)
 		return
 	_start_wave(wave, Commands.JumpToWave.LABEL)
+
+
+func build_tower(origin: Vector2i) -> void:
+	var error := towers.build(origin)
+	if not error.is_empty():
+		reject_command("%s: %s" % [Commands.BuildTower.LABEL, error])
+		return
+	_placed.append(origin)
+	_fields_stale = true
 
 
 func add_gold(amount: int) -> void:
@@ -160,6 +176,14 @@ func _emit_signals() -> void:
 	if run_state.lives != _reported_lives:
 		_reported_lives = run_state.lives
 		lives_changed.emit(_reported_lives)
+	var placed := _placed
+	_placed = []
+	for origin in placed:
+		tower_placed.emit(origin)
+	if not _shots.is_empty():
+		var shots := _shots
+		_shots = []
+		shots_fired.emit(shots)
 	if waves.phase != _reported_phase:
 		_reported_phase = waves.phase
 		phase_changed.emit(_reported_phase)
@@ -205,6 +229,10 @@ func _drain_time_controls() -> void:
 
 func _land_bodies_and_update_fields() -> void:
 	_observe(Step.LAND_BODIES_AND_UPDATE_FIELDS)
+	if _fields_stale:
+		_fields_stale = false
+		routing.rebuild()
+		_fields_changed = true
 
 
 func _spawn_enemies() -> void:
@@ -224,6 +252,7 @@ func _move_enemies() -> void:
 
 func _fire_towers() -> void:
 	_observe(Step.FIRE_TOWERS)
+	_shots = towers.fire()
 
 
 func _remove_dead_and_leaked() -> void:
