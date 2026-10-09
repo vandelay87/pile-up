@@ -334,6 +334,21 @@ func change(group: String, key: String, new_value: Variant) -> String:
 	return ""
 
 
+func to_json() -> String:
+	var data := {}
+	for group: String in _schema:
+		var group_data := {}
+		for key: String in _schema[group]:
+			var raw: Variant = _values[group][key]
+			if raw is float:
+				var number: float = raw
+				if number == roundf(number):
+					raw = roundi(number)
+			group_data[key] = raw
+		data[group] = group_data
+	return JSON.stringify(data, "\t", false) + "\n"
+
+
 func for_next_run() -> Settings:
 	var values := _values.duplicate(true)
 	for group: String in _restart_values:
