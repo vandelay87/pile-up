@@ -1,10 +1,13 @@
-# Keeps a dense crowd of enemies in a ring around the base for the benchmarks.
+# Keeps a dense crowd of enemies in a ring around the base, with a ring of towers firing into it,
+# for the benchmarks.
 class_name BenchCrowd
 extends RefCounted
 
 const INNER_RADIUS := 6.0
 const OUTER_RADIUS := 14.0
 const LIVES := 1_000_000
+const TOWERS := 8
+const TOWER_RADIUS := 10.0
 
 var _sim: Simulation
 var _rng := RandomNumberGenerator.new()
@@ -16,6 +19,11 @@ func _init(sim: Simulation, crowd_seed: int) -> void:
 	_sim.run_state.lives = LIVES
 	_rng.seed = crowd_seed
 	_centre = Vector2(sim.map.base.get_center())
+	_sim.run_state.add_gold(TOWERS * _sim.settings.tower_cost)
+	for k in TOWERS:
+		var centre := _centre + Vector2.from_angle(TAU * k / TOWERS) * TOWER_RADIUS
+		var origin := Vector2i((centre - Vector2(Towers.FOOTPRINT) / 2.0).round())
+		_sim.queue_command(Commands.BuildTower.new(origin))
 
 
 static func digest(sim: Simulation) -> int:

@@ -18,6 +18,10 @@ var _map: MapData
 @onready var _stats_readout: StatsReadout = $StatsReadout
 @onready var _hud: Hud = $Hud
 @onready var _edge_highlight: EdgeHighlight = $EdgeHighlight
+@onready var _tower_view: TowerView = $TowerView
+@onready var _tracers: Tracers = $Tracers
+@onready var _placement: Placement = $Placement
+@onready var _range_overlay: RangeOverlay = $RangeOverlay
 
 
 func _ready() -> void:
@@ -35,6 +39,7 @@ func _ready() -> void:
 	_camera.frame(_map)
 	_edge_highlight.setup(_map)
 	_add_overlays()
+	_hud.tower_requested.connect(_placement.enter)
 	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
 		(
@@ -60,6 +65,10 @@ func _start_run(simulation: Simulation) -> void:
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
 	_hud.setup(_simulation)
+	_tower_view.setup(_simulation, _world)
+	_tracers.setup(_simulation, _enemy_renderer)
+	_placement.setup(_simulation)
+	_range_overlay.setup(_simulation)
 
 
 func _restart() -> void:
@@ -82,6 +91,7 @@ func _add_overlays() -> void:
 		_debug_panel.add_overlay(
 			"Field heatmap: %s" % route_name, _flow_overlay.show_heatmap.bind(route)
 		)
+	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 
 
 func _draw_map(map: MapData) -> void:
