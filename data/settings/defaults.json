@@ -9,7 +9,9 @@
 		"speed": 1.5,
 		"wall_damage": 1,
 		"wall_reach": 0.1,
-		"jam_seconds": 0.5
+		"jam_seconds": 0.5,
+		"pile_roll_chance": 5,
+		"wall_roll_chance": 3
 	},
 	"piles": {
 		"slow_level_1": 15,

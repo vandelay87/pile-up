@@ -188,6 +188,10 @@ func parent(route: Route, cell: Vector2i) -> Vector2i:
 	return Vector2i(parent_index % _map.width, parent_index / _map.width)
 
 
+func parents(route: Route) -> PackedInt32Array:
+	return _fields[route].parents
+
+
 func direction(route: Route, cell: Vector2i) -> Vector2:
 	return _fields[route].directions[_index(cell)]
 

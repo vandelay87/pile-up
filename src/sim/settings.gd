@@ -98,6 +98,24 @@ const SCHEMA := {
 			"unit": "s",
 			"apply": Apply.LIVE,
 		},
+		"pile_roll_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 1,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"wall_roll_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 1,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
 	},
 	"piles":
 	{
@@ -356,6 +374,14 @@ var jam_ticks: int:
 	get:
 		var seconds: float = value("enemies", "jam_seconds")
 		return ticks_from_seconds(seconds)
+var pile_roll_chance: float:
+	get:
+		var percent: int = value("enemies", "pile_roll_chance")
+		return percent / 100.0
+var wall_roll_chance: float:
+	get:
+		var percent: int = value("enemies", "wall_roll_chance")
+		return percent / 100.0
 var wall_hp: float:
 	get:
 		return value("piles", "wall_hp")

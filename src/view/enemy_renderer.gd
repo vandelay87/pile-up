@@ -2,6 +2,7 @@ class_name EnemyRenderer
 extends Node
 
 const TINT := Color(0.85, 0.3, 0.3)
+const DIRECT_TINT := Color(0.95, 0.8, 0.2)
 const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
 
@@ -16,6 +17,7 @@ var _lifts := PackedFloat32Array()
 var _shown := 0
 var _flash_ends := {}
 var _flashed_items: Array[RID] = []
+var _route_tint := false
 
 
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
@@ -29,6 +31,13 @@ func setup(simulation: Simulation, parent: CanvasItem) -> void:
 
 func flash(id: int) -> void:
 	_flash_ends[id] = Time.get_ticks_msec() + FLASH_MSEC
+
+
+func show_route_tint(on: bool) -> void:
+	_route_tint = on
+	if not on:
+		for item in _items:
+			RenderingServer.canvas_item_set_modulate(item, TINT)
 
 
 func _process(_delta: float) -> void:
@@ -53,7 +62,7 @@ func _process(_delta: float) -> void:
 			RenderingServer.canvas_item_set_transform(
 				_sprites[i], Transform2D(0.0, Vector2(0, -lift))
 			)
-	_draw_flashes()
+	_draw_tints(count)
 
 
 func _lift_at(pos: Vector2) -> float:
@@ -74,9 +83,15 @@ func _lift_at(pos: Vector2) -> float:
 	return height * Atlas.PILE_SLAB_HEIGHT
 
 
-func _draw_flashes() -> void:
-	for item in _flashed_items:
-		RenderingServer.canvas_item_set_modulate(item, TINT)
+func _draw_tints(count: int) -> void:
+	if _route_tint:
+		var routes := _enemies.routes
+		for i in count:
+			var direct := routes[i] == Routing.Route.DIRECT
+			RenderingServer.canvas_item_set_modulate(_items[i], DIRECT_TINT if direct else TINT)
+	else:
+		for item in _flashed_items:
+			RenderingServer.canvas_item_set_modulate(item, TINT)
 	_flashed_items.clear()
 	var now := Time.get_ticks_msec()
 	for id: int in _flash_ends.keys():
