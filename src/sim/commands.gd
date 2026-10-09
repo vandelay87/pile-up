@@ -23,8 +23,10 @@ class Play:
 class NextWave:
 	extends Commands.Play
 
+	const LABEL := "next wave"
+
 	func label() -> String:
-		return "next wave"
+		return LABEL
 
 	func apply(sim: Simulation) -> void:
 		sim.next_wave()
@@ -102,13 +104,15 @@ class AddGold:
 class JumpToWave:
 	extends Commands.Play
 
+	const LABEL := "jump to wave"
+
 	var _wave: int
 
 	func _init(wave: int) -> void:
 		_wave = wave
 
 	func label() -> String:
-		return "jump to wave"
+		return LABEL
 
 	func apply(sim: Simulation) -> void:
 		sim.jump_to_wave(_wave)

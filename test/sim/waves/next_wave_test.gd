@@ -82,6 +82,15 @@ func test_jump_to_wave_starts_that_wave_from_the_build_phase() -> void:
 	assert_array(_events).contains_exactly(["jump to wave: a wave is already running"])
 
 
+func test_jump_to_wave_below_1_is_rejected() -> void:
+	_sim.queue_command(Commands.JumpToWave.new(0))
+
+	_sim.tick()
+
+	assert_int(_sim.waves.phase).is_equal(Waves.Phase.BUILD)
+	assert_array(_events).contains_exactly(["jump to wave: the wave must be at least 1"])
+
+
 func test_add_gold_adds_to_the_run_gold() -> void:
 	_sim.queue_command(Commands.AddGold.new(100))
 

@@ -73,7 +73,7 @@ func test_a_leak_in_a_tick_costs_a_life_and_reports_the_lives() -> void:
 	assert_array(reported).contains_exactly([19])
 
 
-func test_game_over_fires_once_at_0_lives_and_then_only_restart_is_accepted() -> void:
+func test_game_over_fires_once_at_0_lives_and_then_play_commands_are_rejected() -> void:
 	_settings.change("run", "starting_lives", 1)
 	var sim := _sim(_settings.for_next_run())
 	var events: Array[String] = []
@@ -122,6 +122,19 @@ func test_the_next_run_is_a_fresh_simulation_with_pending_restart_settings() -> 
 	assert_int(next.run_state.wave).is_equal(0)
 	assert_int(next.waves.phase).is_equal(Waves.Phase.BUILD)
 	assert_int(next.enemies.count).is_equal(0)
+
+
+func test_restart_is_accepted_while_paused() -> void:
+	var sim := _sim(_settings)
+	var restarts: Array[bool] = []
+	sim.restart_requested.connect(func() -> void: restarts.append(true))
+	sim.queue_command(Commands.SetPaused.new(true))
+	sim.run_frame()
+
+	sim.queue_command(Commands.Restart.new())
+	sim.run_frame()
+
+	assert_array(restarts).contains_exactly([true])
 
 
 func _sim(settings: Settings) -> Simulation:

@@ -14,6 +14,7 @@ var _overlays := VBoxContainer.new()
 var _box := VBoxContainer.new()
 var _pause := Button.new()
 var _speeds: Array[Button] = []
+var _built := false
 
 
 class Row:
@@ -85,7 +86,7 @@ class Row:
 func setup(simulation: Simulation) -> void:
 	_simulation = simulation
 	_simulation.command_rejected.connect(_show_status.bind(ERROR_COLOUR))
-	if _file_settings == null:
+	if not _built:
 		_build()
 	_pause.set_pressed_no_signal(_simulation.paused)
 	for k in Simulation.SPEEDS.size():
@@ -93,6 +94,7 @@ func setup(simulation: Simulation) -> void:
 
 
 func _build() -> void:
+	_built = true
 	_file_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
 	_add_time_controls()
 	_add_cheats()

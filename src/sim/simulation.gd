@@ -82,11 +82,14 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 
 
 func next_wave() -> void:
-	_start_wave(run_state.wave + 1, "next wave")
+	_start_wave(run_state.wave + 1, Commands.NextWave.LABEL)
 
 
 func jump_to_wave(wave: int) -> void:
-	_start_wave(wave, "jump to wave")
+	if wave < 1:
+		reject_command("%s: the wave must be at least 1" % Commands.JumpToWave.LABEL)
+		return
+	_start_wave(wave, Commands.JumpToWave.LABEL)
 
 
 func add_gold(amount: int) -> void:
@@ -194,7 +197,7 @@ func _drain_time_controls() -> void:
 	var commands := _command_queue
 	_command_queue = []
 	for command in commands:
-		if command is Commands.TimeControl:
+		if command is Commands.TimeControl or command is Commands.Restart:
 			command.apply(self)
 		else:
 			_command_queue.append(command)

@@ -23,8 +23,8 @@ func add_gold(amount: int) -> void:
 	gold += amount
 
 
-func record_removals(kills: int, leaks: int) -> void:
-	gold += kills * _settings.enemy_bounty
+func record_removals(deaths: int, leaks: int) -> void:
+	gold += deaths * _settings.enemy_bounty
 	lives = maxi(0, lives - leaks)
 	if lives == 0:
 		is_game_over = true

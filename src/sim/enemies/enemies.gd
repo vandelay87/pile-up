@@ -47,14 +47,14 @@ func _init(
 	_bucket_starts.resize(_map.width * _map.height + 1)
 
 
-func spawn(pos: Vector2, health: float) -> int:
+func spawn(pos: Vector2, start_hp: float) -> int:
 	if count == ids.size():
 		_grow()
 	var id := _next_id
 	_next_id += 1
 	ids[count] = id
 	positions[count] = pos
-	hp[count] = health
+	hp[count] = start_hp
 	leaked[count] = 0
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	_index_by_id[id] = count
