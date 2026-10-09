@@ -4,6 +4,7 @@ extends RefCounted
 const NONE := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
+const _PROGRESS := 0.02
 const _FACES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 
 var count := 0
@@ -12,6 +13,7 @@ var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
 var leaked := PackedByteArray()
 var heading_offsets := PackedFloat32Array()
+var wall_targets := PackedInt32Array()
 
 var _settings: Settings
 var _map: MapData
@@ -24,6 +26,8 @@ var _index_by_id := {}
 var _bucket_starts := PackedInt32Array()
 var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
+var _best_values := PackedFloat64Array()
+var _stuck_ticks := PackedInt32Array()
 
 
 class Removal:
@@ -60,6 +64,9 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	hp[count] = start_hp
 	leaked[count] = 0
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
+	wall_targets[count] = NONE
+	_best_values[count] = INF
+	_stuck_ticks[count] = 0
 	_index_by_id[id] = count
 	count += 1
 	return id
@@ -119,17 +126,25 @@ func move() -> void:
 	var steps := PackedFloat64Array([step])
 	for level in range(1, Piles.WALL_LEVEL):
 		steps.append(step * (1.0 - _settings.pile_slow(level)))
+	steps.append(step)
 	var levels := _piles.levels
 	var radius := _settings.separation_radius
 	var push := _settings.separation_push
 	var cap := _settings.neighbour_cap
+	var reach := radius + _settings.wall_reach
+	var jam_ticks := _settings.jam_ticks
+	for i in count:
+		wall_targets[i] = _wall_target(i, reach, jam_ticks)
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
+		var separation := _separation(i, radius, push, cap).limit_length(radius)
+		if wall_targets[i] != NONE:
+			_moved[i] = pos + separation
+			continue
 		var heading := _routing.sample_direction(Routing.Route.SENSIBLE, pos).rotated(
 			heading_offsets[i]
 		)
-		var separation := _separation(i, radius, push, cap).limit_length(radius)
 		_moved[i] = pos + heading * steps[levels[_cell_index(pos)]] + separation
 	for i in count:
 		var pos := _moved[i]
@@ -141,6 +156,70 @@ func move() -> void:
 		positions[i] = pos
 		if _map.is_base(Vector2i(pos.floor())):
 			leaked[i] = 1
+	var damage_per_tick := _settings.wall_damage_per_tick
+	for i in count:
+		if wall_targets[i] != NONE:
+			_piles.damage_wall(_cell_of(wall_targets[i]), damage_per_tick)
+
+
+func _wall_target(i: int, reach: float, jam_ticks: int) -> int:
+	var pos := positions[i]
+	var target := wall_targets[i]
+	if target != NONE and _is_wall(target) and _distance_to_cell(pos, target) <= reach:
+		return target
+	var nearest := NONE
+	if _piles.walls_nearby[_cell_index(pos)] > 0:
+		nearest = _nearest_pressed_wall(pos, reach)
+	if nearest == NONE:
+		_best_values[i] = INF
+		_stuck_ticks[i] = 0
+		return NONE
+	var field_value := _routing.sample_value(Routing.Route.SENSIBLE, pos)
+	if field_value < _best_values[i] - _PROGRESS:
+		_best_values[i] = field_value
+		_stuck_ticks[i] = 0
+	else:
+		_stuck_ticks[i] += 1
+	if _stuck_ticks[i] >= jam_ticks or _route_crosses_wall(pos):
+		_stuck_ticks[i] = 0
+		return nearest
+	return NONE
+
+
+func _route_crosses_wall(pos: Vector2) -> bool:
+	var next := _routing.parent(Routing.Route.SENSIBLE, Vector2i(pos.floor()))
+	if next == Routing.NO_PARENT:
+		return false
+	if _is_wall(_index(next)):
+		return true
+	var after := _routing.parent(Routing.Route.SENSIBLE, next)
+	return after != Routing.NO_PARENT and _is_wall(_index(after))
+
+
+func _nearest_pressed_wall(pos: Vector2, reach: float) -> int:
+	var cell := Vector2i(pos.floor())
+	var levels := _piles.levels
+	var best := NONE
+	var best_distance := reach
+	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
+		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
+			var index := y * _map.width + x
+			if levels[index] != Piles.WALL_LEVEL:
+				continue
+			var distance := _distance_to_cell(pos, index)
+			if distance <= best_distance:
+				best_distance = distance
+				best = index
+	return best
+
+
+func _is_wall(index: int) -> bool:
+	return _piles.levels[index] == Piles.WALL_LEVEL
+
+
+func _distance_to_cell(pos: Vector2, index: int) -> float:
+	var corner := Vector2(_cell_of(index))
+	return pos.distance_to(pos.clamp(corner, corner + Vector2.ONE))
 
 
 func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
@@ -149,6 +228,7 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
+	var holding := wall_targets[i] != NONE
 	var checked := 0
 	var total := Vector2.ZERO
 	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
@@ -164,9 +244,14 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 				var away := pos - positions[j]
 				if away.length_squared() >= spacing_squared:
 					continue
+				var share := 1.0
+				if wall_targets[j] != NONE and not holding:
+					share = 2.0
+				elif holding and wall_targets[j] == NONE:
+					continue
 				var distance := away.length()
 				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
-				total += direction * (spacing - distance) * push
+				total += direction * (spacing - distance) * push * share
 	return total
 
 
@@ -207,7 +292,14 @@ func _leave_through_nearest_open_face(pos: Vector2, cell: Vector2i, radius: floa
 
 
 func _is_impassable(cell: Vector2i) -> bool:
-	return not _map.in_bounds(cell) or _map.is_rock(cell) or _occupancy.is_occupied(cell)
+	if not _map.in_bounds(cell):
+		return true
+	var index := _index(cell)
+	return (
+		_map.rock[index] == 1
+		or _occupancy.occupied[index] == 1
+		or _piles.levels[index] == Piles.WALL_LEVEL
+	)
 
 
 func _tie_break(i: int, j: int) -> Vector2:
@@ -233,6 +325,14 @@ func _cell_index(pos: Vector2) -> int:
 	return int(pos.y) * _map.width + int(pos.x)
 
 
+func _index(cell: Vector2i) -> int:
+	return cell.y * _map.width + cell.x
+
+
+func _cell_of(index: int) -> Vector2i:
+	return Vector2i(index % _map.width, index / _map.width)
+
+
 func _swap_remove(index: int) -> void:
 	_index_by_id.erase(ids[index])
 	count -= 1
@@ -243,6 +343,9 @@ func _swap_remove(index: int) -> void:
 	hp[index] = hp[count]
 	leaked[index] = leaked[count]
 	heading_offsets[index] = heading_offsets[count]
+	wall_targets[index] = wall_targets[count]
+	_best_values[index] = _best_values[count]
+	_stuck_ticks[index] = _stuck_ticks[count]
 	_index_by_id[ids[index]] = index
 
 
@@ -253,3 +356,6 @@ func _grow() -> void:
 	hp.resize(capacity)
 	leaked.resize(capacity)
 	heading_offsets.resize(capacity)
+	wall_targets.resize(capacity)
+	_best_values.resize(capacity)
+	_stuck_ticks.resize(capacity)

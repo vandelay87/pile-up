@@ -69,7 +69,7 @@ func test_fields_changed_is_not_reported_for_other_or_rejected_changes() -> void
 	var reports: Array[bool] = []
 	sim.fields_changed.connect(func() -> void: reports.append(true))
 
-	sim.queue_command(Commands.SetSetting.new("enemies", "speed", 2.0))
+	sim.queue_command(Commands.SetSetting.new("enemies", "bounty", 2))
 	sim.queue_command(Commands.SetSetting.new("routing", "direct_wall_weight", 50.0))
 	sim.tick()
 	sim.tick()

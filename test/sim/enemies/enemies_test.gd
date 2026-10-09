@@ -12,7 +12,7 @@ func _enemies(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -
 	var map := TestMaps.from_rows(rows, base)
 	var occupancy := Occupancy.new(map.width, map.height)
 	occupancy.occupy(towers)
-	_piles = Piles.new(map, occupancy)
+	_piles = Piles.new(_settings, map, occupancy)
 	var routing := Routing.new(_settings, map, occupancy, _piles)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1

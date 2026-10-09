@@ -18,6 +18,7 @@ const _OFFSETS: Array[Vector2i] = [
 const _NO_OFFSET := 8
 const _REGION := 1
 const _INVALID := 2
+const _RESHAPED := 4
 
 static var _dxs := PackedInt32Array()
 static var _dys := PackedInt32Array()
@@ -33,6 +34,7 @@ var _occupancy: Occupancy
 var _piles: Piles
 var _fields: Array[Field] = []
 var _factors: Array[PackedFloat64Array] = []
+var _solid := PackedByteArray()
 var _builds: Array[_FieldBuild] = []
 var _build_tasks := PackedInt64Array()
 var _builds_stale := false
@@ -55,15 +57,19 @@ class _FieldBuild:
 
 	var field: Field
 	var factors: PackedFloat64Array
+	var solid: PackedByteArray
 
 	var _map: MapData
 
-	func _init(map: MapData, terrain_factors: PackedFloat64Array) -> void:
+	func _init(
+		map: MapData, terrain_factors: PackedFloat64Array, solid_cells: PackedByteArray
+	) -> void:
 		_map = map
 		factors = terrain_factors
+		solid = solid_cells
 
 	func run() -> void:
-		field = Routing._build_field(_map, factors)
+		field = Routing._build_field(_map, factors, solid)
 
 
 func _init(
@@ -103,9 +109,10 @@ func rebuild() -> bool:
 func _rebuild_now() -> void:
 	var started := Time.get_ticks_usec()
 	_factors = [_terrain_factors(Route.SENSIBLE), _terrain_factors(Route.DIRECT)]
+	_solid = _solid_cells()
 	_fields = [
-		_build_field(_map, _factors[Route.SENSIBLE]),
-		_build_field(_map, _factors[Route.DIRECT]),
+		_build_field(_map, _factors[Route.SENSIBLE], _solid),
+		_build_field(_map, _factors[Route.DIRECT], _solid),
 	]
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
 
@@ -115,9 +122,12 @@ func update(cells: Array[Vector2i]) -> bool:
 		_builds_stale = true
 		return false
 	var started := Time.get_ticks_usec()
+	var reshaped := _apply_solid(cells)
 	var changed := false
 	for route: Route in Route.values():
 		changed = _repair(route, cells) or changed
+	for cell in reshaped:
+		_marks[cell] &= ~_RESHAPED
 	last_update_msec = (Time.get_ticks_usec() - started) / 1000.0
 	return changed
 
@@ -142,6 +152,7 @@ func finish_rebuild() -> bool:
 		return false
 	_fields = [_builds[Route.SENSIBLE].field, _builds[Route.DIRECT].field]
 	_factors = [_builds[Route.SENSIBLE].factors, _builds[Route.DIRECT].factors]
+	_solid = _builds[Route.SENSIBLE].solid
 	_builds.clear()
 	return true
 
@@ -221,8 +232,9 @@ func wall_factor(route: Route, hp: float) -> float:
 func _start_builds() -> void:
 	_builds_stale = false
 	_builds.clear()
+	var solid := _solid_cells()
 	for route: Route in Route.values():
-		var build := _FieldBuild.new(_map, _terrain_factors(route))
+		var build := _FieldBuild.new(_map, _terrain_factors(route), solid)
 		_builds.append(build)
 		_build_tasks.append(WorkerThreadPool.add_task(build.run))
 
@@ -246,7 +258,7 @@ func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 		for cell in seeds:
 			if _reseed(field, factors, cell, heap):
 				changed.append(cell)
-	_settle(_map.width, _map.height, factors, field, heap, changed)
+	_settle(_map.width, _map.height, factors, _solid, field, heap, changed)
 	for cell in changed:
 		field.directions[cell] = _directions[field.parent_offsets[cell]]
 	for cell in region:
@@ -265,8 +277,8 @@ func _apply_factors(
 	var region := PackedInt32Array()
 	for cell in cells:
 		var index := _index(cell)
-		var factor := _cell_factor(level_factors, index)
-		if factor == factors[index]:
+		var factor := _cell_factor(route, level_factors, index)
+		if factor == factors[index] and _marks[index] & _RESHAPED == 0:
 			continue
 		factors[index] = factor
 		for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, height)):
@@ -321,6 +333,7 @@ func _invalidate(
 
 func _reseed(field: Field, factors: PackedFloat64Array, cell: int, heap: _Heap) -> bool:
 	var values := field.values
+	var solid := _solid
 	if factors[cell] == INF or values[cell] == 0.0:
 		return false
 	var width := _map.width
@@ -342,7 +355,7 @@ func _reseed(field: Field, factors: PackedFloat64Array, cell: int, heap: _Heap) 
 		var entry_cost := factors[parent_index]
 		if entry_cost == INF or values[parent_index] == UNREACHABLE:
 			continue
-		if k >= 4 and (factors[cell + dx] == INF or factors[parent_index - dx] == INF):
+		if k >= 4 and (solid[cell + dx] == 1 or solid[parent_index - dx] == 1):
 			continue
 		var cost := values[parent_index] + steps[k] * entry_cost
 		if cost < best:
@@ -368,7 +381,7 @@ func _cost_via(factors: PackedFloat64Array, values: PackedFloat64Array, cell: in
 	var entry_cost := factors[parent_index]
 	if entry_cost == INF or factors[cell] == INF or values[parent_index] == UNREACHABLE:
 		return UNREACHABLE
-	if k >= 4 and (factors[cell + dx] == INF or factors[parent_index - dx] == INF):
+	if k >= 4 and (_solid[cell + dx] == 1 or _solid[parent_index - dx] == 1):
 		return UNREACHABLE
 	return values[parent_index] + _steps[k] * entry_cost
 
@@ -380,13 +393,51 @@ func _level_factors(route: Route) -> PackedFloat64Array:
 	return level_factors
 
 
-func _cell_factor(level_factors: PackedFloat64Array, index: int) -> float:
+func _cell_factor(route: Route, level_factors: PackedFloat64Array, index: int) -> float:
 	if _map.rock[index] == 1 or _occupancy.occupied[index] == 1:
 		return INF
-	return level_factors[_piles.levels[index]]
+	var level := _piles.levels[index]
+	if level == Piles.WALL_LEVEL:
+		return _wall_cell_factor(route, index)
+	return level_factors[level]
 
 
-static func _build_field(map: MapData, factors: PackedFloat64Array) -> Field:
+func _wall_cell_factor(route: Route, index: int) -> float:
+	var cell := Vector2i(index % _map.width, index / _map.width)
+	return wall_factor(route, _piles.bucketed_wall_hp(cell))
+
+
+func _is_solid(index: int) -> bool:
+	return (
+		_map.rock[index] == 1
+		or _occupancy.occupied[index] == 1
+		or _piles.levels[index] == Piles.WALL_LEVEL
+	)
+
+
+func _solid_cells() -> PackedByteArray:
+	var solid := PackedByteArray()
+	solid.resize(_map.width * _map.height)
+	for index in solid.size():
+		solid[index] = 1 if _is_solid(index) else 0
+	return solid
+
+
+func _apply_solid(cells: Array[Vector2i]) -> PackedInt32Array:
+	var reshaped := PackedInt32Array()
+	for cell in cells:
+		var index := _index(cell)
+		var solid := 1 if _is_solid(index) else 0
+		if solid != _solid[index]:
+			_solid[index] = solid
+			_marks[index] |= _RESHAPED
+			reshaped.append(index)
+	return reshaped
+
+
+static func _build_field(
+	map: MapData, factors: PackedFloat64Array, solid: PackedByteArray
+) -> Field:
 	var width := map.width
 	var count := width * map.height
 	var field := Field.new()
@@ -403,7 +454,7 @@ static func _build_field(map: MapData, factors: PackedFloat64Array) -> Field:
 		var base_index := cell.y * width + cell.x
 		field.values[base_index] = 0.0
 		heap.push(0.0, base_index)
-	_settle(width, map.height, factors, field, heap, PackedInt32Array())
+	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array())
 
 	for cell in count:
 		field.directions[cell] = _directions[field.parent_offsets[cell]]
@@ -414,6 +465,7 @@ static func _settle(
 	width: int,
 	height: int,
 	factors: PackedFloat64Array,
+	solid: PackedByteArray,
 	field: Field,
 	heap: _Heap,
 	changed: PackedInt32Array
@@ -441,7 +493,7 @@ static func _settle(
 			var neighbour := ny * width + nx
 			if factors[neighbour] == INF:
 				continue
-			if k >= 4 and (factors[neighbour + dx] == INF or factors[cell - dx] == INF):
+			if k >= 4 and (solid[neighbour + dx] == 1 or solid[cell - dx] == 1):
 				continue
 			var candidate := current + steps[k] * entry_cost
 			if candidate < values[neighbour]:
@@ -498,8 +550,12 @@ func _terrain_factors(route: Route) -> PackedFloat64Array:
 	var factors := PackedFloat64Array()
 	factors.resize(levels.size())
 	for index in levels.size():
-		var impassable := rock[index] == 1 or occupied[index] == 1
-		factors[index] = INF if impassable else level_factors[levels[index]]
+		if rock[index] == 1 or occupied[index] == 1:
+			factors[index] = INF
+		elif levels[index] == Piles.WALL_LEVEL:
+			factors[index] = _wall_cell_factor(route, index)
+		else:
+			factors[index] = level_factors[levels[index]]
 	return factors
 
 

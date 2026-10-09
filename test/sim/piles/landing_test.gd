@@ -98,13 +98,46 @@ func test_a_body_on_a_base_cell_moves_to_the_nearest_valid_cell() -> void:
 	assert_int(piles.level(Vector2i(6, 6))).is_equal(0)
 
 
-func test_a_pile_stops_at_level_4_until_walls_exist() -> void:
+func test_the_fifth_body_makes_a_30_hp_wall() -> void:
 	var piles := _piles(_open_rows())
 
 	_land(piles, [Vector2(2.5, 2.5), Vector2(2.5, 2.5), Vector2(2.5, 2.5), Vector2(2.5, 2.5)])
+	assert_float(piles.wall_hp(Vector2i(2, 2))).is_equal(0.0)
 	_land(piles, [Vector2(2.5, 2.5)])
 
-	assert_int(piles.level(Vector2i(2, 2))).is_equal(4)
+	assert_int(piles.level(Vector2i(2, 2))).is_equal(Piles.WALL_LEVEL)
+	assert_float(piles.wall_hp(Vector2i(2, 2))).is_equal(30.0)
+
+
+func test_a_body_dying_beside_a_wall_starts_a_pile_on_its_own_cell() -> void:
+	var piles := _piles(_open_rows())
+	_land(piles, _bodies(Vector2(3.5, 2.5), Piles.WALL_LEVEL))
+
+	_land(piles, [Vector2(2.5, 2.5)])
+
+	assert_int(piles.level(Vector2i(2, 2))).is_equal(1)
+	assert_int(piles.level(Vector2i(3, 2))).is_equal(Piles.WALL_LEVEL)
+
+
+func test_a_body_dying_on_a_wall_spills_to_the_nearest_non_wall_cell() -> void:
+	var piles := _piles(_open_rows())
+	_land(piles, _bodies(Vector2(2.5, 2.5), Piles.WALL_LEVEL))
+	_land(piles, _bodies(Vector2(2.5, 1.5), Piles.WALL_LEVEL))
+
+	_land(piles, [Vector2(2.5, 2.5)])
+
+	assert_int(piles.level(Vector2i(1, 2))).is_equal(1)
+	assert_int(piles.level(Vector2i(2, 2))).is_equal(Piles.WALL_LEVEL)
+
+
+func test_a_body_beyond_a_new_wall_in_the_same_tick_spills() -> void:
+	var piles := _piles(_open_rows())
+	_land(piles, _bodies(Vector2(2.5, 2.5), Piles.WALL_LEVEL - 1))
+
+	_land(piles, _bodies(Vector2(2.5, 2.5), 2))
+
+	assert_int(piles.level(Vector2i(2, 2))).is_equal(Piles.WALL_LEVEL)
+	assert_int(piles.level(Vector2i(2, 1))).is_equal(1)
 
 
 func test_landing_lists_each_changed_cell_once() -> void:
@@ -134,6 +167,13 @@ func _land(piles: Piles, positions: Array[Vector2]) -> void:
 	piles.clear_changes()
 
 
+func _bodies(pos: Vector2, count: int) -> Array[Vector2]:
+	var bodies: Array[Vector2] = []
+	for n in count:
+		bodies.append(pos)
+	return bodies
+
+
 func _set_level(piles: Piles, cell: Vector2i, level: int) -> void:
 	piles.levels[cell.y * 8 + cell.x] = level
 
@@ -149,4 +189,8 @@ func _piles(rows: Array[String], towers: Array[Vector2i] = []) -> Piles:
 	var map := TestMaps.from_rows(rows, Rect2i(6, 6, 2, 2))
 	var occupancy := Occupancy.new(map.width, map.height)
 	occupancy.occupy(towers)
-	return Piles.new(map, occupancy)
+	return Piles.new(_settings(), map, occupancy)
+
+
+func _settings() -> Settings:
+	return Settings.load_file(Settings.DEFAULTS_PATH).settings

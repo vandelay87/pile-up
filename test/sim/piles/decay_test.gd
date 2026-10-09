@@ -43,4 +43,8 @@ func _set_level(piles: Piles, cell: Vector2i, level: int) -> void:
 
 func _piles() -> Piles:
 	var map := TestMaps.open_field()
-	return Piles.new(map, Occupancy.new(map.width, map.height))
+	return Piles.new(_settings(), map, Occupancy.new(map.width, map.height))
+
+
+func _settings() -> Settings:
+	return Settings.load_file(Settings.DEFAULTS_PATH).settings

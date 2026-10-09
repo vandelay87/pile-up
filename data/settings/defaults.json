@@ -7,19 +7,23 @@
 		"neighbour_cap": 0,
 		"heading_offset": 10,
 		"speed": 1.5,
-		"wall_damage": 1
+		"wall_damage": 1,
+		"wall_reach": 0.1,
+		"jam_seconds": 0.5
 	},
 	"piles": {
 		"slow_level_1": 15,
 		"slow_level_2": 30,
 		"slow_level_3": 45,
-		"slow_level_4": 60
+		"slow_level_4": 60,
+		"wall_hp": 30
 	},
 	"routing": {
 		"sensible_pile_weight": 1,
 		"sensible_wall_weight": 1,
 		"direct_pile_weight": 0,
-		"direct_wall_weight": 0.1
+		"direct_wall_weight": 0.1,
+		"wall_hp_bucket": 10
 	},
 	"waves": {
 		"wave_1_size": 20,
