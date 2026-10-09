@@ -1,6 +1,11 @@
+class_name Main
 extends Node
 
 const DEBUG_BURST_SIZE := 300
+
+var simulation: Simulation:
+	get:
+		return _simulation
 
 var _simulation: Simulation
 
