@@ -16,6 +16,7 @@ enum Step {
 }
 
 const TICKS_PER_SECOND := 60
+const SPEEDS: Array[int] = [1, 2, 4]
 
 var settings: Settings
 var map: MapData
@@ -23,12 +24,17 @@ var occupancy: Occupancy
 var routing: Routing
 var enemies: Enemies
 var step_observer := Callable()
+var tick_count := 0
+var paused := false
+var speed := 1
+var tick_cost := TickCost.new()
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
 var _run_seed: int
 var _debug_rng: RandomNumberGenerator
+var _pending_steps := 0
 
 
 func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
@@ -70,6 +76,44 @@ func spawn_burst(count: int) -> void:
 		enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter)
 
 
+func add_gold(_amount: int) -> void:
+	reject_command("add gold: needs waves and run state")
+
+
+func jump_to_wave(_wave: int) -> void:
+	reject_command("jump to wave: needs waves and run state")
+
+
+func set_paused(value: bool) -> void:
+	paused = value
+
+
+func set_speed(value: int) -> void:
+	if value not in SPEEDS:
+		reject_command("speed: expected one of %s, got %d" % [SPEEDS, value])
+		return
+	speed = value
+
+
+func step() -> void:
+	_pending_steps += 1
+
+
+func run_frame() -> void:
+	if paused:
+		_drain_commands()
+		_emit_signals()
+	var stepping := paused
+	var ticks := _pending_steps if stepping else speed
+	_pending_steps = 0
+	for n in ticks:
+		var started := Time.get_ticks_usec()
+		tick()
+		tick_cost.record((Time.get_ticks_usec() - started) / 1000.0, Time.get_ticks_msec())
+		if paused and not stepping:
+			break
+
+
 func tick() -> void:
 	_drain_commands()
 	_land_bodies_and_update_fields()
@@ -79,6 +123,7 @@ func tick() -> void:
 	_fire_towers()
 	_remove_dead_and_leaked()
 	_check_wave_end()
+	tick_count += 1
 	_emit_signals()
 
 

@@ -59,6 +59,10 @@ func parent(route: Route, cell: Vector2i) -> Vector2i:
 	return Vector2i(parent_index % _map.width, parent_index / _map.width)
 
 
+func direction(route: Route, cell: Vector2i) -> Vector2:
+	return _fields[route].directions[_index(cell)]
+
+
 func sample_direction(route: Route, pos: Vector2) -> Vector2:
 	var field := _fields[route]
 	_blend(field, pos)
