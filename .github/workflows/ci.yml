@@ -39,6 +39,19 @@ jobs:
           version: installed
           paths: res://test
 
+  sim-budget:
+    name: sim-budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: chickensoft-games/setup-godot@ac93246ea68518a384c1c280a496e5989341f2f6 # v2.4.3
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: false
+      - run: godot --headless --import
+      - run: godot --headless --script res://tools/bench_sim.gd
+
   export:
     name: export
     runs-on: ubuntu-latest
