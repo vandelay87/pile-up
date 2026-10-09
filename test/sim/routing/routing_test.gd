@@ -192,8 +192,9 @@ func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
 	var routing := Routing.new(_settings(), map, occupancy, piles)
 	routing.start_rebuild()
 
-	occupancy.occupy([Vector2i(2, 0), Vector2i(2, 1)] as Array[Vector2i])
-	var updated_now := routing.update()
+	var tower: Array[Vector2i] = [Vector2i(2, 0), Vector2i(2, 1)]
+	occupancy.occupy(tower)
+	var updated_now := routing.update(tower)
 	var swapped_stale := routing.finish_rebuild()
 	var swapped_restart := routing.finish_rebuild()
 
@@ -202,8 +203,4 @@ func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
 	assert_bool(swapped_restart).is_true()
 	assert_bool(routing.is_rebuilding()).is_false()
 	var rebuilt := Routing.new(_settings(), map, occupancy, piles)
-	for route: Routing.Route in [SENSIBLE, DIRECT]:
-		for y in map.height:
-			for x in map.width:
-				var cell := Vector2i(x, y)
-				assert_float(routing.value(route, cell)).is_equal(rebuilt.value(route, cell))
+	assert_bool(FieldChecks.routings_match(routing, rebuilt, map)).is_true()

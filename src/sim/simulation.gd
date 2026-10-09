@@ -46,7 +46,7 @@ var tick_cost := TickCost.new()
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
 var _fields_changed := false
-var _fields_stale := false
+var _changed_cells: Array[Vector2i] = []
 var _decay_due := false
 var _rebuild_swap_tick := 0
 var _placed: Array[Vector2i] = []
@@ -89,7 +89,7 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if not error.is_empty():
 		reject_command(error)
 		return
-	if group in ["routing", "piles"] and routing.update():
+	if group in ["routing", "piles"] and routing.rebuild():
 		_fields_changed = true
 
 
@@ -118,7 +118,7 @@ func build_tower(origin: Vector2i) -> void:
 		reject_command("%s: %s" % [Commands.BuildTower.LABEL, error])
 		return
 	_placed.append(origin)
-	_fields_stale = true
+	_changed_cells.append_array(Towers.footprint(origin))
 
 
 func add_gold(amount: int) -> void:
@@ -245,11 +245,10 @@ func _drain_time_controls() -> void:
 func _land_bodies_and_update_fields() -> void:
 	_observe(Step.LAND_BODIES_AND_UPDATE_FIELDS)
 	piles.land()
-	if not piles.changed.is_empty():
-		_fields_stale = true
+	_changed_cells.append_array(piles.changed)
 	if _decay_due:
 		_decay_due = false
-		_fields_stale = false
+		_changed_cells.clear()
 		piles.decay()
 		routing.start_rebuild()
 		_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
@@ -258,9 +257,10 @@ func _land_bodies_and_update_fields() -> void:
 			_fields_changed = true
 		else:
 			_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
-	if _fields_stale:
-		_fields_stale = false
-		if routing.update():
+	if not _changed_cells.is_empty():
+		var cells := _changed_cells
+		_changed_cells = []
+		if routing.update(cells):
 			_fields_changed = true
 
 
