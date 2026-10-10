@@ -34,11 +34,15 @@ _Avoid_: Structure (which also covers walls and the base)
 ### Power
 
 **Power grid**:
-The cells powered from the base, plus any further cells powered by buildings that the grid still connects to the base. Building is only allowed on the power grid.
+The power areas of the base and of every powered building. Building is only allowed on the power grid.
 _Avoid_: Build zone, power zone, paint
 
+**Power area**:
+The square of cells that the base or one building powers around itself. A pylon's power area is much larger than a tower's.
+_Avoid_: Radius, range (range belongs to towers' fire)
+
 **Powered**:
-A building the power grid connects to the base. A building cut off from the base is **unpowered** and stops working.
+A building that has a cell in the power area of the base or of another powered building. A building cut off from the base is **unpowered** and stops working.
 
 **Pylon**:
 A building whose only job is to extend the power grid, much further than other buildings do.
