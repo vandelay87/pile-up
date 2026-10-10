@@ -23,7 +23,9 @@
 		"slow_level_2": 30,
 		"slow_level_3": 45,
 		"slow_level_4": 60,
-		"wall_hp": 15
+		"wall_hp": 15,
+		"decay_chance": 50,
+		"wall_decay_chance": 25
 	},
 	"routing": {
 		"sensible_pile_weight": 1,

@@ -79,6 +79,7 @@ func test_a_run_with_walls_is_identical_for_the_same_seed() -> void:
 
 
 func test_decay_reopens_a_wall_corner_after_the_rebuild() -> void:
+	_settings.change("piles", "wall_decay_chance", 100)
 	var sim := _sim_with_wall()
 	sim.decay_piles()
 
