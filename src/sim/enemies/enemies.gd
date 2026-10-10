@@ -177,11 +177,16 @@ func move(in_wave_tail := false) -> void:
 	_ticks += 1
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
+	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
+	# still and attacks nothing, as if it had died before moving.
 	for i in count:
-		structure_targets[i] = _structure_target(i, reach, jam_ticks)
+		structure_targets[i] = NONE if hp[i] <= 0.0 else _structure_target(i, reach, jam_ticks)
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
+		if hp[i] <= 0.0:
+			_moved[i] = pos
+			continue
 		var separation := _separation(i, radius, push, cap).limit_length(radius)
 		if structure_targets[i] != NONE:
 			_moved[i] = pos + separation
@@ -195,6 +200,8 @@ func move(in_wave_tail := false) -> void:
 		var pace_step := steps[levels[_cell_index(pos)]] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
+		if hp[i] <= 0.0:
+			continue
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:
 			var resolved := _resolve_collision(pos, radius)

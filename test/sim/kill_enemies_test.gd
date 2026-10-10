@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 
 # The debug "kill enemies" command: the first n enemies on the field die on the tick it is
-# drained, and are removed at step 7 like any kill.
+# drained, and are removed at step 7 like any kill. They die before moving, so they stand
+# still and attack nothing that tick.
 
 var _sim: Simulation
 var _events: Array[String]
@@ -48,6 +49,21 @@ func test_killed_enemies_count_as_kills_pay_and_leave_bodies() -> void:
 	for level in _sim.piles.levels:
 		bodies += level
 	assert_int(bodies).is_equal(3)
+
+
+func test_a_killed_enemy_attacks_nothing_on_the_tick_it_dies() -> void:
+	var start_hp := _sim.run_state.base_hp
+	for tick in 2000:
+		if _sim.run_state.base_hp < start_hp:
+			break
+		_sim.tick()
+	assert_float(_sim.run_state.base_hp).is_less(start_hp)
+	var hp := _sim.run_state.base_hp
+
+	_sim.queue_command(Commands.KillEnemies.new(1000))
+	_sim.tick()
+
+	assert_float(_sim.run_state.base_hp).is_equal(hp)
 
 
 func test_kill_enemies_beyond_the_field_kills_them_all() -> void:
