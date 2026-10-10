@@ -11,7 +11,7 @@ One square of the logical grid that everything in the game sits on.
 _Avoid_: Tile (reserved for the drawn isometric diamond)
 
 **Base**:
-The central structure being defended; it has a number of lives.
+The central structure being defended. Enemies attack it like any other structure, and the run ends when it is destroyed.
 _Avoid_: Core, HQ
 
 **Rock**:
@@ -20,6 +20,16 @@ _Avoid_: Obstacle, blocked cell, wall
 
 **Spawn edge**:
 A map edge that enemies enter from during the current wave.
+
+### Structures
+
+**Structure**:
+Anything with HP that enemies attack when it is in their way: a wall, a building or the base.
+_Avoid_: Target, obstacle
+
+**Building**:
+Anything the player builds: a tower or a pylon.
+_Avoid_: Structure (which also covers walls and the base)
 
 ### Power
 
@@ -51,9 +61,6 @@ _Avoid_: Barricade
 
 ### Enemies
 
-**Leak**:
-An enemy reaching the base and costing a life.
-
 **Sensible route**:
 The default route enemies follow, where piles and walls cost what they really cost.
 
@@ -64,11 +71,11 @@ _Avoid_: Reckless, personality
 ### Flow of play
 
 **Run**:
-One game, from the first wave until the base runs out of lives. A restart begins a new run.
+One game, from the first wave until the base is destroyed. A restart begins a new run.
 _Avoid_: Game, match, session
 
 **Wave**:
-One spawned group of enemies, from pressing "next wave" until the last of them dies or leaks.
+One spawned group of enemies, from pressing "next wave" until the last of them dies.
 _Avoid_: Round, level
 
 **Build phase**:

@@ -17,7 +17,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 ## World and camera
 
 - Isometric view with pan and zoom. The map is roughly 1.5–2 screens wide at default zoom.
-- Central base with 20 lives. An enemy that reaches it removes 1 life and dies.
+- Central base with HP (the starting value is left to tuning). Enemies attack it at its edge, and the run ends when it is destroyed.
 - Each wave spawns from 1–2 random map edges, announced at the start of the wave.
 - A fine logical grid sits underneath the isometric rendering. A tower occupies 2×2 cells and a pile occupies 1 cell. Enemies move smoothly, not tile to tile.
 - Art: plain coloured shapes. Pile height must read instantly, as stacked blocks that darken with each level.
@@ -31,9 +31,9 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 ### Routing
 
 - Two flow fields:
-  - **Sensible**: piles cost extra in proportion to their slow, and walls cost their time to break.
-  - **Direct**: piles are cheap and walls are worth breaking.
-- Enemies follow the sensible field. When one meets a pile or wall that the sensible field routes around, it rolls once to switch to the direct field: about 5% for piles, 3% for walls. The result is locked in until the enemy is past that obstacle, then it returns to the sensible field.
+  - **Sensible**: piles cost extra in proportion to their slow, and walls and buildings cost their time to break.
+  - **Direct**: piles are cheap and walls and buildings are worth breaking.
+- Enemies follow the sensible field. When one meets a pile or structure that the sensible field routes around, it rolls once to switch to the direct field: about 5% for piles, 3% for walls and buildings. The result is locked in until the enemy is past that obstacle, then it returns to the sensible field.
 
 ## Body piles
 
@@ -49,15 +49,22 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   | 4 | 60% slow |
   | 5 | Wall: impassable, 30 HP |
 
-- Enemies attacking a wall deal 1 damage per second, with no limit on attackers beyond space around it.
-- Bodies of enemies killed at a wall spill into the nearest non-wall cell, so defending a wall thickens it.
 - A destroyed wall drops back to a level-3 pile.
 - Every pile loses one level at the end of each wave.
 
+## Structures
+
+- Walls, buildings (towers and pylons) and the base are all structures, and one rule covers them all.
+- An enemy attacks a structure only when it is in the way: it is jammed against it, or its route crosses it. Enemies passing a structure that is not in their way ignore it.
+- Every attacker deals 1 damage per second to any structure, with no limit on attackers beyond space around it.
+- Bodies of enemies killed at a structure spill into the nearest free cell, so defending a structure builds a pile in front of it.
+- A destroyed tower leaves nothing behind: its cells are clear and its gold is lost.
+
 ## Towers and economy
 
-- One tower type: single-target, aimed at the enemy closest to the base. 3 damage, 2 shots/s, range 8 cells, costs 50 gold.
+- One tower type: single-target, aimed at the enemy closest to the base. 3 damage, 2 shots/s, range 8 cells, 60 HP, costs 50 gold.
 - Towers can only be built on clear cells. Building is allowed during waves.
+- A tower may cut off every path to the base: enemies then break through the cheapest structure.
 - Starting gold: 150.
 
 ## Waves
@@ -105,7 +112,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 ## Later ideas
 
-- Enemy types: brutes that always break walls, enemies that attack towers, enemies that chase.
+- Enemy types: brutes that always break walls, enemies that seek out buildings even when they are not in the way, enemies that chase.
 - A splash/area tower.
 - Power-ups (v4), including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
