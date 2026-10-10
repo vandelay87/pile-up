@@ -8,6 +8,9 @@ var _placed: Array[int]
 
 func before_test() -> void:
 	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+	_settings.change("run", "starting_gold", 150)
+	_settings = _settings.for_next_run()
+	_settings.change("towers", "cost", 50)
 	var rows: Array[String] = []
 	for y in 10:
 		rows.append("..........")
