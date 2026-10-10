@@ -25,6 +25,8 @@ var _wall_msec := PackedFloat64Array()
 
 func _init() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	# Towers go just outside the crowd, past the base's own power grid.
+	settings.change("run", "base_power_area", 20)
 	var map := MapData.load_file(settings.map_path).map
 	_sim = Simulation.new(settings, map, RUN_SEED)
 	var crowd := BenchCrowd.new(_sim, CROWD_SEED)

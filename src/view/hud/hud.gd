@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 
-signal tower_requested
+signal build_requested(kind: StringName)
 
 const MARGIN := 8.0
 const TOAST_HOLD_SECONDS := 1.5
@@ -23,6 +23,7 @@ var _gold_tween: Tween
 var _shown_tier := 1
 var _next_wave := Button.new()
 var _tower := Button.new()
+var _pylon := Button.new()
 var _toast := Label.new()
 var _toast_tween: Tween
 var _game_over := PanelContainer.new()
@@ -63,9 +64,11 @@ func _ready() -> void:
 	_next_wave.text = "Next wave"
 	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
 	bar.add_child(_next_wave)
-	_tower.focus_mode = Control.FOCUS_NONE
-	_tower.pressed.connect(tower_requested.emit)
-	bar.add_child(_tower)
+	_tower.pressed.connect(build_requested.emit.bind(Buildings.TOWER))
+	_pylon.pressed.connect(build_requested.emit.bind(Buildings.PYLON))
+	for button: Button in [_tower, _pylon]:
+		button.focus_mode = Control.FOCUS_NONE
+		bar.add_child(button)
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.position.y += MARGIN
@@ -119,6 +122,7 @@ func _ready() -> void:
 func _show_gold(gold: int) -> void:
 	_gold.text = "Gold %d" % gold
 	_tower.text = "Tower (%d gold) [T]" % _simulation.settings.tower_cost
+	_pylon.text = "Pylon (%d gold) [P]" % _simulation.settings.pylon_cost
 
 
 func _show_enemies_left(left: int) -> void:

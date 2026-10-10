@@ -12,6 +12,7 @@ signal combo_changed(tier: int)
 signal payout(amount: int, tier: int)
 signal building_placed(id: int)
 signal building_destroyed(id: int)
+signal power_changed
 signal shots_fired(shots: Array[Buildings.Shot])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
@@ -43,6 +44,7 @@ var waves: Waves
 var buildings: Buildings
 var run_state: RunState
 var structures: Structures
+var power_grid: PowerGrid
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -85,7 +87,8 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
 	run_state = RunState.new(settings)
-	buildings = Buildings.new(settings, map, occupancy, piles, run_state)
+	power_grid = PowerGrid.new(settings, map)
+	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
 	structures = Structures.new(map, occupancy, piles, buildings, run_state)
 	routing = Routing.new(settings, map, occupancy, piles, structures)
 	enemies = (
@@ -120,6 +123,8 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if not error.is_empty():
 		reject_command(error)
 		return
+	if key.ends_with("power_area"):
+		power_grid.recompute(buildings)
 	var costs_walls := group == "enemies" and key in ["speed", "wall_damage"]
 	if (group in ["routing", "piles"] or costs_walls) and routing.rebuild():
 		_fields_changed = true
@@ -238,6 +243,8 @@ func _emit_signals() -> void:
 		building_placed.emit(id)
 	for id in buildings.take_destroyed():
 		building_destroyed.emit(id)
+	if power_grid.take_changed():
+		power_changed.emit()
 	if not piles.changed.is_empty():
 		pile_changed.emit(piles.take_changes())
 	if not _shots.is_empty():

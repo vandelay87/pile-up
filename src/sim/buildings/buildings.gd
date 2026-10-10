@@ -2,9 +2,11 @@ class_name Buildings
 extends RefCounted
 
 const TOWER := &"tower"
-const FOOTPRINTS := {TOWER: Vector2i(2, 2)}
+const PYLON := &"pylon"
+const FOOTPRINTS := {TOWER: Vector2i(2, 2), PYLON: Vector2i(1, 1)}
 const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
+const OFF_GRID := "off the power grid"
 const OCCUPIED := "occupied"
 const NOT_ENOUGH_GOLD := "not enough gold"
 
@@ -17,6 +19,7 @@ var _map: MapData
 var _occupancy: Occupancy
 var _piles: Piles
 var _run_state: RunState
+var _power_grid: PowerGrid
 var _by_id: Dictionary[int, Building] = {}
 var _next_id := 0
 var _field_changes: Array[Vector2i] = []
@@ -32,6 +35,7 @@ class Building:
 	var footprint: Array[Vector2i]
 	var centre: Vector2
 	var hp := 0.0
+	var powered := false
 	var cooldown := 0
 	var target_id := Enemies.NONE
 
@@ -62,12 +66,14 @@ func _init(
 	run_occupancy: Occupancy,
 	run_piles: Piles,
 	run_state: RunState,
+	power_grid: PowerGrid,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_occupancy = run_occupancy
 	_piles = run_piles
 	_run_state = run_state
+	_power_grid = power_grid
 	nearby.resize(_map.width * _map.height)
 
 
@@ -109,7 +115,7 @@ func build(kind: StringName, origin: Vector2i) -> String:
 	var error := _placement_error(kind, origin)
 	if not error.is_empty():
 		return error
-	var cost := _cost(kind)
+	var cost := cost_of(kind)
 	if not _run_state.can_afford(cost):
 		return NOT_ENOUGH_GOLD
 	_run_state.spend(cost)
@@ -120,6 +126,7 @@ func build(kind: StringName, origin: Vector2i) -> String:
 	_count_nearby(placed.footprint, 1)
 	built.append(placed)
 	_by_id[placed.id] = placed
+	_power_grid.recompute(self)
 	return ""
 
 
@@ -127,6 +134,8 @@ func max_hp(kind: StringName) -> float:
 	match kind:
 		TOWER:
 			return _settings.tower_hp
+		PYLON:
+			return _settings.pylon_hp
 	return 0.0
 
 
@@ -168,7 +177,7 @@ func take_destroyed() -> Array[int]:
 func fire(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for tower in built:
-		if tower.kind != TOWER:
+		if tower.kind != TOWER or not tower.powered:
 			continue
 		if tower.cooldown > 0:
 			tower.cooldown -= 1
@@ -191,6 +200,7 @@ func _destroy(target: Building) -> void:
 	_count_nearby(target.footprint, -1)
 	_field_changes.append_array(target.footprint)
 	_destroyed.append(target.id)
+	_power_grid.recompute(self)
 
 
 func _count_nearby(cells: Array[Vector2i], change: int) -> void:
@@ -204,10 +214,12 @@ func _bucket(hp: float) -> int:
 	return ceili(hp / _settings.wall_hp_bucket)
 
 
-func _cost(kind: StringName) -> int:
+func cost_of(kind: StringName) -> int:
 	match kind:
 		TOWER:
 			return _settings.tower_cost
+		PYLON:
+			return _settings.pylon_cost
 	return 0
 
 
@@ -217,6 +229,8 @@ func _placement_error(kind: StringName, origin: Vector2i) -> String:
 	for cell in cells_of(kind, origin):
 		if not _map.in_bounds(cell):
 			return OFF_MAP
+		if not _power_grid.is_on_grid(cell):
+			return OFF_GRID
 		if _map.is_rock(cell) or _map.is_base(cell) or _occupancy.is_occupied(cell):
 			return OCCUPIED
 		if _piles.level(cell) > 0:

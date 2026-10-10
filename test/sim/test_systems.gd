@@ -11,6 +11,7 @@ var piles: Piles
 var run_state: RunState
 var buildings: Buildings
 var structures: Structures
+var power_grid: PowerGrid
 
 
 func _init(run_settings: Settings, run_map: MapData) -> void:
@@ -19,7 +20,8 @@ func _init(run_settings: Settings, run_map: MapData) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy)
 	run_state = RunState.new(settings)
-	buildings = Buildings.new(settings, map, occupancy, piles, run_state)
+	power_grid = PowerGrid.new(settings, map)
+	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
 	structures = Structures.new(map, occupancy, piles, buildings, run_state)
 
 

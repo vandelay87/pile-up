@@ -52,11 +52,18 @@
 		"fire_rate": 3.5,
 		"range": 8,
 		"cost": 80,
-		"hp": 60
+		"hp": 60,
+		"power_area": 4
+	},
+	"pylons": {
+		"cost": 20,
+		"hp": 20,
+		"power_area": 10
 	},
 	"run": {
 		"base_hp": 200,
 		"starting_gold": 200,
+		"base_power_area": 10,
 		"map_path": "res://data/maps/v2-narrow.json"
 	},
 	"view": {

@@ -17,6 +17,8 @@ func before_test() -> void:
 	_settings.change("towers", "fire_rate", 2.0)
 	_settings.change("towers", "damage", 3.0)
 	_settings.change("towers", "cost", 50)
+	# The base's power area covers the whole map, so towers can go anywhere.
+	_settings.change("run", "base_power_area", 20)
 	var rows: Array[String] = []
 	for y in 20:
 		rows.append("....................")

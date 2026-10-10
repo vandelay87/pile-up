@@ -410,6 +410,45 @@ const SCHEMA := {
 			"unit": "HP",
 			"apply": Apply.LIVE,
 		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+	},
+	"pylons":
+	{
+		"cost":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1000,
+			"step": 5,
+			"unit": "gold",
+			"apply": Apply.LIVE,
+		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
 	},
 	"run":
 	{
@@ -430,6 +469,15 @@ const SCHEMA := {
 			"step": 10,
 			"unit": "gold",
 			"apply": Apply.RESTART,
+		},
+		"base_power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the base",
+			"apply": Apply.LIVE,
 		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
 	},
@@ -582,6 +630,21 @@ var tower_cost: int:
 var tower_hp: float:
 	get:
 		return value("towers", "hp")
+var tower_power_area: int:
+	get:
+		return value("towers", "power_area")
+var pylon_cost: int:
+	get:
+		return value("pylons", "cost")
+var pylon_hp: float:
+	get:
+		return value("pylons", "hp")
+var pylon_power_area: int:
+	get:
+		return value("pylons", "power_area")
+var base_power_area: int:
+	get:
+		return value("run", "base_power_area")
 var tracer_speed: float:
 	get:
 		return value("view", "tracer_speed")

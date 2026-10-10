@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://src/view/debug/range_overlay.gd" id="12"]
 [ext_resource type="Script" path="res://src/view/pile_layer.gd" id="13"]
 [ext_resource type="Script" path="res://src/view/debug/pile_overlay.gd" id="14"]
+[ext_resource type="Script" path="res://src/view/debug/power_overlay.gd" id="15"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -35,6 +36,9 @@ y_sort_enabled = true
 [node name="Piles" type="TileMapLayer" parent="World"]
 y_sort_enabled = true
 script = ExtResource("13")
+
+[node name="PowerOverlay" type="Node2D" parent="."]
+script = ExtResource("15")
 
 [node name="RangeOverlay" type="Node2D" parent="."]
 script = ExtResource("12")

@@ -9,6 +9,9 @@ const PILE := Color(0.66, 0.53, 0.42)
 const WHITE := Color(1, 1, 1)
 const BASE_HEIGHT := 48
 const TOWER_HEIGHT := 56
+const PYLON_HEIGHT := 64
+const PYLON_HEAD_HEIGHT := 8
+const UNPOWERED := Color(0.8, 0.2, 0.15)
 
 
 func _init() -> void:
@@ -24,6 +27,8 @@ func _init() -> void:
 		_draw_pile(image, level)
 	_draw_box_tile(image, Atlas.region(Atlas.BASE, Atlas.BASE_SIZE), BASE_HEIGHT, BASE)
 	_draw_box_tile(image, Atlas.region(Atlas.TOWER, Atlas.TOWER_SIZE), TOWER_HEIGHT, WHITE)
+	_draw_pylon(image)
+	_draw_unpowered_icon(image)
 	_draw_enemy(image)
 	_draw_tracer(image)
 	var error := image.save_png(Atlas.PATH)
@@ -54,6 +59,29 @@ func _draw_box_tile(image: Image, area: Rect2i, height: int, color: Color) -> vo
 	var footprint := Vector2(area.size.x, area.size.x / 2.0)
 	var foot := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0)
 	_draw_box(image, foot, footprint / 2.0, height, color)
+
+
+# A slim mast with a wider head, standing on one cell.
+func _draw_pylon(image: Image) -> void:
+	var area := Atlas.region(Atlas.PYLON, Atlas.PYLON_SIZE)
+	var foot := Vector2(area.get_center().x, area.end.y - Atlas.UNIT.y / 2.0)
+	_draw_box(image, foot, Vector2(8, 4), PYLON_HEIGHT, WHITE)
+	var head := foot - Vector2(0, PYLON_HEIGHT - PYLON_HEAD_HEIGHT)
+	_draw_box(image, head, Vector2(16, 8), PYLON_HEAD_HEIGHT, WHITE)
+
+
+# A red disc crossed by a white slash.
+func _draw_unpowered_icon(image: Image) -> void:
+	var area := Atlas.UNPOWERED_REGION
+	var centre := Vector2(area.get_center())
+	var radius := area.size.x / 2.0
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var offset := Vector2(x, y) + Vector2(0.5, 0.5) - centre
+			if offset.length() > radius:
+				continue
+			var on_slash := absf(offset.x - offset.y) < 2.0 and offset.length() < radius - 2.0
+			image.set_pixel(x, y, WHITE if on_slash else UNPOWERED)
 
 
 func _draw_enemy(image: Image) -> void:
