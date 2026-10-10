@@ -54,6 +54,8 @@ const SCHEMA := {
 			"max": 64,
 			"step": 1,
 			"unit": "neighbours (0 = off)",
+			"tip":
+			"Performance only. Each enemy checks at most this many nearby enemies when pushing apart, so dense crowds can overlap. 0 = check them all.",
 			"apply": Apply.LIVE,
 		},
 		"heading_offset":
