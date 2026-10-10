@@ -83,6 +83,7 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_float(settings.tower_damage).is_equal_approx(5.0, 1e-6)
 	assert_int(settings.tower_cooldown_ticks).is_equal(17)
 	assert_int(settings.tower_cost).is_equal(80)
+	assert_float(settings.tower_hp).is_equal_approx(60.0, 1e-6)
 	assert_float(settings.pile_slow(1)).is_equal_approx(0.15, 1e-6)
 	assert_float(settings.pile_slow(4)).is_equal_approx(0.6, 1e-6)
 	assert_float(settings.direct_wall_weight).is_equal_approx(0.1, 1e-6)

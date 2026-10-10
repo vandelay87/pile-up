@@ -41,7 +41,7 @@ func test_building_a_tower_places_it_charges_its_cost_and_reports_its_new_id() -
 
 
 func test_ids_are_stable_never_reused_and_buildings_stay_in_build_order() -> void:
-	for origin: Vector2i in [Vector2i(0, 0), Vector2i(0, 7), Vector2i(0, 7), Vector2i(7, 7)]:
+	for origin: Vector2i in [Vector2i(4, 4), Vector2i(0, 7), Vector2i(0, 7), Vector2i(7, 7)]:
 		_sim.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 	_sim.tick()
 

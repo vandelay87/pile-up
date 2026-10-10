@@ -10,14 +10,10 @@ var active := false
 
 var _simulation: Simulation
 var _origin := Vector2i.ZERO
-var _sent_origin := Vector2i.ZERO
-var _blocked := false
 
 
 func setup(simulation: Simulation) -> void:
 	_simulation = simulation
-	_simulation.command_rejected.connect(_on_rejected)
-	_blocked = false
 	leave()
 
 
@@ -34,10 +30,7 @@ func leave() -> void:
 func _process(_delta: float) -> void:
 	if not active:
 		return
-	var origin := _origin_under(get_global_mouse_position())
-	if origin != _origin:
-		_origin = origin
-		_blocked = false
+	_origin = _origin_under(get_global_mouse_position())
 	queue_redraw()
 
 
@@ -58,8 +51,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not button.pressed:
 			return
 		if button.button_index == MOUSE_BUTTON_LEFT:
-			_sent_origin = _origin_under(get_global_mouse_position())
-			_simulation.queue_command(Commands.Build.new(Buildings.TOWER, _sent_origin))
+			var origin := _origin_under(get_global_mouse_position())
+			_simulation.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 		elif button.button_index == MOUSE_BUTTON_RIGHT:
 			leave()
 		else:
@@ -88,15 +81,8 @@ func _draw() -> void:
 
 
 func _is_valid() -> bool:
-	if _blocked:
-		return false
 	var affordable := _simulation.run_state.can_afford(_simulation.settings.tower_cost)
 	return affordable and _simulation.buildings.can_place(Buildings.TOWER, _origin)
-
-
-func _on_rejected(reason: String) -> void:
-	if reason == "%s: %s" % [Commands.Build.label_for(Buildings.TOWER), Buildings.BLOCKED]:
-		_blocked = _sent_origin == _origin
 
 
 func _origin_under(point: Vector2) -> Vector2i:

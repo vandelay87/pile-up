@@ -54,7 +54,8 @@
 		"damage": 5,
 		"fire_rate": 3.5,
 		"range": 8,
-		"cost": 80
+		"cost": 80,
+		"hp": 60
 	},
 	"run": {
 		"base_hp": 200,

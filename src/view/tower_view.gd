@@ -6,17 +6,18 @@ const TINT := Color(0.62, 0.66, 0.75)
 var _simulation: Simulation
 var _parent: Node2D
 var _texture: Texture2D
-var _sprites: Array[Sprite2D] = []
+var _sprites: Dictionary[int, Sprite2D] = {}
 
 
 func setup(simulation: Simulation, parent: Node2D) -> void:
 	_parent = parent
 	_texture = load(Atlas.PATH)
-	for sprite in _sprites:
+	for sprite: Sprite2D in _sprites.values():
 		sprite.queue_free()
 	_sprites.clear()
 	_simulation = simulation
 	simulation.building_placed.connect(_add)
+	simulation.building_destroyed.connect(_remove)
 
 
 func _add(id: int) -> void:
@@ -33,4 +34,11 @@ func _add(id: int) -> void:
 	sprite.modulate = TINT
 	sprite.position = GridTransform.grid_to_world(building.centre)
 	_parent.add_child(sprite)
-	_sprites.append(sprite)
+	_sprites[id] = sprite
+
+
+func _remove(id: int) -> void:
+	var sprite: Sprite2D = _sprites.get(id)
+	if sprite != null:
+		sprite.queue_free()
+		_sprites.erase(id)

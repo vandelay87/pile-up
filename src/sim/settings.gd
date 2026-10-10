@@ -428,6 +428,15 @@ const SCHEMA := {
 			"unit": "gold",
 			"apply": Apply.LIVE,
 		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
 	},
 	"run":
 	{
@@ -607,6 +616,9 @@ var tower_range: float:
 var tower_cost: int:
 	get:
 		return value("towers", "cost")
+var tower_hp: float:
+	get:
+		return value("towers", "hp")
 var tracer_speed: float:
 	get:
 		return value("view", "tracer_speed")

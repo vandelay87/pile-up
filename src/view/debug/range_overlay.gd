@@ -10,6 +10,7 @@ var _shown := false
 func setup(simulation: Simulation) -> void:
 	_simulation = simulation
 	_simulation.building_placed.connect(func(_id: int) -> void: queue_redraw())
+	_simulation.building_destroyed.connect(func(_id: int) -> void: queue_redraw())
 	queue_redraw()
 
 

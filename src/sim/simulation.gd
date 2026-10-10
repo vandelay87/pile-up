@@ -11,6 +11,7 @@ signal enemies_left_changed(left: int)
 signal combo_changed(tier: int)
 signal payout(amount: int, tier: int)
 signal building_placed(id: int)
+signal building_destroyed(id: int)
 signal shots_fired(shots: Array[Buildings.Shot])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
@@ -83,9 +84,10 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	_run_seed = run_seed
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
-	routing = Routing.new(settings, map, occupancy, piles)
 	run_state = RunState.new(settings)
-	structures = Structures.new(map, piles, run_state)
+	buildings = Buildings.new(settings, map, occupancy, piles, run_state)
+	structures = Structures.new(map, occupancy, piles, buildings, run_state)
+	routing = Routing.new(settings, map, occupancy, piles, structures)
 	enemies = (
 		Enemies
 		. new(
@@ -100,7 +102,6 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
-	buildings = Buildings.new(settings, map, occupancy, piles, routing, enemies, run_state)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -235,6 +236,8 @@ func _emit_signals() -> void:
 	_placed = []
 	for id in placed:
 		building_placed.emit(id)
+	for id in buildings.take_destroyed():
+		building_destroyed.emit(id)
 	if not piles.changed.is_empty():
 		pile_changed.emit(piles.take_changes())
 	if not _shots.is_empty():
@@ -300,6 +303,7 @@ func _land_bodies_and_update_fields() -> void:
 	_observe(Step.LAND_BODIES_AND_UPDATE_FIELDS)
 	piles.land()
 	_changed_cells.append_array(piles.take_field_changes())
+	_changed_cells.append_array(buildings.take_field_changes())
 	if _decay_due:
 		_decay_due = false
 		_changed_cells.clear()
@@ -335,7 +339,7 @@ func _move_enemies() -> void:
 
 func _fire_towers() -> void:
 	_observe(Step.FIRE_TOWERS)
-	_shots = buildings.fire()
+	_shots = buildings.fire(enemies)
 
 
 func _remove_dead() -> void:

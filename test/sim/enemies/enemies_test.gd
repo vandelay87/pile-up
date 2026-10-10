@@ -9,22 +9,13 @@ func before_test() -> void:
 
 
 func _enemies(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -> Enemies:
-	var map := TestMaps.from_rows(rows, base)
-	var occupancy := Occupancy.new(map.width, map.height)
-	occupancy.occupy(towers, 0)
-	_piles = Piles.new(_settings, map, occupancy)
-	var routing := Routing.new(_settings, map, occupancy, _piles)
+	var systems := TestSystems.new(_settings, TestMaps.from_rows(rows, base))
+	for origin in towers:
+		assert_object(systems.build_tower(origin)).is_not_null()
+	_piles = systems.piles
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	return Enemies.new(
-		_settings,
-		map,
-		occupancy,
-		_piles,
-		routing,
-		Structures.new(map, _piles, RunState.new(_settings)),
-		rng
-	)
+	return systems.enemies(systems.routing(), rng)
 
 
 func _open_field() -> Enemies:
@@ -118,7 +109,7 @@ func test_an_enemy_inside_rock_is_pushed_out_through_the_nearest_side() -> void:
 
 
 func test_an_enemy_inside_a_tower_cell_is_pushed_out_through_the_nearest_side() -> void:
-	var towers: Array[Vector2i] = [Vector2i(4, 1)]
+	var towers: Array[Vector2i] = [Vector2i(4, 0)]
 	var enemies := _enemies(
 		["........", "........", "........", "........"], Rect2i(7, 3, 1, 1), towers
 	)

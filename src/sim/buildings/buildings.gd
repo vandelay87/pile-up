@@ -7,19 +7,20 @@ const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
 const OCCUPIED := "occupied"
 const NOT_ENOUGH_GOLD := "not enough gold"
-const BLOCKED := "blocked"
 
 var built: Array[Building] = []
+## How many building cells are in each cell's 3x3 neighbourhood (row-major).
+var nearby := PackedByteArray()
 
 var _settings: Settings
 var _map: MapData
 var _occupancy: Occupancy
 var _piles: Piles
-var _routing: Routing
-var _enemies: Enemies
 var _run_state: RunState
 var _by_id: Dictionary[int, Building] = {}
 var _next_id := 0
+var _field_changes: Array[Vector2i] = []
+var _destroyed: Array[int] = []
 
 
 class Building:
@@ -30,7 +31,6 @@ class Building:
 	var origin: Vector2i
 	var footprint: Array[Vector2i]
 	var centre: Vector2
-	## HP slot: buildings cannot be attacked yet, so nothing reads or writes it.
 	var hp := 0.0
 	var cooldown := 0
 	var target_id := Enemies.NONE
@@ -61,17 +61,14 @@ func _init(
 	run_map: MapData,
 	run_occupancy: Occupancy,
 	run_piles: Piles,
-	run_routing: Routing,
-	run_enemies: Enemies,
 	run_state: RunState,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_occupancy = run_occupancy
 	_piles = run_piles
-	_routing = run_routing
-	_enemies = run_enemies
 	_run_state = run_state
+	nearby.resize(_map.width * _map.height)
 
 
 static func is_kind(kind: StringName) -> bool:
@@ -115,19 +112,60 @@ func build(kind: StringName, origin: Vector2i) -> String:
 	var cost := _cost(kind)
 	if not _run_state.can_afford(cost):
 		return NOT_ENOUGH_GOLD
-	var cells := cells_of(kind, origin)
-	if _routing.would_block(cells, _enemies.positions.slice(0, _enemies.count)):
-		return BLOCKED
 	_run_state.spend(cost)
 	var placed := Building.new(_next_id, kind, origin)
 	_next_id += 1
-	_occupancy.occupy(cells, placed.id)
+	placed.hp = max_hp(kind)
+	_occupancy.occupy(placed.footprint, placed.id)
+	_count_nearby(placed.footprint, 1)
 	built.append(placed)
 	_by_id[placed.id] = placed
 	return ""
 
 
-func fire() -> Array[Shot]:
+func max_hp(kind: StringName) -> float:
+	match kind:
+		TOWER:
+			return _settings.tower_hp
+	return 0.0
+
+
+## Lowers a building's HP at once. A bucket change queues its cells for a field update; at 0
+## HP the building is destroyed: it leaves [member built], its cells are cleared and queued.
+func damage(id: int, amount: float) -> void:
+	var target := building(id)
+	if target == null:
+		return
+	var bucket := _bucket(target.hp)
+	target.hp -= amount
+	if target.hp <= 0.0:
+		target.hp = 0.0
+		_destroy(target)
+	elif _bucket(target.hp) != bucket:
+		_field_changes.append_array(target.footprint)
+
+
+## A building's HP rounded up to the routing bucket, as the fields cost it.
+func bucketed_hp(id: int) -> float:
+	var target := building(id)
+	if target == null:
+		return 0.0
+	return _bucket(target.hp) * _settings.wall_hp_bucket
+
+
+func take_field_changes() -> Array[Vector2i]:
+	var taken := _field_changes
+	_field_changes = []
+	return taken
+
+
+func take_destroyed() -> Array[int]:
+	var taken := _destroyed
+	_destroyed = []
+	return taken
+
+
+func fire(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for tower in built:
 		if tower.kind != TOWER:
@@ -136,14 +174,34 @@ func fire() -> Array[Shot]:
 			tower.cooldown -= 1
 			if tower.cooldown > 0:
 				continue
-		var target := _enemies.nearest_to_base_in_range(tower.centre, _settings.tower_range)
+		var target := enemies.nearest_to_base_in_range(tower.centre, _settings.tower_range)
 		if target == Enemies.NONE:
 			continue
-		_enemies.damage(target, _settings.tower_damage)
+		enemies.damage(target, _settings.tower_damage)
 		tower.target_id = target
 		tower.cooldown = _settings.tower_cooldown_ticks
-		shots.append(Shot.new(tower.id, target, _enemies.positions[_enemies.index_of(target)]))
+		shots.append(Shot.new(tower.id, target, enemies.positions[enemies.index_of(target)]))
 	return shots
+
+
+func _destroy(target: Building) -> void:
+	built.erase(target)
+	_by_id.erase(target.id)
+	_occupancy.vacate(target.footprint)
+	_count_nearby(target.footprint, -1)
+	_field_changes.append_array(target.footprint)
+	_destroyed.append(target.id)
+
+
+func _count_nearby(cells: Array[Vector2i], change: int) -> void:
+	for cell in cells:
+		for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
+			for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
+				nearby[y * _map.width + x] += change
+
+
+func _bucket(hp: float) -> int:
+	return ceili(hp / _settings.wall_hp_bucket)
 
 
 func _cost(kind: StringName) -> int:
