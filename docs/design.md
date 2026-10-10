@@ -34,6 +34,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **Sensible**: piles cost extra in proportion to their slow, and walls and buildings cost their time to break.
   - **Direct**: piles are cheap and walls and buildings are worth breaking.
 - Enemies follow the sensible field. When one meets a pile or structure that the sensible field routes around, it rolls once to switch to the direct field: about 5% for piles, 3% for walls and buildings. The result is locked in until the enemy is past that obstacle, then it returns to the sensible field.
+- Enemies may change routes during a wave, even if that takes them the long way round. In the wave tail (once Enemies left falls to a count that grows with the wave number), an enemy that the sensible field would turn back towards another route switches to the direct field instead, locked in until it is past the obstacle, as with a roll. Changing route while still heading forward stays allowed.
 
 ## Body piles
 

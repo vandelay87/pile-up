@@ -89,6 +89,10 @@ _Avoid_: Intermission
 **Enemies left**:
 The enemies in the current wave not yet killed, including those not yet spawned.
 
+**Wave tail**:
+The end of a wave, once Enemies left falls to a set count, which grows with the wave number.
+_Avoid_: Endgame, stragglers
+
 ### Economy
 
 **Bounty**:
