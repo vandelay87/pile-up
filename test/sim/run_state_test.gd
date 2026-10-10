@@ -19,7 +19,7 @@ func test_a_run_starts_with_200_base_hp_and_200_gold_at_wave_0() -> void:
 func test_a_kill_adds_the_bounty() -> void:
 	_settings.change("enemies", "bounty", 3)
 
-	_run.record_kills(2)
+	_run.record_kills(2, 0)
 
 	assert_int(_run.gold).is_equal(206)
 

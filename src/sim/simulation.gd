@@ -6,6 +6,10 @@ signal pile_changed(cells: Array[Vector2i])
 signal fields_changed
 signal gold_changed(gold: int)
 signal base_hp_changed(hp: float)
+signal kills_changed(kills: int)
+signal enemies_left_changed(left: int)
+signal combo_changed(tier: int)
+signal payout(amount: int, tier: int)
 signal building_placed(id: int)
 signal building_destroyed(id: int)
 signal shots_fired(shots: Array[Buildings.Shot])
@@ -44,6 +48,12 @@ var tick_count := 0
 var paused := false
 var speed := 1
 var tick_cost := TickCost.new()
+var combo_tier: int:
+	get:
+		return run_state.combo_tier
+var enemies_left: int:
+	get:
+		return waves.enemies_left
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
@@ -59,6 +69,11 @@ var _wave_started := false
 var _restart_requested := false
 var _reported_gold: int
 var _reported_base_hp: float
+var _reported_kills := 0
+var _reported_combo_tier := 1
+var _multiplied_payout := false
+var _reported_enemies_left: int
+var _wave_ended := false
 var _reported_phase := Waves.Phase.BUILD
 var _reported_game_over := false
 
@@ -89,6 +104,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
+	_reported_enemies_left = waves.enemies_left
 
 
 func queue_command(command: Commands.Command) -> void:
@@ -206,6 +222,16 @@ func _emit_signals() -> void:
 	if run_state.base_hp != _reported_base_hp:
 		_reported_base_hp = run_state.base_hp
 		base_hp_changed.emit(_reported_base_hp)
+	if run_state.kills != _reported_kills:
+		_reported_kills = run_state.kills
+		kills_changed.emit(_reported_kills)
+	_emit_enemies_left()
+	if run_state.combo_tier != _reported_combo_tier:
+		_reported_combo_tier = run_state.combo_tier
+		combo_changed.emit(_reported_combo_tier)
+	if _multiplied_payout:
+		_multiplied_payout = false
+		payout.emit(run_state.payout, run_state.payout_tier)
 	var placed := _placed
 	_placed = []
 	for id in placed:
@@ -237,6 +263,18 @@ func _emit_signals() -> void:
 	if _restart_requested:
 		_restart_requested = false
 		restart_requested.emit()
+
+
+# Enemies left reaches 0 as a wave ends, then shows the next wave's size: both are reported.
+func _emit_enemies_left() -> void:
+	if _wave_ended:
+		_wave_ended = false
+		if _reported_enemies_left != 0:
+			_reported_enemies_left = 0
+			enemies_left_changed.emit(0)
+	if waves.enemies_left != _reported_enemies_left:
+		_reported_enemies_left = waves.enemies_left
+		enemies_left_changed.emit(_reported_enemies_left)
 
 
 func _drain_commands() -> void:
@@ -308,12 +346,15 @@ func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	var deaths := enemies.remove_dead()
 	piles.queue_bodies(deaths)
-	run_state.record_kills(deaths.size())
+	run_state.record_kills(deaths.size(), tick_count)
+	_multiplied_payout = run_state.payout_tier > 1
+	waves.record_kills(deaths.size())
 
 
 func _check_wave_end() -> void:
 	_observe(Step.CHECK_WAVE_END)
 	if not run_state.is_game_over and waves.check_end():
+		_wave_ended = true
 		decay_piles()
 
 
