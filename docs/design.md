@@ -37,8 +37,9 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 ## Body piles
 
-- A killed enemy's body joins the tallest pile within 1 cell; otherwise it starts a new pile on its cell.
-- A body that would land on a tower cell moves to the nearest free cell.
+- A killed enemy's body lands on the cell it died on, adding a level to the pile there or starting a new one.
+- If that cell cannot take a body (a wall, rock, the base or a building's cell), the body goes to the nearest cell that can, measured from where the enemy died, so it stays on the side the enemy was on. No body is ever lost.
+- A body appears on its cell at once, with no landing animation in v2.
 - Levels:
 
   | Level | Effect |
@@ -57,7 +58,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Walls, buildings (towers and pylons) and the base are all structures, and one rule covers them all.
 - An enemy attacks a structure only when it is in the way: it is jammed against it, or its route crosses it. Enemies passing a structure that is not in their way ignore it.
 - Every attacker deals 1 damage per second to any structure, with no limit on attackers beyond space around it.
-- Bodies of enemies killed at a structure spill into the nearest free cell, so defending a structure builds a pile in front of it.
+- Enemies killed at a structure die in front of it, so defending a structure builds a pile in front of it.
 - A destroyed tower leaves nothing behind: its cells are clear and its gold is lost.
 
 ## Towers and economy
@@ -107,6 +108,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 - **Levels:** three levels, each with its own look and possibly a twist. A level is won by reaching a set wave, which unlocks the next.
 - **Level 1** is a narrow map that funnels the swarm a couple of ways, so piles and walls form readily.
+- **Map variety:** maps range from narrow to more open. Piles and walls come from the sheer number of enemies in a wave, not from bodies being drawn together.
 - **The prototypes stay endless,** with no wave goal.
 - **Seeds and procedurally generated levels** are a possible future addition, out of scope for the prototypes. Maps are already stored as validated data, so a generator could produce them.
 
@@ -118,3 +120,4 @@ Not built in the prototypes, but decisions should leave room for it.
 - Meta-progression between runs.
 - A generator that powers an area cut off from the base's power grid.
 - Larger piles producing a single brute minion.
+- A landing animation for bodies, with the final art.
