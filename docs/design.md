@@ -61,10 +61,21 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Enemies killed at a structure die in front of it, so defending a structure builds a pile in front of it.
 - A destroyed tower leaves nothing behind: its cells are clear and its gold is lost.
 
+## Power grid
+
+- The base and every building power a square of cells around their footprint, measured from its edge: the base 8 cells, a tower 2, a pylon 6. That square is their **power area**. It ignores piles, walls and rock.
+- A building is powered when any of its cells lies in the power area of the base or of another powered building. Power spreads through these overlaps. The base is always powered, and an unpowered building powers nothing.
+- The power grid is every cell in a powered area. At the start of a run the base's area alone (20×20 cells) is room for the first three towers.
+- A new building's whole footprint must be on the power grid, so the grid grows outwards from its edge.
+- Losing a link (a destroyed pylon or tower) can cut off a whole branch. An unpowered tower stops firing, but it is still a structure: it keeps its HP, blocks routes, can be attacked and holds its cells. Power returns at once when a new building links it back up.
+- **Pylon**: 1×1, 20 gold, 20 HP, does nothing but power cells. Like a tower, a destroyed pylon leaves nothing behind.
+- While a building is being placed, powered cells are tinted. Unpowered buildings are always drawn greyed out with an icon.
+- No selling or demolishing in v2, so a stranded building stays until it is destroyed or reconnected.
+
 ## Towers and economy
 
 - One tower type: single-target, aimed at the enemy closest to the base. 3 damage, 2 shots/s, range 8 cells, 60 HP, costs 50 gold.
-- Towers can only be built on clear cells. Building is allowed during waves.
+- Towers can only be built on clear cells of the power grid. Building is allowed during waves.
 - A tower may cut off every path to the base: enemies then break through the cheapest structure.
 - Starting gold: 150.
 
@@ -119,5 +130,6 @@ Not built in the prototypes, but decisions should leave room for it.
 - Power-ups (v4), including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
 - A generator that powers an area cut off from the base's power grid.
+- Selling or demolishing buildings.
 - Larger piles producing a single brute minion.
 - A landing animation for bodies, with the final art.
