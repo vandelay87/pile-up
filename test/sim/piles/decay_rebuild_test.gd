@@ -92,7 +92,7 @@ func test_a_tower_built_during_the_rebuild_restarts_it_and_is_in_the_swapped_in_
 	_play_wave()
 	_sim.tick()
 
-	_sim.queue_command(Commands.BuildTower.new(Vector2i(5, 5)))
+	_sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(5, 5)))
 	for tick in Simulation.DECAY_REBUILD_TICKS:
 		_sim.tick()
 	assert_bool(_sim.routing.is_rebuilding()).is_true()

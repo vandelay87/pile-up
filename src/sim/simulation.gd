@@ -6,8 +6,8 @@ signal pile_changed(cells: Array[Vector2i])
 signal fields_changed
 signal gold_changed(gold: int)
 signal lives_changed(lives: int)
-signal tower_placed(origin: Vector2i)
-signal shots_fired(shots: Array[Towers.Shot])
+signal building_placed(id: int)
+signal shots_fired(shots: Array[Buildings.Shot])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
 signal game_over
@@ -35,7 +35,7 @@ var piles: Piles
 var routing: Routing
 var enemies: Enemies
 var waves: Waves
-var towers: Towers
+var buildings: Buildings
 var run_state: RunState
 var step_observer := Callable()
 var tick_count := 0
@@ -49,8 +49,8 @@ var _fields_changed := false
 var _changed_cells: Array[Vector2i] = []
 var _decay_due := false
 var _rebuild_swap_tick := 0
-var _placed: Array[Vector2i] = []
-var _shots: Array[Towers.Shot] = []
+var _placed: Array[int] = []
+var _shots: Array[Buildings.Shot] = []
 var _run_seed: int
 var _pending_steps := 0
 var _wave_started := false
@@ -73,7 +73,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
 	run_state = RunState.new(settings)
-	towers = Towers.new(settings, map, occupancy, piles, routing, enemies, run_state)
+	buildings = Buildings.new(settings, map, occupancy, piles, routing, enemies, run_state)
 	_reported_gold = run_state.gold
 	_reported_lives = run_state.lives
 
@@ -115,13 +115,14 @@ func is_decay_rebuild_in_flight() -> bool:
 	return _decay_due or routing.is_rebuilding()
 
 
-func build_tower(origin: Vector2i) -> void:
-	var error := towers.build(origin)
+func build(kind: StringName, origin: Vector2i) -> void:
+	var error := buildings.build(kind, origin)
 	if not error.is_empty():
-		reject_command("%s: %s" % [Commands.BuildTower.LABEL, error])
+		reject_command("%s: %s" % [Commands.Build.label_for(kind), error])
 		return
-	_placed.append(origin)
-	_changed_cells.append_array(Towers.footprint(origin))
+	var placed := buildings.built[buildings.built.size() - 1]
+	_placed.append(placed.id)
+	_changed_cells.append_array(placed.footprint)
 
 
 func add_gold(amount: int) -> void:
@@ -194,8 +195,8 @@ func _emit_signals() -> void:
 		lives_changed.emit(_reported_lives)
 	var placed := _placed
 	_placed = []
-	for origin in placed:
-		tower_placed.emit(origin)
+	for id in placed:
+		building_placed.emit(id)
 	if not piles.changed.is_empty():
 		pile_changed.emit(piles.take_changes())
 	if not _shots.is_empty():
@@ -284,7 +285,7 @@ func _move_enemies() -> void:
 
 func _fire_towers() -> void:
 	_observe(Step.FIRE_TOWERS)
-	_shots = towers.fire()
+	_shots = buildings.fire()
 
 
 func _remove_dead_and_leaked() -> void:
