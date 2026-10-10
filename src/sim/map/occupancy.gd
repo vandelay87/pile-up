@@ -1,23 +1,31 @@
 class_name Occupancy
 extends RefCounted
 
-var occupied: PackedByteArray:
+const EMPTY := -1
+
+## The building id on each cell (row-major), or [constant EMPTY].
+var building_ids: PackedInt32Array:
 	get:
-		return _occupied
+		return _building_ids
 
 var _width: int
-var _occupied := PackedByteArray()
+var _building_ids := PackedInt32Array()
 
 
 func _init(width: int, height: int) -> void:
 	_width = width
-	_occupied.resize(width * height)
+	_building_ids.resize(width * height)
+	_building_ids.fill(EMPTY)
 
 
 func is_occupied(cell: Vector2i) -> bool:
-	return _occupied[cell.y * _width + cell.x] == 1
+	return building_at(cell) != EMPTY
 
 
-func occupy(cells: Array[Vector2i]) -> void:
+func building_at(cell: Vector2i) -> int:
+	return _building_ids[cell.y * _width + cell.x]
+
+
+func occupy(cells: Array[Vector2i], building_id: int) -> void:
 	for cell in cells:
-		_occupied[cell.y * _width + cell.x] = 1
+		_building_ids[cell.y * _width + cell.x] = building_id

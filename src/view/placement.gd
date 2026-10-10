@@ -59,7 +59,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if button.button_index == MOUSE_BUTTON_LEFT:
 			_sent_origin = _origin_under(get_global_mouse_position())
-			_simulation.queue_command(Commands.BuildTower.new(_sent_origin))
+			_simulation.queue_command(Commands.Build.new(Buildings.TOWER, _sent_origin))
 		elif button.button_index == MOUSE_BUTTON_RIGHT:
 			leave()
 		else:
@@ -72,7 +72,7 @@ func _draw() -> void:
 		return
 	var colour := VALID if _is_valid() else INVALID
 	var corner := Vector2(_origin)
-	var size := Vector2(Towers.FOOTPRINT)
+	var size := Vector2(Buildings.footprint_size(Buildings.TOWER))
 	var footprint := PackedVector2Array(
 		[corner, corner + Vector2(size.x, 0), corner + size, corner + Vector2(0, size.y)]
 	)
@@ -81,7 +81,9 @@ func _draw() -> void:
 	outline.append(outline[0])
 	draw_polyline(outline, colour, 2.0)
 
-	var circle := GridTransform.circle(Towers.centre_of(_origin), _simulation.settings.tower_range)
+	var circle := GridTransform.circle(
+		Buildings.centre_of(Buildings.TOWER, _origin), _simulation.settings.tower_range
+	)
 	draw_polyline(circle, Color(colour, RANGE_ALPHA), 1.5)
 
 
@@ -89,13 +91,13 @@ func _is_valid() -> bool:
 	if _blocked:
 		return false
 	var affordable := _simulation.run_state.can_afford(_simulation.settings.tower_cost)
-	return affordable and _simulation.towers.can_place(_origin)
+	return affordable and _simulation.buildings.can_place(Buildings.TOWER, _origin)
 
 
 func _on_rejected(reason: String) -> void:
-	if reason == "%s: %s" % [Commands.BuildTower.LABEL, Towers.BLOCKED]:
+	if reason == "%s: %s" % [Commands.Build.label_for(Buildings.TOWER), Buildings.BLOCKED]:
 		_blocked = _sent_origin == _origin
 
 
 func _origin_under(point: Vector2) -> Vector2i:
-	return Towers.origin_at(GridTransform.world_to_grid(point))
+	return Buildings.origin_at(Buildings.TOWER, GridTransform.world_to_grid(point))

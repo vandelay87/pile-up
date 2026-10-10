@@ -99,7 +99,7 @@ func test_a_death_on_a_wall_spills_to_the_enemys_side() -> void:
 
 
 func test_a_death_at_a_tower_spills_in_front_of_it() -> void:
-	var piles := _piles(_open_rows(), Towers.footprint(Vector2i(2, 2)))
+	var piles := _piles(_open_rows(), Buildings.cells_of(Buildings.TOWER, Vector2i(2, 2)))
 
 	_land(piles, [Vector2(2.5, 3.9), Vector2(3.9, 2.5)])
 
@@ -229,7 +229,7 @@ func _open_rows() -> Array[String]:
 func _piles(rows: Array[String], towers: Array[Vector2i] = []) -> Piles:
 	var map := TestMaps.from_rows(rows, Rect2i(6, 6, 2, 2))
 	var occupancy := Occupancy.new(map.width, map.height)
-	occupancy.occupy(towers)
+	occupancy.occupy(towers, 0)
 	return Piles.new(_settings(), map, occupancy)
 
 

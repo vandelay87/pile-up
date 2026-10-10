@@ -12,7 +12,7 @@ func before_test() -> void:
 func test_a_placement_charges_the_cost_and_occupies_all_four_cells() -> void:
 	var sim := _sim(_open_rows())
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 5)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 5)))
 	sim.tick()
 
 	assert_int(sim.run_state.gold).is_equal(120)
@@ -27,12 +27,12 @@ func test_a_placement_overlapping_rock_base_or_a_tower_is_rejected_as_occupied()
 	var rows := _open_rows()
 	rows[1] = ".#........"
 	var sim := _sim(rows)
-	sim.queue_command(Commands.BuildTower.new(Vector2i(7, 1)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(7, 1)))
 	sim.tick()
 	_events.clear()
 
 	for origin: Vector2i in [Vector2i(0, 0), Vector2i(3, 3), Vector2i(6, 1), Vector2i(8, 0)]:
-		sim.queue_command(Commands.BuildTower.new(origin))
+		sim.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 	sim.tick()
 
 	var occupied := "build tower: occupied"
@@ -46,7 +46,7 @@ func test_a_placement_overlapping_a_pile_is_rejected_as_occupied() -> void:
 	sim.piles.queue_bodies(PackedVector2Array([Vector2(1.5, 6.5)]))
 	sim.tick()
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 5)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 5)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: occupied"])
@@ -56,8 +56,8 @@ func test_a_placement_overlapping_a_pile_is_rejected_as_occupied() -> void:
 func test_a_placement_off_the_map_is_rejected() -> void:
 	var sim := _sim(_open_rows())
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(9, 3)))
-	sim.queue_command(Commands.BuildTower.new(Vector2i(-1, 3)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(9, 3)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(-1, 3)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: off the map", "build tower: off the map"])
@@ -69,7 +69,7 @@ func test_a_placement_without_enough_gold_is_rejected() -> void:
 	var sim := _sim(_open_rows())
 
 	for origin: Vector2i in [Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)]:
-		sim.queue_command(Commands.BuildTower.new(origin))
+		sim.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(
@@ -83,7 +83,7 @@ func test_a_placement_that_cuts_a_spawn_edge_off_from_the_base_is_rejected() -> 
 	rows[2] = "..########"
 	var sim := _sim(rows)
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 1)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 1)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: blocked"])
@@ -97,7 +97,7 @@ func test_a_placement_that_cuts_a_live_enemy_off_from_the_base_is_rejected() -> 
 	var sim := _sim(rows)
 	sim.enemies.spawn(Vector2(5.5, 8.5), _settings.enemy_hp)
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(2, 6)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(2, 6)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: blocked"])
@@ -108,7 +108,7 @@ func test_the_same_placement_is_accepted_with_no_enemy_behind_it() -> void:
 	rows[7] = "##..######"
 	var sim := _sim(rows)
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(2, 6)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(2, 6)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["gold 120", "placed (2, 6)"])
@@ -117,7 +117,7 @@ func test_the_same_placement_is_accepted_with_no_enemy_behind_it() -> void:
 func test_a_placement_covering_a_spawn_cell_is_rejected() -> void:
 	var sim := _sim(_open_rows())
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 0)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 0)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: blocked"])
@@ -127,7 +127,7 @@ func test_a_placement_on_top_of_a_live_enemy_is_rejected() -> void:
 	var sim := _sim(_open_rows())
 	sim.enemies.spawn(Vector2(1.5, 6.5), _settings.enemy_hp)
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 6)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 6)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: blocked"])
@@ -138,7 +138,7 @@ func test_a_route_left_only_through_a_cut_corner_counts_as_blocked() -> void:
 	rows[2] = "#.########"
 	var sim := _sim(rows)
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 3)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 3)))
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: blocked"])
@@ -153,7 +153,7 @@ func test_both_fields_route_around_a_new_tower_on_the_tick_it_is_built() -> void
 			seen.append(routing.value(Routing.Route.DIRECT, Vector2i(1, 6)))
 	sim.fields_changed.connect(func() -> void: _events.append("fields changed"))
 
-	sim.queue_command(Commands.BuildTower.new(Vector2i(0, 5)))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 5)))
 	sim.tick()
 
 	assert_array(seen).contains_exactly([Routing.UNREACHABLE])
@@ -172,7 +172,9 @@ func _open_rows() -> Array[String]:
 func _sim(rows: Array[String], base := Rect2i(4, 4, 2, 2)) -> Simulation:
 	var edges: Array[String] = ["N"]
 	var sim := Simulation.new(_settings, TestMaps.from_rows(rows, base, edges), 1)
-	sim.tower_placed.connect(func(cell: Vector2i) -> void: _events.append("placed %s" % cell))
+	sim.building_placed.connect(
+		func(id: int) -> void: _events.append("placed %s" % sim.buildings.building(id).origin)
+	)
 	sim.gold_changed.connect(func(gold: int) -> void: _events.append("gold %d" % gold))
 	sim.command_rejected.connect(func(reason: String) -> void: _events.append(reason))
 	return sim
