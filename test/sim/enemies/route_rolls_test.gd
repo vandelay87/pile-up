@@ -15,7 +15,7 @@ var _routing: Routing
 
 
 func before_test() -> void:
-	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+	_settings = TestSettings.without_swarm_spread()
 	_settings.change("enemies", "heading_offset", 0.0)
 
 

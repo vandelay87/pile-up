@@ -5,7 +5,7 @@ var _piles: Piles
 
 
 func before_test() -> void:
-	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+	_settings = TestSettings.without_swarm_spread()
 
 
 func _enemies(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -> Enemies:

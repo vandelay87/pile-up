@@ -125,9 +125,10 @@ func test_pile_factor_follows_the_slow_at_pile_weight_1() -> void:
 func test_wall_factor_is_its_break_time_in_cells_at_wall_weight_1() -> void:
 	var routing := _routing(["..."], Rect2i(0, 0, 1, 1))
 
-	assert_float(routing.wall_factor(SENSIBLE, 30.0)).is_equal_approx(46.0, 1e-6)
-	assert_float(routing.wall_factor(SENSIBLE, 10.0)).is_equal_approx(16.0, 1e-6)
-	assert_float(routing.wall_factor(DIRECT, 30.0)).is_equal_approx(5.5, 1e-6)
+	# At 2 cells/s against 2 HP/s, a wall takes 1 cell of walking per HP to break.
+	assert_float(routing.wall_factor(SENSIBLE, 30.0)).is_equal_approx(31.0, 1e-6)
+	assert_float(routing.wall_factor(SENSIBLE, 10.0)).is_equal_approx(11.0, 1e-6)
+	assert_float(routing.wall_factor(DIRECT, 30.0)).is_equal_approx(4.0, 1e-6)
 
 
 func test_cost_factors_follow_route_weight_settings() -> void:
@@ -139,11 +140,11 @@ func test_cost_factors_follow_route_weight_settings() -> void:
 	var routing := Routing.new(settings, map, occupancy, Piles.new(settings, map, occupancy))
 
 	assert_float(routing.pile_factor(SENSIBLE, 4)).is_equal_approx(4.0, 1e-6)
-	assert_float(routing.wall_factor(DIRECT, 30.0)).is_equal_approx(23.5, 1e-6)
+	assert_float(routing.wall_factor(DIRECT, 30.0)).is_equal_approx(16.0, 1e-6)
 
 
 func test_a_wall_costs_its_wall_factor_at_its_bucketed_hp_to_enter() -> void:
-	var expected := {30.0: Vector2(48.0, 7.5), 25.0: Vector2(48.0, 7.5), 20.0: Vector2(33.0, 6.0)}
+	var expected := {30.0: Vector2(33.0, 6.0), 25.0: Vector2(33.0, 6.0), 20.0: Vector2(23.0, 5.0)}
 	for hp: float in expected:
 		var map := TestMaps.from_rows(["....."], Rect2i(0, 0, 1, 1))
 		var occupancy := Occupancy.new(map.width, map.height)

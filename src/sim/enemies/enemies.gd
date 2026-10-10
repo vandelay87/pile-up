@@ -17,6 +17,8 @@ var heading_offsets := PackedFloat32Array()
 var wall_targets := PackedInt32Array()
 var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
+var pace_rolls := PackedFloat32Array()
+var wander_phases := PackedFloat32Array()
 
 var _settings: Settings
 var _map: MapData
@@ -24,6 +26,7 @@ var _occupancy: Occupancy
 var _piles: Piles
 var _routing: Routing
 var _rng: RandomNumberGenerator
+var _swarm_rng: RandomNumberGenerator
 var _next_id := 0
 var _index_by_id := {}
 var _bucket_starts := PackedInt32Array()
@@ -31,6 +34,7 @@ var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
+var _ticks := 0
 
 
 class Removal:
@@ -47,6 +51,7 @@ func _init(
 	run_piles: Piles,
 	run_routing: Routing,
 	rng: RandomNumberGenerator,
+	swarm_rng: RandomNumberGenerator = null,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
@@ -54,6 +59,12 @@ func _init(
 	_piles = run_piles
 	_routing = run_routing
 	_rng = rng
+	# The swarm spread rolls draw from their own stream so the heading offsets and route
+	# rolls stay as they were without it.
+	_swarm_rng = swarm_rng
+	if _swarm_rng == null:
+		_swarm_rng = RandomNumberGenerator.new()
+		_swarm_rng.seed = hash([rng.seed, "swarm"])
 	_bucket_starts.resize(_map.width * _map.height + 1)
 
 
@@ -70,11 +81,18 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	wall_targets[count] = NONE
 	routes[count] = Routing.Route.SENSIBLE
 	last_rolled_cells[count] = NONE
+	pace_rolls[count] = _swarm_rng.randf_range(-1.0, 1.0)
+	wander_phases[count] = _swarm_rng.randf_range(0.0, TAU)
 	_best_values[count] = INF
 	_stuck_ticks[count] = 0
 	_index_by_id[id] = count
 	count += 1
 	return id
+
+
+# The enemy's speed multiplier: its roll at spawn scaled by the current speed variety.
+func pace(index: int) -> float:
+	return 1.0 + pace_rolls[index] * _settings.speed_variety
 
 
 func index_of(id: int) -> int:
@@ -140,6 +158,13 @@ func move() -> void:
 	var jam_ticks := _settings.jam_ticks
 	var sensible_parents := _routing.parents(Routing.Route.SENSIBLE)
 	var direct_parents := _routing.parents(Routing.Route.DIRECT)
+	var variety := _settings.speed_variety
+	var wander := _settings.wander_radians
+	var wander_angle := TAU * _ticks / _settings.wander_period_ticks
+	var space_radius := _settings.personal_space_radius
+	var space_push := _settings.personal_space_push
+	var spreads := space_radius > 2.0 * radius and space_push > 0.0
+	_ticks += 1
 	for i in count:
 		wall_targets[i] = _wall_target(i, reach, jam_ticks)
 	_moved.resize(count)
@@ -149,8 +174,14 @@ func move() -> void:
 		if wall_targets[i] != NONE:
 			_moved[i] = pos + separation
 			continue
-		var heading := _routing.sample_direction(routes[i], pos).rotated(heading_offsets[i])
-		_moved[i] = pos + heading * steps[levels[_cell_index(pos)]] + separation
+		if spreads:
+			separation += _personal_space(i, space_radius, space_push).limit_length(step)
+		var turn := heading_offsets[i]
+		if wander > 0.0:
+			turn += wander * sin(wander_phases[i] + wander_angle)
+		var heading := _routing.sample_direction(routes[i], pos).rotated(turn)
+		var pace_step := steps[levels[_cell_index(pos)]] * (1.0 + pace_rolls[i] * variety)
+		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:
@@ -297,6 +328,31 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 	return total
 
 
+# A soft push that keeps neighbours a personal-space radius apart, wider than the
+# collision spacing, so a column fans out across a corridor rather than single-filing.
+func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
+	var reach := ceili(space_radius)
+	var radius_squared := space_radius * space_radius
+	var width := _map.width
+	var pos := positions[i]
+	var cell := Vector2i(pos.floor())
+	var total := Vector2.ZERO
+	for y in range(maxi(cell.y - reach, 0), mini(cell.y + reach + 1, _map.height)):
+		for x in range(maxi(cell.x - reach, 0), mini(cell.x + reach + 1, width)):
+			var bucket := y * width + x
+			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
+				var j := _bucket_enemies[slot]
+				if j == i or wall_targets[j] != NONE:
+					continue
+				var away := pos - positions[j]
+				if away.length_squared() >= radius_squared:
+					continue
+				var distance := away.length()
+				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
+				total += direction * (1.0 - distance / space_radius) * space_push
+	return total
+
+
 func _resolve_collision(pos: Vector2, radius: float) -> Vector2:
 	var margin := Vector2(radius, radius)
 	pos = pos.clamp(margin, Vector2(_map.width, _map.height) - margin)
@@ -388,6 +444,8 @@ func _swap_remove(index: int) -> void:
 	wall_targets[index] = wall_targets[count]
 	routes[index] = routes[count]
 	last_rolled_cells[index] = last_rolled_cells[count]
+	pace_rolls[index] = pace_rolls[count]
+	wander_phases[index] = wander_phases[count]
 	_best_values[index] = _best_values[count]
 	_stuck_ticks[index] = _stuck_ticks[count]
 	_index_by_id[ids[index]] = index
@@ -403,5 +461,7 @@ func _grow() -> void:
 	wall_targets.resize(capacity)
 	routes.resize(capacity)
 	last_rolled_cells.resize(capacity)
+	pace_rolls.resize(capacity)
+	wander_phases.resize(capacity)
 	_best_values.resize(capacity)
 	_stuck_ticks.resize(capacity)

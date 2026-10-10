@@ -98,7 +98,7 @@ func test_a_body_on_a_base_cell_moves_to_the_nearest_valid_cell() -> void:
 	assert_int(piles.level(Vector2i(6, 6))).is_equal(0)
 
 
-func test_the_fifth_body_makes_a_30_hp_wall() -> void:
+func test_the_fifth_body_makes_a_15_hp_wall() -> void:
 	var piles := _piles(_open_rows())
 
 	_land(piles, [Vector2(2.5, 2.5), Vector2(2.5, 2.5), Vector2(2.5, 2.5), Vector2(2.5, 2.5)])
@@ -106,7 +106,7 @@ func test_the_fifth_body_makes_a_30_hp_wall() -> void:
 	_land(piles, [Vector2(2.5, 2.5)])
 
 	assert_int(piles.level(Vector2i(2, 2))).is_equal(Piles.WALL_LEVEL)
-	assert_float(piles.wall_hp(Vector2i(2, 2))).is_equal(30.0)
+	assert_float(piles.wall_hp(Vector2i(2, 2))).is_equal(15.0)
 
 
 func test_a_body_dying_beside_a_wall_starts_a_pile_on_its_own_cell() -> void:

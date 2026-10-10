@@ -11,7 +11,7 @@ func before_test() -> void:
 
 func test_a_run_starts_with_the_starting_lives_and_gold_at_wave_0() -> void:
 	assert_int(_run.lives).is_equal(20)
-	assert_int(_run.gold).is_equal(150)
+	assert_int(_run.gold).is_equal(200)
 	assert_int(_run.wave).is_equal(0)
 	assert_bool(_run.is_game_over).is_false()
 
@@ -21,7 +21,7 @@ func test_a_kill_adds_the_bounty() -> void:
 
 	_run.record_removals(2, 0)
 
-	assert_int(_run.gold).is_equal(156)
+	assert_int(_run.gold).is_equal(206)
 
 
 func test_a_leak_costs_1_life() -> void:
@@ -39,12 +39,12 @@ func test_the_run_is_over_at_0_lives_and_lives_never_go_below_0() -> void:
 
 
 func test_can_afford_compares_the_cost_with_gold() -> void:
-	assert_bool(_run.can_afford(150)).is_true()
-	assert_bool(_run.can_afford(151)).is_false()
+	assert_bool(_run.can_afford(200)).is_true()
+	assert_bool(_run.can_afford(201)).is_false()
 
 	_run.add_gold(1)
 
-	assert_bool(_run.can_afford(151)).is_true()
+	assert_bool(_run.can_afford(201)).is_true()
 
 
 func test_a_kill_in_a_tick_adds_the_bounty_and_reports_the_gold() -> void:
@@ -57,8 +57,8 @@ func test_a_kill_in_a_tick_adds_the_bounty_and_reports_the_gold() -> void:
 	sim.enemies.damage(sim.enemies.ids[0], 100.0)
 	sim.tick()
 
-	assert_int(sim.run_state.gold).is_equal(151)
-	assert_array(reported).contains_exactly([151])
+	assert_int(sim.run_state.gold).is_equal(201)
+	assert_array(reported).contains_exactly([201])
 
 
 func test_a_leak_in_a_tick_costs_a_life_and_reports_the_lives() -> void:

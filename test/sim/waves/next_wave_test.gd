@@ -37,7 +37,7 @@ func test_next_wave_starts_the_next_wave_and_announces_its_edges() -> void:
 
 	assert_int(_sim.run_state.wave).is_equal(1)
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.WAVE)
-	assert_int(_sim.enemies.count).is_equal(1)
+	assert_int(_sim.enemies.count).is_equal(16)
 	assert_array(_events).contains_exactly(["phase WAVE", "wave %s" % ",".join(_sim.waves.edges)])
 
 
@@ -98,7 +98,7 @@ func test_add_gold_adds_to_the_run_gold() -> void:
 
 	_sim.tick()
 
-	assert_int(_sim.run_state.gold).is_equal(250)
+	assert_int(_sim.run_state.gold).is_equal(300)
 
 
 func _run_until_build_phase() -> void:

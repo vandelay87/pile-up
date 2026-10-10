@@ -34,8 +34,8 @@ func test_wave_size_and_hp_follow_the_growth_formulas() -> void:
 	var waves := _waves()
 
 	assert_int(waves.size(1)).is_equal(20)
-	assert_int(waves.size(2)).is_equal(24)
-	assert_int(waves.size(20)).is_equal(639)
+	assert_int(waves.size(2)).is_equal(26)
+	assert_int(waves.size(20)).is_equal(2924)
 	assert_float(waves.enemy_hp(1)).is_equal_approx(10.0, 1e-6)
 	assert_float(waves.enemy_hp(20)).is_equal_approx(10.0 * pow(1.05, 19), 1e-4)
 
@@ -71,7 +71,8 @@ func test_second_edge_chance_sets_how_often_a_wave_uses_2_edges() -> void:
 			assert_int(waves.edges.size()).is_equal(1 if chance == 0 else 2)
 
 
-func test_enemies_spawn_at_the_spawn_rate_spread_over_the_edges() -> void:
+func test_a_clump_size_of_1_spawns_a_trickle_at_the_spawn_rate_over_the_edges() -> void:
+	_settings.change("waves", "clump_size", 1)
 	_settings.change("waves", "second_edge_chance", 100)
 	var waves := _waves()
 	waves.start(1)

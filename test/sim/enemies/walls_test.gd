@@ -8,7 +8,7 @@ var _routing: Routing
 
 
 func before_test() -> void:
-	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+	_settings = TestSettings.without_swarm_spread()
 	_settings.change("enemies", "heading_offset", 0.0)
 
 
@@ -22,7 +22,7 @@ func test_a_wall_forming_under_an_enemy_pushes_it_out() -> void:
 	assert_float(_position(enemies, id).y).is_less_equal(1.0 - _settings.separation_radius + 1e-4)
 
 
-func test_n_attackers_deal_n_hp_per_second() -> void:
+func test_n_attackers_deal_n_times_2_hp_per_second() -> void:
 	for attackers: int in [1, 3]:
 		var enemies := _walled_corridor()
 		for n in attackers:
@@ -31,7 +31,7 @@ func test_n_attackers_deal_n_hp_per_second() -> void:
 		for tick in Simulation.TICKS_PER_SECOND:
 			_tick(enemies)
 
-		assert_float(_hp_lost()).is_equal_approx(attackers, 1e-6)
+		assert_float(_hp_lost()).is_equal_approx(2.0 * attackers, 1e-6)
 
 
 func test_an_enemy_behind_an_attacker_cannot_push_it() -> void:
@@ -69,7 +69,7 @@ func test_an_attacker_keeps_hitting_its_wall_after_its_route_changes() -> void:
 	for tick in 30:
 		_tick(enemies)
 
-	assert_float(before - _piles.wall_hp(WALL_LINE[1])).is_equal_approx(0.5, 1e-6)
+	assert_float(before - _piles.wall_hp(WALL_LINE[1])).is_equal_approx(1.0, 1e-6)
 
 
 func test_an_attacker_pushed_out_of_reach_stops_hitting() -> void:

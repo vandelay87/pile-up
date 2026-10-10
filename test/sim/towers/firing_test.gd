@@ -12,6 +12,11 @@ func before_test() -> void:
 	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
 	_settings.change("enemies", "speed", 0.1)
 	_settings.change("enemies", "heading_offset", 0.0)
+	# The worked examples below fire 2 shots/s (every 30 ticks) of 3 damage, and build
+	# up to three towers from the starting gold.
+	_settings.change("towers", "fire_rate", 2.0)
+	_settings.change("towers", "damage", 3.0)
+	_settings.change("towers", "cost", 50)
 	var rows: Array[String] = []
 	for y in 20:
 		rows.append("....................")

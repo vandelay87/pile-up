@@ -116,6 +116,51 @@ const SCHEMA := {
 			"unit": "percent",
 			"apply": Apply.LIVE,
 		},
+		"speed_variety":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "± percent pace, rolled at spawn",
+			"apply": Apply.LIVE,
+		},
+		"wander":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 90.0,
+			"step": 1.0,
+			"unit": "± degrees of weave",
+			"apply": Apply.LIVE,
+		},
+		"wander_period":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 20.0,
+			"step": 0.5,
+			"unit": "s per weave",
+			"apply": Apply.LIVE,
+		},
+		"personal_space_radius":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 3.0,
+			"step": 0.05,
+			"unit": "cells, 0 = off",
+			"apply": Apply.LIVE,
+		},
+		"personal_space_push":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 1.0,
+			"step": 0.01,
+			"unit": "push per neighbour per tick",
+			"apply": Apply.LIVE,
+		},
 	},
 	"piles":
 	{
@@ -260,6 +305,15 @@ const SCHEMA := {
 			"unit": "percent",
 			"apply": Apply.LIVE,
 		},
+		"clump_size":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 50,
+			"step": 1,
+			"unit": "enemies per spawn burst",
+			"apply": Apply.LIVE,
+		},
 	},
 	"towers":
 	{
@@ -382,6 +436,27 @@ var wall_roll_chance: float:
 	get:
 		var percent: int = value("enemies", "wall_roll_chance")
 		return percent / 100.0
+var speed_variety: float:
+	get:
+		var percent: int = value("enemies", "speed_variety")
+		return percent / 100.0
+var wander_radians: float:
+	get:
+		var degrees: float = value("enemies", "wander")
+		return deg_to_rad(degrees)
+var wander_period_ticks: float:
+	get:
+		var seconds: float = value("enemies", "wander_period")
+		return seconds * Simulation.TICKS_PER_SECOND
+var personal_space_radius: float:
+	get:
+		return value("enemies", "personal_space_radius")
+var personal_space_push: float:
+	get:
+		return value("enemies", "personal_space_push")
+var clump_size: int:
+	get:
+		return value("waves", "clump_size")
 var wall_hp: float:
 	get:
 		return value("piles", "wall_hp")

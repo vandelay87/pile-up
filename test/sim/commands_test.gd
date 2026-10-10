@@ -10,7 +10,7 @@ func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
 			seen.append(settings.value("towers", "fire_rate"))
 
 	sim.queue_command(Commands.SetSetting.new("towers", "fire_rate", 4.0))
-	assert_float(settings.value("towers", "fire_rate")).is_equal(2.0)
+	assert_float(settings.value("towers", "fire_rate")).is_equal(3.5)
 	sim.tick()
 
 	assert_array(seen).contains_exactly([4.0])
@@ -36,7 +36,7 @@ func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void
 
 	assert_array(rejections).has_size(1)
 	assert_str(rejections[0]).contains("towers.fire_rate")
-	assert_float(sim.settings.value("towers", "fire_rate")).is_equal(2.0)
+	assert_float(sim.settings.value("towers", "fire_rate")).is_equal(3.5)
 
 
 func test_a_change_to_an_unknown_setting_is_rejected() -> void:
@@ -61,7 +61,7 @@ func test_a_route_weight_change_reports_fields_changed_at_the_end_of_the_tick() 
 
 	assert_array(trace).has_size(9)
 	assert_str(trace[8]).is_equal("fields changed")
-	assert_float(sim.routing.wall_factor(Routing.Route.DIRECT, 30.0)).is_equal_approx(23.5, 1e-6)
+	assert_float(sim.routing.wall_factor(Routing.Route.DIRECT, 30.0)).is_equal_approx(16.0, 1e-6)
 
 
 func test_fields_changed_is_not_reported_for_other_or_rejected_changes() -> void:

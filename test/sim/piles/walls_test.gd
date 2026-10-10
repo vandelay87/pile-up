@@ -24,12 +24,12 @@ func before_test() -> void:
 func test_damage_lowers_wall_hp_at_once() -> void:
 	_piles.damage_wall(WALL, 4.5)
 
-	assert_float(_piles.wall_hp(WALL)).is_equal_approx(25.5, 1e-9)
+	assert_float(_piles.wall_hp(WALL)).is_equal_approx(10.5, 1e-9)
 	assert_int(_piles.level(WALL)).is_equal(Piles.WALL_LEVEL)
 
 
 func test_a_bucket_change_queues_one_field_update() -> void:
-	_piles.damage_wall(WALL, 9.0)
+	_piles.damage_wall(WALL, 4.0)
 	assert_array(_piles.take_field_changes()).is_empty()
 
 	_piles.damage_wall(WALL, 0.5)
@@ -40,7 +40,7 @@ func test_a_bucket_change_queues_one_field_update() -> void:
 
 
 func test_at_0_hp_the_wall_falls_to_a_level_3_pile() -> void:
-	_piles.damage_wall(WALL, 29.0)
+	_piles.damage_wall(WALL, 14.0)
 	_piles.take_field_changes()
 
 	_piles.damage_wall(WALL, 1.0)
@@ -51,7 +51,7 @@ func test_at_0_hp_the_wall_falls_to_a_level_3_pile() -> void:
 
 
 func test_damage_to_a_fallen_wall_or_a_pile_does_nothing() -> void:
-	_piles.damage_wall(WALL, 30.0)
+	_piles.damage_wall(WALL, 15.0)
 	_piles.take_field_changes()
 
 	_piles.damage_wall(WALL, 5.0)
@@ -72,13 +72,13 @@ func test_a_wall_decays_to_level_4_and_discards_its_hp() -> void:
 
 
 func test_a_decayed_wall_rebuilt_to_level_5_has_full_hp() -> void:
-	_piles.damage_wall(WALL, 25.0)
+	_piles.damage_wall(WALL, 10.0)
 	_piles.decay()
 
 	_piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
 	_piles.land()
 
-	assert_float(_piles.wall_hp(WALL)).is_equal(30.0)
+	assert_float(_piles.wall_hp(WALL)).is_equal(15.0)
 
 
 func test_walls_nearby_counts_the_walls_in_each_cells_3x3_block() -> void:

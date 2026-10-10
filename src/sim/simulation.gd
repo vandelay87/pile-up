@@ -68,7 +68,9 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy)
 	routing = Routing.new(settings, map, occupancy, piles)
-	enemies = Enemies.new(settings, map, occupancy, piles, routing, _system_rng("enemies"))
+	enemies = Enemies.new(
+		settings, map, occupancy, piles, routing, _system_rng("enemies"), _system_rng("swarm")
+	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
 	run_state = RunState.new(settings)
 	towers = Towers.new(settings, map, occupancy, piles, routing, enemies, run_state)
