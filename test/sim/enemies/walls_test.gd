@@ -137,7 +137,15 @@ func _enemies(rows: Array[String], base: Rect2i) -> Enemies:
 	_routing = Routing.new(_settings, map, occupancy, _piles)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	return Enemies.new(_settings, map, occupancy, _piles, _routing, rng)
+	return Enemies.new(
+		_settings,
+		map,
+		occupancy,
+		_piles,
+		_routing,
+		Structures.new(map, _piles, RunState.new(_settings)),
+		rng
+	)
 
 
 func _build_walls(cells: Array[Vector2i]) -> void:

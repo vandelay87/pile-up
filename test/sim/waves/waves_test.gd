@@ -17,7 +17,15 @@ func before_test() -> void:
 	var occupancy := Occupancy.new(_map.width, _map.height)
 	var piles := Piles.new(_settings, _map, occupancy)
 	var routing := Routing.new(_settings, _map, occupancy, piles)
-	_enemies = Enemies.new(_settings, _map, occupancy, piles, routing, _rng(1))
+	_enemies = Enemies.new(
+		_settings,
+		_map,
+		occupancy,
+		piles,
+		routing,
+		Structures.new(_map, piles, RunState.new(_settings)),
+		_rng(1)
+	)
 
 
 func _waves(run_seed: int = 1) -> Waves:
@@ -137,4 +145,4 @@ func _edge_picks(run_seed: int) -> Array[PackedStringArray]:
 func _remove_all_enemies() -> void:
 	for k in _enemies.count:
 		_enemies.hp[k] = 0.0
-	_enemies.remove_dead_and_leaked()
+	_enemies.remove_dead()

@@ -5,7 +5,7 @@ signal command_rejected(reason: String)
 signal pile_changed(cells: Array[Vector2i])
 signal fields_changed
 signal gold_changed(gold: int)
-signal lives_changed(lives: int)
+signal base_hp_changed(hp: float)
 signal building_placed(id: int)
 signal shots_fired(shots: Array[Buildings.Shot])
 signal phase_changed(phase: Waves.Phase)
@@ -20,7 +20,7 @@ enum Step {
 	REBUILD_SPATIAL_HASH,
 	MOVE_ENEMIES,
 	FIRE_TOWERS,
-	REMOVE_DEAD_AND_LEAKED,
+	REMOVE_DEAD,
 	CHECK_WAVE_END,
 }
 
@@ -37,6 +37,7 @@ var enemies: Enemies
 var waves: Waves
 var buildings: Buildings
 var run_state: RunState
+var structures: Structures
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -56,7 +57,7 @@ var _pending_steps := 0
 var _wave_started := false
 var _restart_requested := false
 var _reported_gold: int
-var _reported_lives: int
+var _reported_base_hp: float
 var _reported_phase := Waves.Phase.BUILD
 var _reported_game_over := false
 
@@ -68,14 +69,25 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy)
 	routing = Routing.new(settings, map, occupancy, piles)
-	enemies = Enemies.new(
-		settings, map, occupancy, piles, routing, _system_rng("enemies"), _system_rng("swarm")
+	run_state = RunState.new(settings)
+	structures = Structures.new(map, piles, run_state)
+	enemies = (
+		Enemies
+		. new(
+			settings,
+			map,
+			occupancy,
+			piles,
+			routing,
+			structures,
+			_system_rng("enemies"),
+			_system_rng("swarm"),
+		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
-	run_state = RunState.new(settings)
 	buildings = Buildings.new(settings, map, occupancy, piles, routing, enemies, run_state)
 	_reported_gold = run_state.gold
-	_reported_lives = run_state.lives
+	_reported_base_hp = run_state.base_hp
 
 
 func queue_command(command: Commands.Command) -> void:
@@ -180,7 +192,7 @@ func tick() -> void:
 	_rebuild_spatial_hash()
 	_move_enemies()
 	_fire_towers()
-	_remove_dead_and_leaked()
+	_remove_dead()
 	_check_wave_end()
 	tick_count += 1
 	_emit_signals()
@@ -190,9 +202,9 @@ func _emit_signals() -> void:
 	if run_state.gold != _reported_gold:
 		_reported_gold = run_state.gold
 		gold_changed.emit(_reported_gold)
-	if run_state.lives != _reported_lives:
-		_reported_lives = run_state.lives
-		lives_changed.emit(_reported_lives)
+	if run_state.base_hp != _reported_base_hp:
+		_reported_base_hp = run_state.base_hp
+		base_hp_changed.emit(_reported_base_hp)
 	var placed := _placed
 	_placed = []
 	for id in placed:
@@ -288,11 +300,11 @@ func _fire_towers() -> void:
 	_shots = buildings.fire()
 
 
-func _remove_dead_and_leaked() -> void:
-	_observe(Step.REMOVE_DEAD_AND_LEAKED)
-	var removal := enemies.remove_dead_and_leaked()
-	piles.queue_bodies(removal.deaths)
-	run_state.record_removals(removal.deaths.size(), removal.leaks)
+func _remove_dead() -> void:
+	_observe(Step.REMOVE_DEAD)
+	var deaths := enemies.remove_dead()
+	piles.queue_bodies(deaths)
+	run_state.record_kills(deaths.size())
 
 
 func _check_wave_end() -> void:

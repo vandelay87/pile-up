@@ -356,13 +356,13 @@ const SCHEMA := {
 	},
 	"run":
 	{
-		"starting_lives":
+		"base_hp":
 		{
 			"type": TYPE_INT,
 			"min": 1,
-			"max": 100,
-			"step": 1,
-			"unit": "lives",
+			"max": 10000,
+			"step": 10,
+			"unit": "HP",
 			"apply": Apply.RESTART,
 		},
 		"starting_gold":
@@ -507,9 +507,9 @@ var tower_cost: int:
 var tracer_speed: float:
 	get:
 		return value("view", "tracer_speed")
-var starting_lives: int:
+var base_hp: int:
 	get:
-		return value("run", "starting_lives")
+		return value("run", "base_hp")
 var starting_gold: int:
 	get:
 		return value("run", "starting_gold")

@@ -8,8 +8,6 @@ var _events: Array[String]
 
 func before_test() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
-	settings.change("run", "starting_lives", 100)
-	settings = settings.for_next_run()
 	var rows: Array[String] = []
 	for y in 8:
 		rows.append("........")
@@ -110,4 +108,13 @@ func _play_wave() -> void:
 		_sim.tick()
 		if _sim.waves.phase == Waves.Phase.BUILD:
 			return
+		_clear_enemies()
 	fail("the wave did not end within %d ticks" % WAVE_TICKS)
+
+
+# Enemies no longer leave by reaching the base, so the wave is ended by taking them off the
+# field outside the tick, leaving no bodies.
+func _clear_enemies() -> void:
+	for k in _sim.enemies.count:
+		_sim.enemies.hp[k] = 0.0
+	_sim.enemies.remove_dead()

@@ -264,7 +264,15 @@ func _enemies(rows: Array[String], base: Rect2i, rng_seed: int = 1) -> Enemies:
 	_routing = Routing.new(_settings, map, occupancy, _piles)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = rng_seed
-	return Enemies.new(_settings, map, occupancy, _piles, _routing, rng)
+	return Enemies.new(
+		_settings,
+		map,
+		occupancy,
+		_piles,
+		_routing,
+		Structures.new(map, _piles, RunState.new(_settings)),
+		rng
+	)
 
 
 func _add_bodies(cell: Vector2i, bodies: int) -> void:

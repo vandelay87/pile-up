@@ -9,7 +9,7 @@ const TOAST_FADE_SECONDS := 0.5
 
 var _simulation: Simulation
 var _gold := Label.new()
-var _lives := Label.new()
+var _base_hp := Label.new()
 var _wave := Label.new()
 var _next_wave := Button.new()
 var _tower := Button.new()
@@ -22,13 +22,13 @@ var _reached := Label.new()
 func setup(simulation: Simulation) -> void:
 	_simulation = simulation
 	_simulation.gold_changed.connect(_show_gold)
-	_simulation.lives_changed.connect(_show_lives)
+	_simulation.base_hp_changed.connect(_show_base_hp)
 	_simulation.phase_changed.connect(_show_phase)
 	_simulation.game_over.connect(_show_game_over)
 	_simulation.command_rejected.connect(_show_toast)
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
-	_show_lives(run_state.lives)
+	_show_base_hp(run_state.base_hp)
 	_show_phase(_simulation.waves.phase)
 	_game_over.visible = false
 
@@ -37,7 +37,7 @@ func _ready() -> void:
 	var ui := UiRoot.add_to(self)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 24)
-	for label: Label in [_gold, _lives, _wave]:
+	for label: Label in [_gold, _base_hp, _wave]:
 		label.add_theme_constant_override("outline_size", 4)
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
 		bar.add_child(label)
@@ -91,8 +91,8 @@ func _show_gold(gold: int) -> void:
 	_tower.text = "Tower (%d gold) [T]" % _simulation.settings.tower_cost
 
 
-func _show_lives(lives: int) -> void:
-	_lives.text = "Lives %d" % lives
+func _show_base_hp(hp: float) -> void:
+	_base_hp.text = "Base %d HP" % ceili(hp)
 
 
 func _process(_delta: float) -> void:

@@ -47,7 +47,7 @@
 		"cost": 80
 	},
 	"run": {
-		"starting_lives": 20,
+		"base_hp": 200,
 		"starting_gold": 200,
 		"map_path": "res://data/maps/v2-narrow.json"
 	},

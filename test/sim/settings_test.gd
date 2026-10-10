@@ -15,13 +15,13 @@ const SCHEMA := {
 	},
 	"run":
 	{
-		"starting_lives":
+		"base_hp":
 		{
 			"type": TYPE_INT,
 			"min": 1,
 			"max": 100,
 			"step": 1,
-			"unit": "lives",
+			"unit": "HP",
 			"apply": Settings.Apply.RESTART,
 		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Settings.Apply.RESTART},
@@ -42,7 +42,7 @@ const _SWARM_RANGES := [
 func _valid() -> Dictionary:
 	return {
 		"towers": {"fire_rate": 2},
-		"run": {"starting_lives": 20, "map_path": "res://data/maps/v1.json"},
+		"run": {"base_hp": 20, "map_path": "res://data/maps/v1.json"},
 	}
 
 
@@ -60,7 +60,7 @@ func test_loads_a_valid_file() -> void:
 	var settings := _settings()
 
 	assert_float(settings.value("towers", "fire_rate")).is_equal(2.0)
-	assert_int(settings.value("run", "starting_lives")).is_equal(20)
+	assert_int(settings.value("run", "base_hp")).is_equal(20)
 	assert_str(settings.value("run", "map_path")).is_equal("res://data/maps/v1.json")
 
 
@@ -74,7 +74,7 @@ func test_the_committed_defaults_file_loads() -> void:
 func test_reads_the_committed_defaults_as_typed_values() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 
-	assert_int(settings.starting_lives).is_equal(20)
+	assert_int(settings.base_hp).is_equal(200)
 	assert_int(settings.starting_gold).is_equal(200)
 	assert_str(settings.map_path).is_equal("res://data/maps/v2-narrow.json")
 	assert_float(settings.enemy_speed).is_equal_approx(2.0, 1e-6)
@@ -145,9 +145,9 @@ func test_rejects_an_unknown_key() -> void:
 func test_rejects_a_missing_key() -> void:
 	var data := _valid()
 	var run: Dictionary = data["run"]
-	run.erase("starting_lives")
+	run.erase("base_hp")
 
-	_assert_rejected(_load(data), "run.starting_lives: missing")
+	_assert_rejected(_load(data), "run.base_hp: missing")
 
 
 func test_rejects_a_missing_group() -> void:
@@ -166,23 +166,23 @@ func test_rejects_a_group_that_is_not_an_object() -> void:
 
 func test_rejects_a_wrong_type() -> void:
 	var data := _valid()
-	data["run"]["starting_lives"] = "20"
+	data["run"]["base_hp"] = "20"
 
-	_assert_rejected(_load(data), "run.starting_lives: expected int")
+	_assert_rejected(_load(data), "run.base_hp: expected int")
 
 
 func test_rejects_a_fractional_int() -> void:
 	var data := _valid()
-	data["run"]["starting_lives"] = 20.5
+	data["run"]["base_hp"] = 20.5
 
-	_assert_rejected(_load(data), "run.starting_lives: expected int")
+	_assert_rejected(_load(data), "run.base_hp: expected int")
 
 
 func test_rejects_an_out_of_range_value() -> void:
 	var data := _valid()
-	data["run"]["starting_lives"] = 0
+	data["run"]["base_hp"] = 0
 
-	_assert_rejected(_load(data), "run.starting_lives: 0 is outside 1 to 100")
+	_assert_rejected(_load(data), "run.base_hp: 0 is outside 1 to 100")
 
 
 func test_rejects_a_value_off_the_step() -> void:
@@ -201,12 +201,12 @@ func test_accepts_a_float_on_the_step_despite_rounding() -> void:
 
 func test_reports_every_error_at_once() -> void:
 	var data := _valid()
-	data["run"]["starting_lives"] = 0
+	data["run"]["base_hp"] = 0
 	data["towers"]["fire_rate"] = "fast"
 
 	var result := _load(data)
 
-	assert_str(result.error).contains("run.starting_lives").contains("towers.fire_rate")
+	assert_str(result.error).contains("run.base_hp").contains("towers.fire_rate")
 
 
 func test_converts_seconds_to_ticks() -> void:

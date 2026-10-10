@@ -12,9 +12,8 @@ var count := 0
 var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
-var leaked := PackedByteArray()
 var heading_offsets := PackedFloat32Array()
-var wall_targets := PackedInt32Array()
+var structure_targets := PackedInt32Array()
 var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
 var pace_rolls := PackedFloat32Array()
@@ -25,6 +24,7 @@ var _map: MapData
 var _occupancy: Occupancy
 var _piles: Piles
 var _routing: Routing
+var _structures: Structures
 var _rng: RandomNumberGenerator
 var _swarm_rng: RandomNumberGenerator
 var _next_id := 0
@@ -37,19 +37,13 @@ var _stuck_ticks := PackedInt32Array()
 var _ticks := 0
 
 
-class Removal:
-	extends RefCounted
-
-	var deaths := PackedVector2Array()
-	var leaks := 0
-
-
 func _init(
 	run_settings: Settings,
 	run_map: MapData,
 	run_occupancy: Occupancy,
 	run_piles: Piles,
 	run_routing: Routing,
+	run_structures: Structures,
 	rng: RandomNumberGenerator,
 	swarm_rng: RandomNumberGenerator = null,
 ) -> void:
@@ -58,6 +52,7 @@ func _init(
 	_occupancy = run_occupancy
 	_piles = run_piles
 	_routing = run_routing
+	_structures = run_structures
 	_rng = rng
 	# The swarm spread rolls draw from their own stream so the heading offsets and route
 	# rolls stay as they were without it.
@@ -76,9 +71,8 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	ids[count] = id
 	positions[count] = pos
 	hp[count] = start_hp
-	leaked[count] = 0
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
-	wall_targets[count] = NONE
+	structure_targets[count] = NONE
 	routes[count] = Routing.Route.SENSIBLE
 	last_rolled_cells[count] = NONE
 	pace_rolls[count] = _swarm_rng.randf_range(-1.0, 1.0)
@@ -116,7 +110,7 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 		for x in range(maxi(low.x, 0), mini(high.x + 1, _map.width)):
 			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
 				var i := _bucket_enemies[slot]
-				if hp[i] <= 0.0 or leaked[i] == 1:
+				if hp[i] <= 0.0:
 					continue
 				if positions[i].distance_squared_to(pos) > reach_squared:
 					continue
@@ -166,12 +160,12 @@ func move() -> void:
 	var spreads := space_radius > 2.0 * radius and space_push > 0.0
 	_ticks += 1
 	for i in count:
-		wall_targets[i] = _wall_target(i, reach, jam_ticks)
+		structure_targets[i] = _structure_target(i, reach, jam_ticks)
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
 		var separation := _separation(i, radius, push, cap).limit_length(radius)
-		if wall_targets[i] != NONE:
+		if structure_targets[i] != NONE:
 			_moved[i] = pos + separation
 			continue
 		if spreads:
@@ -190,16 +184,14 @@ func move() -> void:
 				break
 			pos = resolved
 		positions[i] = pos
-		if _map.is_base(Vector2i(pos.floor())):
-			leaked[i] = 1
 		if routes[i] == Routing.Route.SENSIBLE:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
 		elif _is_past_obstacle(i, pos):
 			routes[i] = Routing.Route.SENSIBLE
 	var damage_per_tick := _settings.wall_damage_per_tick
 	for i in count:
-		if wall_targets[i] != NONE:
-			_piles.damage_wall(_cell_of(wall_targets[i]), damage_per_tick)
+		if structure_targets[i] != NONE:
+			_structures.damage(_cell_of(structure_targets[i]), damage_per_tick)
 
 
 func _roll_route(
@@ -234,14 +226,21 @@ func _first_pile_on_chain(cell: int, chain_parents: PackedInt32Array) -> int:
 	return NONE
 
 
-func _wall_target(i: int, reach: float, jam_ticks: int) -> int:
+# The structure cell the enemy attacks this tick, or NONE: the one it is already finishing
+# if still in reach, else the nearest pressed structure once it is in the way (the route
+# crosses it within 2 steps) or the enemy is jammed against it.
+func _structure_target(i: int, reach: float, jam_ticks: int) -> int:
 	var pos := positions[i]
-	var target := wall_targets[i]
-	if target != NONE and _is_wall(target) and _distance_to_cell(pos, target) <= reach:
+	var target := structure_targets[i]
+	if (
+		target != NONE
+		and _structures.is_structure(target)
+		and _distance_to_cell(pos, target) <= reach
+	):
 		return target
 	var nearest := NONE
-	if _piles.walls_nearby[_cell_index(pos)] > 0:
-		nearest = _nearest_pressed_wall(pos, reach)
+	if _structures.is_nearby(_cell_index(pos)):
+		nearest = _nearest_pressed_structure(pos, reach)
 	if nearest == NONE:
 		_best_values[i] = INF
 		_stuck_ticks[i] = 0
@@ -253,31 +252,30 @@ func _wall_target(i: int, reach: float, jam_ticks: int) -> int:
 		_stuck_ticks[i] = 0
 	else:
 		_stuck_ticks[i] += 1
-	if _stuck_ticks[i] >= jam_ticks or _route_crosses_wall(route, pos):
+	if _stuck_ticks[i] >= jam_ticks or _route_crosses_structure(route, pos):
 		_stuck_ticks[i] = 0
 		return nearest
 	return NONE
 
 
-func _route_crosses_wall(route: Routing.Route, pos: Vector2) -> bool:
+func _route_crosses_structure(route: Routing.Route, pos: Vector2) -> bool:
 	var next := _routing.parent(route, Vector2i(pos.floor()))
 	if next == Routing.NO_PARENT:
 		return false
-	if _is_wall(_index(next)):
+	if _structures.is_structure(_index(next)):
 		return true
 	var after := _routing.parent(route, next)
-	return after != Routing.NO_PARENT and _is_wall(_index(after))
+	return after != Routing.NO_PARENT and _structures.is_structure(_index(after))
 
 
-func _nearest_pressed_wall(pos: Vector2, reach: float) -> int:
+func _nearest_pressed_structure(pos: Vector2, reach: float) -> int:
 	var cell := Vector2i(pos.floor())
-	var levels := _piles.levels
 	var best := NONE
 	var best_distance := reach
 	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
 		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
 			var index := y * _map.width + x
-			if levels[index] != Piles.WALL_LEVEL:
+			if not _structures.is_structure(index):
 				continue
 			var distance := _distance_to_cell(pos, index)
 			if distance <= best_distance:
@@ -301,7 +299,7 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
-	var holding := wall_targets[i] != NONE
+	var holding := structure_targets[i] != NONE
 	var checked := 0
 	var total := Vector2.ZERO
 	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
@@ -318,9 +316,9 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 				if away.length_squared() >= spacing_squared:
 					continue
 				var share := 1.0
-				if wall_targets[j] != NONE and not holding:
+				if structure_targets[j] != NONE and not holding:
 					share = 2.0
-				elif holding and wall_targets[j] == NONE:
+				elif holding and structure_targets[j] == NONE:
 					continue
 				var distance := away.length()
 				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
@@ -342,7 +340,7 @@ func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i or wall_targets[j] != NONE:
+				if j == i or structure_targets[j] != NONE:
 					continue
 				var away := pos - positions[j]
 				if away.length_squared() >= radius_squared:
@@ -395,6 +393,7 @@ func _is_impassable(cell: Vector2i) -> bool:
 	var index := _index(cell)
 	return (
 		_map.rock[index] == 1
+		or _structures.is_base(index)
 		or _occupancy.building_ids[index] != Occupancy.EMPTY
 		or _piles.levels[index] == Piles.WALL_LEVEL
 	)
@@ -404,19 +403,17 @@ func _tie_break(i: int, j: int) -> Vector2:
 	return Vector2.RIGHT if ids[i] > ids[j] else Vector2.LEFT
 
 
-func remove_dead_and_leaked() -> Removal:
-	var removal := Removal.new()
+# Removes the dead and returns where they died.
+func remove_dead() -> PackedVector2Array:
+	var deaths := PackedVector2Array()
 	var i := 0
 	while i < count:
-		if leaked[i] == 1:
-			removal.leaks += 1
-		elif hp[i] <= 0.0:
-			removal.deaths.append(positions[i])
+		if hp[i] <= 0.0:
+			deaths.append(positions[i])
+			_swap_remove(i)
 		else:
 			i += 1
-			continue
-		_swap_remove(i)
-	return removal
+	return deaths
 
 
 func _cell_index(pos: Vector2) -> int:
@@ -439,9 +436,8 @@ func _swap_remove(index: int) -> void:
 	ids[index] = ids[count]
 	positions[index] = positions[count]
 	hp[index] = hp[count]
-	leaked[index] = leaked[count]
 	heading_offsets[index] = heading_offsets[count]
-	wall_targets[index] = wall_targets[count]
+	structure_targets[index] = structure_targets[count]
 	routes[index] = routes[count]
 	last_rolled_cells[index] = last_rolled_cells[count]
 	pace_rolls[index] = pace_rolls[count]
@@ -456,9 +452,8 @@ func _grow() -> void:
 	ids.resize(capacity)
 	positions.resize(capacity)
 	hp.resize(capacity)
-	leaked.resize(capacity)
 	heading_offsets.resize(capacity)
-	wall_targets.resize(capacity)
+	structure_targets.resize(capacity)
 	routes.resize(capacity)
 	last_rolled_cells.resize(capacity)
 	pace_rolls.resize(capacity)

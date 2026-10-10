@@ -19,11 +19,11 @@ func test_a_live_change_applies_on_the_tick_its_command_is_drained() -> void:
 func test_a_restart_change_leaves_the_running_value_unchanged() -> void:
 	var sim := Simulation.new(_defaults(), TestMaps.open_field())
 
-	sim.queue_command(Commands.SetSetting.new("run", "starting_lives", 5))
+	sim.queue_command(Commands.SetSetting.new("run", "base_hp", 50))
 	sim.tick()
 
-	assert_int(sim.settings.value("run", "starting_lives")).is_equal(20)
-	assert_int(sim.settings.for_next_run().value("run", "starting_lives")).is_equal(5)
+	assert_int(sim.settings.value("run", "base_hp")).is_equal(200)
+	assert_int(sim.settings.for_next_run().value("run", "base_hp")).is_equal(50)
 
 
 func test_an_invalid_change_is_rejected_and_leaves_the_value_unchanged() -> void:
