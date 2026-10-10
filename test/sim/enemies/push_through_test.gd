@@ -150,18 +150,20 @@ func _ring_sim() -> Simulation:
 	return Simulation.new(_settings, TestMaps.from_rows(RING, RING_BASE, edges), 1)
 
 
-# A wave of the given size whose spawned enemies were cleared without counting as kills, so
-# Enemies left stays at the wave size.
-func _sim_in_wave(rows: Array[String], base: Rect2i, wave_size: int) -> Simulation:
-	_settings.change("waves", "wave_1_size", wave_size)
+# A wave with the given Enemies left and an empty field: one enemy spawns and is killed, and
+# the slowest spawn rate keeps the next one off the field for 120 ticks.
+func _sim_in_wave(rows: Array[String], base: Rect2i, enemies_left: int) -> Simulation:
+	_settings.change("waves", "wave_1_size", enemies_left + 1)
+	_settings.change("waves", "clump_size", 1)
+	_settings.change("waves", "spawn_rate", 0.5)
 	var edges: Array[String] = ["W"]
 	var sim := Simulation.new(_settings.for_next_run(), TestMaps.from_rows(rows, base, edges), 1)
 	sim.queue_command(Commands.NextWave.new())
 	sim.tick()
-	for i in sim.enemies.count:
-		sim.enemies.hp[i] = 0.0
-	sim.enemies.remove_dead()
-	assert_int(sim.enemies_left).is_equal(wave_size)
+	assert_int(sim.enemies.count).is_equal(1)
+	_kill(sim, 1)
+	assert_int(sim.enemies.count).is_equal(0)
+	assert_int(sim.enemies_left).is_equal(enemies_left)
 	return sim
 
 
@@ -180,8 +182,7 @@ func _land_pile(sim: Simulation, cell: Vector2i) -> void:
 
 
 func _kill(sim: Simulation, count: int) -> void:
-	for i in count:
-		sim.enemies.hp[i] = 0.0
+	sim.queue_command(Commands.KillEnemies.new(count))
 	sim.tick()
 
 

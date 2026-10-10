@@ -167,6 +167,14 @@ func _add_cheats() -> void:
 	for control: Control in [gold, add_gold, wave, jump]:
 		row.add_child(control)
 	_box.add_child(row)
+	var victims := _number_field(1, 10000, 1, 10)
+	var kill := Button.new()
+	kill.text = "Kill enemies"
+	kill.pressed.connect(func() -> void: _send(Commands.KillEnemies.new(roundi(victims.value))))
+	var kill_row := HBoxContainer.new()
+	for control: Control in [victims, kill]:
+		kill_row.add_child(control)
+	_box.add_child(kill_row)
 
 
 func _add_settings() -> void:

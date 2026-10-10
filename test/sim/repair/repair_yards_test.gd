@@ -267,7 +267,7 @@ func test_the_wave_ending_sends_it_home_and_it_stops() -> void:
 	var drone := _sim.repair_yards.drone(yard.id)
 	assert_int(drone.state).is_equal(RepairYards.State.REPAIRING)
 
-	_sim.enemies.hp[0] = 0.0
+	_sim.queue_command(Commands.KillEnemies.new(1))
 	_sim.tick()
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.BUILD)
 	var hp := tower.hp

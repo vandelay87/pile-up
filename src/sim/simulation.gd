@@ -144,6 +144,21 @@ func jump_to_wave(wave: int) -> void:
 	_start_wave(wave, Commands.JumpToWave.LABEL)
 
 
+## Kills the first [param count] living enemies on the field. They are removed at step 7 like
+## any kill: they count, pay and leave bodies.
+func kill_enemies(count: int) -> void:
+	if count < 1:
+		reject_command("%s: the count must be at least 1" % Commands.KillEnemies.LABEL)
+		return
+	var killed := 0
+	for i in enemies.count:
+		if killed == count:
+			break
+		if enemies.is_alive(i):
+			enemies.kill(enemies.ids[i])
+			killed += 1
+
+
 func decay_piles() -> void:
 	_decay_due = true
 

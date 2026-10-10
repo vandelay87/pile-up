@@ -172,3 +172,20 @@ class JumpToWave:
 
 	func apply(sim: Simulation) -> void:
 		sim.jump_to_wave(_wave)
+
+
+class KillEnemies:
+	extends Commands.Play
+
+	const LABEL := "kill enemies"
+
+	var _count: int
+
+	func _init(count: int) -> void:
+		_count = count
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.kill_enemies(_count)

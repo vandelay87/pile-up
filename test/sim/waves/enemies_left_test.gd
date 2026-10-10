@@ -76,8 +76,7 @@ func test_kills_count_across_waves() -> void:
 
 # Kills the first n enemies on the field in the next tick, as towers would.
 func _kill(n: int) -> void:
-	for k in n:
-		_sim.enemies.hp[k] = 0.0
+	_sim.queue_command(Commands.KillEnemies.new(n))
 	_sim.tick()
 
 

@@ -108,9 +108,8 @@ func _run_until_build_phase() -> void:
 	fail("the wave did not end within %d ticks" % WAVE_TICKS)
 
 
-# Enemies no longer leave by reaching the base, so the wave is ended by taking them off the
-# field outside the tick, leaving no bodies.
+# Enemies no longer leave by reaching the base, so the wave is ended by killing them all on
+# the next tick.
 func _clear_enemies() -> void:
-	for k in _sim.enemies.count:
-		_sim.enemies.hp[k] = 0.0
-	_sim.enemies.remove_dead()
+	if _sim.enemies.count > 0:
+		_sim.queue_command(Commands.KillEnemies.new(_sim.enemies.count))

@@ -99,6 +99,16 @@ func damage(id: int, amount: float) -> void:
 		hp[index] -= amount
 
 
+func kill(id: int) -> void:
+	var index := index_of(id)
+	if index != NONE:
+		hp[index] = minf(hp[index], 0.0)
+
+
+func is_alive(index: int) -> bool:
+	return hp[index] > 0.0
+
+
 func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 	var low := Vector2i((pos - Vector2(reach, reach)).floor()) - Vector2i.ONE * _HASH_MARGIN
 	var high := Vector2i((pos + Vector2(reach, reach)).floor()) + Vector2i.ONE * _HASH_MARGIN
