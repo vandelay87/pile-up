@@ -78,6 +78,9 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Towers can only be built on clear cells of the power grid. Building is allowed during waves.
 - A tower may cut off every path to the base: enemies then break through the cheapest structure.
 - Starting gold: 150.
+- **Bounty:** each kill pays 1 gold before any combo.
+- **Combo:** the number of kills in the last couple of seconds sets a combo tier: ×1, ×2, ×3, up to a cap. Each kill pays its bounty times the current tier, at once, so gold earned mid-burst can be spent during the wave. The combo rises with bursts of killing and falls on its own as they stop; nothing else breaks it. The capped tier keeps late-wave income bounded. The window, tier thresholds and cap are left to tuning, together with tower and pylon costs and starting gold.
+- **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size. **Kills** counts the run's kills and is also shown on the game-over screen. The combo readout shows the tier and is hidden at ×1; it pulses and grows on each tier-up and fades as the combo falls, and the gold readout flashes on a multiplied payout.
 
 ## Waves
 
@@ -133,3 +136,4 @@ Not built in the prototypes, but decisions should leave room for it.
 - Selling or demolishing buildings.
 - Larger piles producing a single brute minion.
 - A landing animation for bodies, with the final art.
+- Combo juice with the final art and audio: sound, effects and floating numbers.

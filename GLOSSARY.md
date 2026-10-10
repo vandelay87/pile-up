@@ -85,3 +85,15 @@ _Avoid_: Round, level
 **Build phase**:
 The time between waves.
 _Avoid_: Intermission
+
+**Enemies left**:
+The enemies in the current wave not yet killed, including those not yet spawned.
+
+### Economy
+
+**Bounty**:
+The gold one kill pays before any combo.
+
+**Combo**:
+The multiplier on bounty, set by how many kills happened recently. It rises with bursts of killing and falls as they stop.
+_Avoid_: Streak, chain
