@@ -1,12 +1,18 @@
 class_name Main
 extends Node
 
+# PROTOTYPE (swarm spread): record each session's live settings as they change, so
+# the values tried in the game are kept without saving over defaults.json.
+const _SESSIONS_DIR := "res://data/settings/swarm-sessions"
+
 var simulation: Simulation:
 	get:
 		return _simulation
 
 var _simulation: Simulation
 var _map: MapData
+var _session_path := ""
+var _session_json := ""
 
 @onready var _terrain: TileMapLayer = $Terrain
 @onready var _base: TileMapLayer = $World/Base
@@ -51,9 +57,31 @@ func _ready() -> void:
 	)
 
 
+func _record_session() -> void:
+	if not OS.has_feature("editor"):
+		return
+	var json := _simulation.settings.to_json()
+	if json == _session_json:
+		return
+	if _session_path.is_empty():
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_SESSIONS_DIR))
+		var stamp := Time.get_datetime_string_from_system().replace(":", "-")
+		_session_path = "%s/%s.json" % [_SESSIONS_DIR, stamp]
+	var file := FileAccess.open(_session_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Session save failed: %s" % error_string(FileAccess.get_open_error()))
+		return
+	file.store_string(json)
+	file.close()
+	_session_json = json
+	print("Session settings saved to %s" % _session_path)
+
+
 func _physics_process(_delta: float) -> void:
 	if _simulation != null:
 		_simulation.run_frame()
+		if Engine.get_physics_frames() % Simulation.TICKS_PER_SECOND == 0:
+			_record_session()
 
 
 func _start_run(simulation: Simulation) -> void:
