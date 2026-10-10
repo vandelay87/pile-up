@@ -7,6 +7,11 @@ const SPAWN_JITTER := 0.25
 
 var phase := Phase.BUILD
 var edges := PackedStringArray()
+# Wave size minus kills this wave, unspawned enemies included; the next wave's size between
+# waves.
+var enemies_left: int:
+	get:
+		return _size - _kills if phase == Phase.WAVE else size(_wave + 1)
 
 var _settings: Settings
 var _map: MapData
@@ -16,6 +21,8 @@ var _hp := 0.0
 var _spawned := 0
 var _size := 0
 var _spawn_budget := 0.0
+var _wave := 0
+var _kills := 0
 
 
 func _init(
@@ -37,6 +44,8 @@ func enemy_hp(wave: int) -> float:
 
 func start(wave: int) -> void:
 	phase = Phase.WAVE
+	_wave = wave
+	_kills = 0
 	edges = _pick_edges()
 	_size = size(wave)
 	_hp = enemy_hp(wave)
@@ -63,6 +72,11 @@ func spawn() -> void:
 			_enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter, _hp)
 			_spawned += 1
 	_spawn_budget += _settings.spawn_rate
+
+
+func record_kills(kills: int) -> void:
+	if phase == Phase.WAVE:
+		_kills += kills
 
 
 func check_end() -> bool:

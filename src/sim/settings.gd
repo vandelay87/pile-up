@@ -333,6 +333,36 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 	},
+	"combo":
+	{
+		"window":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 10.0,
+			"step": 0.5,
+			"unit": "s of kills counted",
+			"apply": Apply.LIVE,
+		},
+		"tier_2_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in the window for x2",
+			"apply": Apply.LIVE,
+		},
+		"tier_3_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in the window for x3",
+			"apply": Apply.LIVE,
+		},
+	},
 	"towers":
 	{
 		"damage":
@@ -517,6 +547,16 @@ var second_edge_chance: float:
 	get:
 		var percent: int = value("waves", "second_edge_chance")
 		return percent / 100.0
+var combo_window_ticks: int:
+	get:
+		var seconds: float = value("combo", "window")
+		return ticks_from_seconds(seconds)
+var combo_tier_2_kills: int:
+	get:
+		return value("combo", "tier_2_kills")
+var combo_tier_3_kills: int:
+	get:
+		return value("combo", "tier_3_kills")
 var tower_damage: float:
 	get:
 		return value("towers", "damage")

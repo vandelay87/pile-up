@@ -42,6 +42,11 @@
 		"second_edge_chance": 50,
 		"clump_size": 16
 	},
+	"combo": {
+		"window": 2,
+		"tier_2_kills": 10,
+		"tier_3_kills": 20
+	},
 	"towers": {
 		"damage": 5,
 		"fire_rate": 3.5,

@@ -96,6 +96,9 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_float(settings.hp_growth).is_equal_approx(1.05, 1e-6)
 	assert_float(settings.spawn_rate).is_equal_approx(10.0, 1e-6)
 	assert_float(settings.second_edge_chance).is_equal_approx(0.5, 1e-6)
+	assert_int(settings.combo_window_ticks).is_equal(120)
+	assert_int(settings.combo_tier_2_kills).is_equal(10)
+	assert_int(settings.combo_tier_3_kills).is_equal(20)
 
 
 func test_converts_the_enemy_and_swarm_spread_settings_to_sim_units() -> void:
