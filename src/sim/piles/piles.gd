@@ -41,8 +41,8 @@ func queue_bodies(positions: PackedVector2Array) -> void:
 
 func land() -> void:
 	for pos in _queued:
-		var cell := _landing_cell(Vector2i(pos.floor()))
-		if not is_valid_landing(cell):
+		var cell := _landing_cell(pos)
+		if not _map.in_bounds(cell) or not is_valid_landing(cell):
 			continue
 		var index := _index(cell)
 		levels[index] += 1
@@ -112,38 +112,35 @@ func is_valid_landing(cell: Vector2i) -> bool:
 	)
 
 
-func _landing_cell(death_cell: Vector2i) -> Vector2i:
-	var chosen := death_cell
-	var tallest := level(death_cell) if level(death_cell) < WALL_LEVEL else 0
-	for y in range(death_cell.y - 1, death_cell.y + 2):
-		for x in range(death_cell.x - 1, death_cell.x + 2):
-			var cell := Vector2i(x, y)
-			if not _map.in_bounds(cell):
-				continue
-			var cell_level := level(cell)
-			if cell_level > tallest and cell_level < WALL_LEVEL:
-				tallest = cell_level
-				chosen = cell
-	if is_valid_landing(chosen):
-		return chosen
-	return _nearest_valid(death_cell)
+func _landing_cell(death_pos: Vector2) -> Vector2i:
+	var death_cell := Vector2i(death_pos.floor())
+	if _map.in_bounds(death_cell) and is_valid_landing(death_cell):
+		return death_cell
+	return _nearest_valid(death_pos, death_cell)
 
 
-func _nearest_valid(from: Vector2i) -> Vector2i:
-	var best := from
-	var best_distance := INF
+# Searches rings of cells outwards from the death cell. Every cell in ring r is
+# at least r - 0.5 from a position inside the death cell, so the search stops
+# once that bound passes the best distance found. Returns a cell outside the
+# map when no cell is valid.
+func _nearest_valid(death_pos: Vector2, death_cell: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_squared := INF
+	var last_ring := maxi(_map.width, _map.height)
 	var ring := 1
-	while ring <= maxi(_map.width, _map.height) and ring <= best_distance:
-		for y in range(from.y - ring, from.y + ring + 1):
-			for x in range(from.x - ring, from.x + ring + 1):
+	while ring <= last_ring and (ring - 0.5) * (ring - 0.5) <= best_squared:
+		for y in range(maxi(death_cell.y - ring, 0), mini(death_cell.y + ring + 1, _map.height)):
+			var on_edge_row := absi(y - death_cell.y) == ring
+			var step := 1 if on_edge_row else 2 * ring
+			for x in range(death_cell.x - ring, death_cell.x + ring + 1, step):
 				var cell := Vector2i(x, y)
-				if maxi(absi(x - from.x), absi(y - from.y)) != ring:
-					continue
 				if not _map.in_bounds(cell) or not is_valid_landing(cell):
 					continue
-				var distance := _octile(cell - from)
-				if distance < best_distance:
-					best_distance = distance
+				var dx: float = death_pos.x - (x + 0.5)
+				var dy: float = death_pos.y - (y + 0.5)
+				var squared := dx * dx + dy * dy
+				if squared < best_squared or (squared == best_squared and _before(cell, best)):
+					best_squared = squared
 					best = cell
 		ring += 1
 	return best
@@ -170,7 +167,5 @@ func _index(cell: Vector2i) -> int:
 	return cell.y * _map.width + cell.x
 
 
-static func _octile(offset: Vector2i) -> float:
-	var straight := absi(absi(offset.x) - absi(offset.y))
-	var diagonal := mini(absi(offset.x), absi(offset.y))
-	return straight + diagonal * sqrt(2.0)
+static func _before(cell: Vector2i, other: Vector2i) -> bool:
+	return cell.y < other.y or (cell.y == other.y and cell.x < other.x)
