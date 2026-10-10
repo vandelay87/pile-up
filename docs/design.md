@@ -7,10 +7,11 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Goal: a local prototype to test whether the core loop is fun. A Steam release is considered only if it is.
 - Platforms: desktop, macOS and Windows.
 - Engine: Godot 4 (standard build), GDScript.
-- Built in three prototypes, each adding one system:
+- Built in four prototypes, each adding one system:
   - **v1**: corpse loop
-  - **v2**: reanimation
-  - **v3**: power-ups (to be designed after v2)
+  - **v2**: power, plus a rework of v1 after playtesting (being specified)
+  - **v3**: reanimation
+  - **v4**: power-ups (to be designed after v3)
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
 ## World and camera
@@ -73,9 +74,9 @@ After about 10 runs:
 3. Do piles shrinking between waves create real choices?
 4. Do 1,000 enemies flowing around piles look and feel good?
 
-If 1 and 2 fail, the pile rules get reworked before starting v2.
+If 1 and 2 fail, the pile rules get reworked before starting reanimation. Playtesting led to that rework, which is v2.
 
-## v2: reanimation
+## v3: reanimation
 
 - Unlocked by building an **altar** (100 gold) in one of a few build slots touching the base. Each altar raises one pile at a time.
 - Raising costs 1.5 s and 10 gold per body, during waves only, and produces one minion per body. The pile is used up.
@@ -106,6 +107,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 - Enemy types: brutes that always break walls, enemies that attack towers, enemies that chase.
 - A splash/area tower.
-- Power-ups (v3), including interactions with piles (for example, flame setting piles alight).
+- Power-ups (v4), including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
+- A generator that powers an area cut off from the base's power grid.
 - Larger piles producing a single brute minion.
