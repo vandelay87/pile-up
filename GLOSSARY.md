@@ -21,6 +21,18 @@ _Avoid_: Obstacle, blocked cell, wall
 **Spawn edge**:
 A map edge that enemies enter from during the current wave.
 
+### Power
+
+**Power grid**:
+The cells powered from the base, plus any further cells powered by buildings that the grid still connects to the base. Building is only allowed on the power grid.
+_Avoid_: Build zone, power zone, paint
+
+**Powered**:
+A building the power grid connects to the base. A building cut off from the base is **unpowered** and stops working.
+
+**Pylon**:
+A building whose only job is to extend the power grid, much further than other buildings do.
+
 ### Bodies
 
 **Body**:
