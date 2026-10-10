@@ -34,7 +34,7 @@ var _session_json := ""
 
 func _ready() -> void:
 	Engine.physics_ticks_per_second = Simulation.TICKS_PER_SECOND
-	var loaded := Settings.load_file(Settings.DEFAULTS_PATH)
+	var loaded := Settings.load_file(_last_session_or_defaults())
 	if loaded.settings == null:
 		_fail("invalid settings", loaded.error)
 		return
@@ -55,6 +55,16 @@ func _ready() -> void:
 			% _simulation.routing.last_rebuild_msec
 		)
 	)
+
+
+func _last_session_or_defaults() -> String:
+	var sessions := DirAccess.get_files_at(_SESSIONS_DIR)
+	if sessions.is_empty():
+		return Settings.DEFAULTS_PATH
+	sessions.sort()
+	var path := "%s/%s" % [_SESSIONS_DIR, sessions[-1]]
+	print("Starting from the last session's settings: %s" % path)
+	return path
 
 
 func _record_session() -> void:

@@ -36,6 +36,8 @@ class Row:
 		_type = entry["type"]
 		name_label.text = key.capitalize()
 		name_label.tooltip_text = entry["unit"]
+		if entry.has("tip"):
+			name_label.tooltip_text = "%s\n\n%s" % [entry["tip"], entry["unit"]]
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
 		if _type == TYPE_STRING:
 			_line_edit = LineEdit.new()

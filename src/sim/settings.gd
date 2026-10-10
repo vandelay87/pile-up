@@ -33,6 +33,8 @@ const SCHEMA := {
 			"max": 1.0,
 			"step": 0.05,
 			"unit": "cells",
+			"tip":
+			"Collision size. Enemies closer than twice this are pushed apart, so a single file at this spacing is stable.",
 			"apply": Apply.LIVE,
 		},
 		"separation_push":
@@ -42,6 +44,7 @@ const SCHEMA := {
 			"max": 1.0,
 			"step": 0.05,
 			"unit": "overlap/tick",
+			"tip": "How hard overlapping enemies are pushed apart each tick.",
 			"apply": Apply.LIVE,
 		},
 		"neighbour_cap":
@@ -60,6 +63,8 @@ const SCHEMA := {
 			"max": 45.0,
 			"step": 1.0,
 			"unit": "degrees",
+			"tip":
+			"Each enemy rolls a fixed turn off the flow field at spawn, up to this many degrees either way. It never changes, so it mostly presses enemies against one wall.",
 			"apply": Apply.LIVE,
 		},
 		"speed":
@@ -123,6 +128,8 @@ const SCHEMA := {
 			"max": 50,
 			"step": 1,
 			"unit": "± percent, rolled at spawn (PROTOTYPE)",
+			"tip":
+			"Each enemy rolls a pace at spawn, up to this many percent faster or slower. Fast ones catch slow ones and get shoved sideways, which widens the column. 0 = all the same speed.",
 			"apply": Apply.LIVE,
 		},
 		"wander":
@@ -132,6 +139,8 @@ const SCHEMA := {
 			"max": 90.0,
 			"step": 1.0,
 			"unit": "± degrees of weave (PROTOTYPE)",
+			"tip":
+			"Each enemy weaves side to side around its heading, up to this many degrees either way, each at its own point in the weave. 0 = straight lines.",
 			"apply": Apply.LIVE,
 		},
 		"wander_period":
@@ -141,6 +150,8 @@ const SCHEMA := {
 			"max": 20.0,
 			"step": 0.5,
 			"unit": "s per weave (PROTOTYPE)",
+			"tip":
+			"Seconds for one full side-to-side weave. Short = jittery wiggle, long = slow lazy drift. Does nothing while Wander is 0.",
 			"apply": Apply.LIVE,
 		},
 		"spread_radius":
@@ -150,6 +161,8 @@ const SCHEMA := {
 			"max": 3.0,
 			"step": 0.05,
 			"unit": "cells of personal space, 0 = off (PROTOTYPE)",
+			"tip":
+			"Personal space. Enemies closer than this softly push each other apart, so a line fans out across the corridor. Only acts above the collision spacing (twice Separation Radius). 0 = off.",
 			"apply": Apply.LIVE,
 		},
 		"spread_push":
@@ -159,6 +172,8 @@ const SCHEMA := {
 			"max": 1.0,
 			"step": 0.01,
 			"unit": "push per tick (PROTOTYPE)",
+			"tip":
+			"How hard personal space pushes per neighbour, capped at one step of movement per tick. Higher = spreads faster but can look twitchy. Does nothing while Spread Radius is 0.",
 			"apply": Apply.LIVE,
 		},
 	},
@@ -312,6 +327,8 @@ const SCHEMA := {
 			"max": 50,
 			"step": 1,
 			"unit": "enemies per spawn burst (PROTOTYPE)",
+			"tip":
+			"Enemies arrive in bursts of this many at once, each on a random cell along the spawn edge, at the same average spawn rate. 1 = a steady trickle.",
 			"apply": Apply.LIVE,
 		},
 	},
