@@ -11,6 +11,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **v1**: corpse loop
   - **v2**: reanimation
   - **v3**: power-ups (to be designed after v2)
+- Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
 ## World and camera
 
@@ -91,6 +92,15 @@ If 1 and 2 fail, the pile rules get reworked before starting v2.
   - When a group is given a move order, each minion that is in a fight rolls 50% to break off. The rest stay stuck until their opponent dies.
   - Dead minions leave bodies, like everything else.
   - Survivors stay standing through the build phase and can be moved. When "next wave" is pressed, each group collapses into a pile where it stands, which lets the player build corpse terrain on purpose.
+
+## Finished game direction
+
+Not built in the prototypes, but decisions should leave room for it.
+
+- **Levels:** three levels, each with its own look and possibly a twist. A level is won by reaching a set wave, which unlocks the next.
+- **Level 1** is a narrow map that funnels the swarm a couple of ways, so piles and walls form readily.
+- **The prototypes stay endless,** with no wave goal.
+- **Seeds and procedurally generated levels** are a possible future addition, out of scope for the prototypes. Maps are already stored as validated data, so a generator could produce them.
 
 ## Later ideas
 
