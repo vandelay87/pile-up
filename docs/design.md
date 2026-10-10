@@ -17,14 +17,15 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 ## World and camera
 
 - Isometric view with pan and zoom. The map is roughly 1.5–2 screens wide at default zoom.
-- Central base with HP (the starting value is left to tuning). Enemies attack it at its edge, and the run ends when it is destroyed.
+- Central base with 200 HP. Enemies attack it at its edge, and the run ends when it is destroyed.
 - Each wave spawns from 1–2 random map edges, announced at the start of the wave.
 - A fine logical grid sits underneath the isometric rendering. A tower occupies 2×2 cells and a pile occupies 1 cell. Enemies move smoothly, not tile to tile.
 - Art: plain coloured shapes. Pile height must read instantly, as stacked blocks that darken with each level.
 
 ## Enemies (v1: one type)
 
-- 10 HP, 1.5 cells/s, drops 1 gold.
+- 10 HP, 2 cells/s, drops 1 gold.
+- **Swarm spread:** each enemy rolls a pace at spawn (±3% of the base speed), weaves ±30° around its heading over 4 s, and keeps a soft personal space of 0.7 cells, so the swarm spreads across a corridor instead of walking in single file.
 - Target: about 1,000 on screen at 60 fps on a MacBook.
 - Data-oriented: enemies are plain data rendered in batches, not one scene node each. Separation uses a spatial hash, so each enemy checks only neighbouring cells.
 
@@ -34,7 +35,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **Sensible**: piles cost extra in proportion to their slow, and walls and buildings cost their time to break.
   - **Direct**: piles are cheap and walls and buildings are worth breaking.
 - Enemies follow the sensible field. When one meets a pile or structure that the sensible field routes around, it rolls once to switch to the direct field: about 5% for piles, 3% for walls and buildings. The result is locked in until the enemy is past that obstacle, then it returns to the sensible field.
-- Enemies may change routes during a wave, even if that takes them the long way round. In the wave tail (once Enemies left falls to a count that grows with the wave number), an enemy that the sensible field would turn back towards another route switches to the direct field instead, locked in until it is past the obstacle, as with a roll. Changing route while still heading forward stays allowed.
+- Enemies may change routes during a wave, even if that takes them the long way round. In the wave tail (once Enemies left falls to 10 + 2 × the wave number), an enemy that the sensible field would turn back (a heading change of more than 90°) towards another route switches to the direct field instead, locked in until it is past the obstacle, as with a roll. Changing route while still heading forward stays allowed.
 
 ## Body piles
 
@@ -49,7 +50,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   | 2 | 30% slow |
   | 3 | 45% slow |
   | 4 | 60% slow |
-  | 5 | Wall: impassable, 30 HP |
+  | 5 | Wall: impassable, 15 HP |
 
 - A destroyed wall drops back to a level-3 pile.
 - **Decay:** at the end of each wave, every pile rolls once to lose one level: about 50% for piles at levels 1–4 and 25% for walls, so walls stand for longer. Each pile rolls on its own, and a pile never loses more than one level per wave end. There is no warning of which piles will decay.
@@ -59,7 +60,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 - Walls, buildings (towers and pylons) and the base are all structures, and one rule covers them all.
 - An enemy attacks a structure only when it is in the way: it is jammed against it, or its route crosses it. Enemies passing a structure that is not in their way ignore it.
-- Every attacker deals 1 damage per second to any structure, with no limit on attackers beyond space around it.
+- Every attacker deals 2 damage per second to any structure, with no limit on attackers beyond space around it.
 - Enemies killed at a structure die in front of it, so defending a structure builds a pile in front of it.
 - A destroyed tower leaves nothing behind: its cells are clear and its gold is lost.
 
@@ -76,18 +77,19 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 ## Towers and economy
 
-- One tower type: single-target, aimed at the enemy closest to the base. 3 damage, 2 shots/s, range 8 cells, 60 HP, costs 50 gold.
+- One tower type: single-target, aimed at the enemy closest to the base. 5 damage, 3.5 shots/s, range 8 cells, 60 HP, costs 80 gold.
 - Towers can only be built on clear cells of the power grid. Building is allowed during waves.
 - A tower may cut off every path to the base: enemies then break through the cheapest structure.
-- Starting gold: 150.
+- Starting gold: 200.
 - **Bounty:** each kill pays 1 gold before any combo.
-- **Combo:** the number of kills in the last couple of seconds sets a combo tier: ×1, ×2, ×3, up to a cap. Each kill pays its bounty times the current tier, at once, so gold earned mid-burst can be spent during the wave. The combo rises with bursts of killing and falls on its own as they stop; nothing else breaks it. The capped tier keeps late-wave income bounded. The window, tier thresholds and cap are left to tuning, together with tower and pylon costs and starting gold.
+- **Combo:** the number of kills in the last 2 seconds sets a combo tier: ×2 at 10 kills, ×3 at 20, capped at ×3. Each kill pays its bounty times the current tier, at once, so gold earned mid-burst can be spent during the wave. The combo rises with bursts of killing and falls on its own as they stop; nothing else breaks it. The capped tier keeps late-wave income bounded.
 - **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size. **Kills** counts the run's kills and is also shown on the game-over screen. The combo readout shows the tier and is hidden at ×1; it pulses and grows on each tier-up and fades as the combo falls, and the gold readout flashes on a multiplied payout.
 
 ## Waves
 
 - Endless. The next wave starts when the player presses "next wave".
-- Wave 1 has 20 enemies. Each wave has about 20% more enemies and 5% more enemy HP than the last, so wave 20 is roughly 700 enemies.
+- Wave 1 has 20 enemies. Each wave has about 30% more enemies and 5% more enemy HP than the last, so wave 10 is roughly 210 enemies and wave 20 roughly 2,900.
+- Enemies spawn in bursts of 16, each on a random cell along the spawn edge, at an average of 10 per second.
 
 ## v1 fun test
 
