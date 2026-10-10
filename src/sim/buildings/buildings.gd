@@ -38,6 +38,8 @@ class Building:
 	var powered := false
 	var cooldown := 0
 	var target_id := Enemies.NONE
+	## Enemies this tower has killed this run (its shot took them to 0 HP).
+	var kills := 0
 
 	func _init(building_id: int, building_kind: StringName, building_origin: Vector2i) -> void:
 		id = building_id
@@ -187,9 +189,12 @@ func fire(enemies: Enemies) -> Array[Shot]:
 		if target == Enemies.NONE:
 			continue
 		enemies.damage(target, _settings.tower_damage)
+		var index := enemies.index_of(target)
+		if enemies.hp[index] <= 0.0:
+			tower.kills += 1
 		tower.target_id = target
 		tower.cooldown = _settings.tower_cooldown_ticks
-		shots.append(Shot.new(tower.id, target, enemies.positions[enemies.index_of(target)]))
+		shots.append(Shot.new(tower.id, target, enemies.positions[index]))
 	return shots
 
 

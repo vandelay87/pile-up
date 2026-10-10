@@ -25,6 +25,7 @@ var _map: MapData
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
+@onready var _selection: Selection = $Selection
 
 
 func _ready() -> void:
@@ -75,6 +76,7 @@ func _start_run(simulation: Simulation) -> void:
 	_range_overlay.setup(_simulation)
 	_pile_overlay.setup(_simulation)
 	_power_overlay.setup(_simulation)
+	_selection.setup(_simulation)
 
 
 func _restart() -> void:
