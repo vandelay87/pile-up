@@ -34,6 +34,7 @@ func setup(simulation: Simulation) -> void:
 
 
 func _ready() -> void:
+	var ui := UiRoot.add_to(self)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 24)
 	for label: Label in [_gold, _lives, _wave]:
@@ -49,7 +50,7 @@ func _ready() -> void:
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.position.y += MARGIN
-	add_child(bar)
+	ui.add_child(bar)
 
 	var box := VBoxContainer.new()
 	var title := Label.new()
@@ -71,7 +72,7 @@ func _ready() -> void:
 	_game_over.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_game_over.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_game_over.visible = false
-	add_child(_game_over)
+	ui.add_child(_game_over)
 
 	_toast.add_theme_constant_override("outline_size", 4)
 	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -82,7 +83,7 @@ func _ready() -> void:
 	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_toast.position.y -= MARGIN * 6
 	_toast.modulate.a = 0.0
-	add_child(_toast)
+	ui.add_child(_toast)
 
 
 func _show_gold(gold: int) -> void:
