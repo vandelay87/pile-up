@@ -43,7 +43,7 @@
 	"run": {
 		"starting_lives": 20,
 		"starting_gold": 150,
-		"map_path": "res://data/maps/v1.json"
+		"map_path": "res://data/maps/v2-narrow.json"
 	},
 	"view": {
 		"tracer_speed": 60
