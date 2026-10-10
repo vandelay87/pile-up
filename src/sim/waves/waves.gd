@@ -74,6 +74,12 @@ func spawn() -> void:
 	_spawn_budget += _settings.spawn_rate
 
 
+# The last stretch of a wave, when the stragglers push through rather than go the long way.
+func in_wave_tail() -> bool:
+	var tail := _settings.wave_tail + _settings.wave_tail_per_wave * _wave
+	return phase == Phase.WAVE and enemies_left <= tail
+
+
 func record_kills(kills: int) -> void:
 	if phase == Phase.WAVE:
 		_kills += kills

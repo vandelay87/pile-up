@@ -161,6 +161,15 @@ const SCHEMA := {
 			"unit": "push per neighbour per tick",
 			"apply": Apply.LIVE,
 		},
+		"turn_back_angle":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 180.0,
+			"step": 5.0,
+			"unit": "degrees of turn that push through in the wave tail",
+			"apply": Apply.LIVE,
+		},
 	},
 	"piles":
 	{
@@ -330,6 +339,24 @@ const SCHEMA := {
 			"max": 50,
 			"step": 1,
 			"unit": "enemies per spawn burst",
+			"apply": Apply.LIVE,
+		},
+		"wave_tail":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 500,
+			"step": 1,
+			"unit": "enemies left when the wave tail starts",
+			"apply": Apply.LIVE,
+		},
+		"wave_tail_per_wave":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "more wave-tail enemies per wave",
 			"apply": Apply.LIVE,
 		},
 	},
@@ -502,9 +529,19 @@ var personal_space_radius: float:
 var personal_space_push: float:
 	get:
 		return value("enemies", "personal_space_push")
+var turn_back_radians: float:
+	get:
+		var degrees: float = value("enemies", "turn_back_angle")
+		return deg_to_rad(degrees)
 var clump_size: int:
 	get:
 		return value("waves", "clump_size")
+var wave_tail: int:
+	get:
+		return value("waves", "wave_tail")
+var wave_tail_per_wave: int:
+	get:
+		return value("waves", "wave_tail_per_wave")
 var wall_hp: float:
 	get:
 		return value("piles", "wall_hp")
