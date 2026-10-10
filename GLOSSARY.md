@@ -63,6 +63,10 @@ The number of bodies in a pile, which sets how much it slows enemies.
 A pile at level 5. It is a state of a pile, not a separate object.
 _Avoid_: Barricade
 
+**Decay**:
+A pile losing a level at the end of a wave, decided by a roll.
+_Avoid_: Shrink
+
 ### Enemies
 
 **Sensible route**:

@@ -52,7 +52,8 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   | 5 | Wall: impassable, 30 HP |
 
 - A destroyed wall drops back to a level-3 pile.
-- Every pile loses one level at the end of each wave.
+- **Decay:** at the end of each wave, every pile rolls once to lose one level: about 50% for piles at levels 1–4 and 25% for walls, so walls stand for longer. Each pile rolls on its own, and a pile never loses more than one level per wave end. There is no warning of which piles will decay.
+- A destroyed wall drops to level 3 straight away and then rolls at the wave's end like any other pile. A wall that survives its roll keeps its damage into the next wave. A pile that climbs back to a wall comes back at full HP.
 
 ## Structures
 
