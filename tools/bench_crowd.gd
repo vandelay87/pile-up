@@ -22,7 +22,9 @@ func _init(sim: Simulation, crowd_seed: int) -> void:
 	_sim.run_state.add_gold(TOWERS * _sim.settings.tower_cost)
 	for k in TOWERS:
 		var centre := _centre + Vector2.from_angle(TAU * k / TOWERS) * TOWER_RADIUS
-		_sim.queue_command(Commands.BuildTower.new(Towers.origin_at(centre)))
+		_sim.queue_command(
+			Commands.Build.new(Buildings.TOWER, Buildings.origin_at(Buildings.TOWER, centre))
+		)
 	_sim.tick()
 
 

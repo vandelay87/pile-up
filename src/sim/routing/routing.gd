@@ -398,7 +398,7 @@ func _level_factors(route: Route) -> PackedFloat64Array:
 
 
 func _cell_factor(route: Route, level_factors: PackedFloat64Array, index: int) -> float:
-	if _map.rock[index] == 1 or _occupancy.occupied[index] == 1:
+	if _map.rock[index] == 1 or _occupancy.building_ids[index] != Occupancy.EMPTY:
 		return INF
 	var level := _piles.levels[index]
 	if level == Piles.WALL_LEVEL:
@@ -414,7 +414,7 @@ func _wall_cell_factor(route: Route, index: int) -> float:
 func _is_solid(index: int) -> bool:
 	return (
 		_map.rock[index] == 1
-		or _occupancy.occupied[index] == 1
+		or _occupancy.building_ids[index] != Occupancy.EMPTY
 		or _piles.levels[index] == Piles.WALL_LEVEL
 	)
 
@@ -549,12 +549,12 @@ func _reachable(factors: PackedFloat64Array) -> PackedByteArray:
 func _terrain_factors(route: Route) -> PackedFloat64Array:
 	var level_factors := _level_factors(route)
 	var rock := _map.rock
-	var occupied := _occupancy.occupied
+	var building_ids := _occupancy.building_ids
 	var levels := _piles.levels
 	var factors := PackedFloat64Array()
 	factors.resize(levels.size())
 	for index in levels.size():
-		if rock[index] == 1 or occupied[index] == 1:
+		if rock[index] == 1 or building_ids[index] != Occupancy.EMPTY:
 			factors[index] = INF
 		elif levels[index] == Piles.WALL_LEVEL:
 			factors[index] = _wall_cell_factor(route, index)

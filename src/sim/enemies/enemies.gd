@@ -395,7 +395,7 @@ func _is_impassable(cell: Vector2i) -> bool:
 	var index := _index(cell)
 	return (
 		_map.rock[index] == 1
-		or _occupancy.occupied[index] == 1
+		or _occupancy.building_ids[index] != Occupancy.EMPTY
 		or _piles.levels[index] == Piles.WALL_LEVEL
 	)
 

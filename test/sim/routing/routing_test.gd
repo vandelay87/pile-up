@@ -10,7 +10,7 @@ func _routing(
 ) -> Routing:
 	var map := TestMaps.from_rows(rows, base)
 	var occupancy := Occupancy.new(map.width, map.height)
-	occupancy.occupy(towers)
+	occupancy.occupy(towers, 0)
 	var run_piles := Piles.new(_settings(), map, occupancy)
 	for cell: Vector2i in piles:
 		var index := cell.y * map.width + cell.x
@@ -220,7 +220,7 @@ func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
 	routing.start_rebuild()
 
 	var tower: Array[Vector2i] = [Vector2i(2, 0), Vector2i(2, 1)]
-	occupancy.occupy(tower)
+	occupancy.occupy(tower, 0)
 	var updated_now := routing.update(tower)
 	var swapped_stale := routing.finish_rebuild()
 	var swapped_restart := routing.finish_rebuild()

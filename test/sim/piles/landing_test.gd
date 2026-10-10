@@ -82,7 +82,7 @@ func test_a_body_moving_off_rock_breaks_ties_by_the_lowest_y_then_x() -> void:
 
 
 func test_a_body_on_a_tower_cell_moves_to_the_nearest_valid_cell() -> void:
-	var piles := _piles(_open_rows(), Towers.footprint(Vector2i(2, 2)))
+	var piles := _piles(_open_rows(), Buildings.cells_of(Buildings.TOWER, Vector2i(2, 2)))
 
 	_land(piles, [Vector2(2.5, 2.5)])
 
@@ -188,7 +188,7 @@ func _open_rows() -> Array[String]:
 func _piles(rows: Array[String], towers: Array[Vector2i] = []) -> Piles:
 	var map := TestMaps.from_rows(rows, Rect2i(6, 6, 2, 2))
 	var occupancy := Occupancy.new(map.width, map.height)
-	occupancy.occupy(towers)
+	occupancy.occupy(towers, 0)
 	return Piles.new(_settings(), map, occupancy)
 
 

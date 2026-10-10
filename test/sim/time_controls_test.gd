@@ -45,14 +45,18 @@ func test_speed_n_runs_n_ticks_per_frame() -> void:
 
 func test_a_seed_and_recorded_commands_replay_to_an_identical_state() -> void:
 	var frames := {
-		0: [Commands.NextWave.new()],
+		0: [Commands.NextWave.new(), Commands.Build.new(Buildings.TOWER, Vector2i(3, 3))],
 		5: [Commands.SetSetting.new("enemies", "speed", 3.0), Commands.SetSpeed.new(4)],
 		10: [Commands.SetPaused.new(true)],
 		12:
 		[Commands.SetSetting.new("enemies", "separation_push", 0.2), Commands.StepOneTick.new()],
 		13: [Commands.StepOneTick.new(), Commands.StepOneTick.new()],
 		15: [Commands.SetPaused.new(false), Commands.SetSpeed.new(2)],
-		20: [Commands.SetSetting.new("routing", "sensible_wall_weight", 2.0)],
+		20:
+		[
+			Commands.SetSetting.new("routing", "sensible_wall_weight", 2.0),
+			Commands.Build.new(Buildings.TOWER, Vector2i(11, 11)),
+		],
 	}
 	var live := _crowd_sim()
 	var recorded: Array[Array] = []
@@ -74,6 +78,10 @@ func test_a_seed_and_recorded_commands_replay_to_an_identical_state() -> void:
 	assert_int(replay.enemies.count).is_equal(live.enemies.count)
 	assert_array(Array(replay.enemies.ids)).is_equal(Array(live.enemies.ids))
 	assert_array(Array(replay.enemies.positions)).is_equal(Array(live.enemies.positions))
+	assert_array(Array(replay.enemies.hp)).is_equal(Array(live.enemies.hp))
+	assert_array(_building_origins(replay)).contains_exactly([Vector2i(3, 3), Vector2i(11, 11)])
+	assert_array(_building_origins(replay)).is_equal(_building_origins(live))
+	assert_array(Array(replay.occupancy.building_ids)).is_equal(Array(live.occupancy.building_ids))
 	assert_float(replay.settings.enemy_speed).is_equal(3.0)
 	assert_float(replay.settings.separation_push).is_equal(0.2)
 	assert_float(replay.settings.sensible_wall_weight).is_equal(2.0)
@@ -81,6 +89,13 @@ func test_a_seed_and_recorded_commands_replay_to_an_identical_state() -> void:
 	assert_int(replay.speed).is_equal(2)
 	for route: Routing.Route in Routing.Route.values():
 		assert_array(_field_values(replay, route)).is_equal(_field_values(live, route))
+
+
+func _building_origins(sim: Simulation) -> Array[Vector2i]:
+	var origins: Array[Vector2i] = []
+	for building in sim.buildings.built:
+		origins.append(building.origin)
+	return origins
 
 
 func _field_values(sim: Simulation, route: Routing.Route) -> Array[float]:

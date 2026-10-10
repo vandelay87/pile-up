@@ -32,14 +32,16 @@ func _init() -> void:
 	rng.seed = TOWER_SEED
 	var centre := Vector2(map.base.get_center())
 	_sim.pile_changed.connect(_on_pile_changed)
-	_sim.tower_placed.connect(func(_origin: Vector2i) -> void: _tower_built = true)
+	_sim.building_placed.connect(func(_id: int) -> void: _tower_built = true)
 	for t in MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
 		crowd.drop_body()
 		if t % TOWER_INTERVAL == 0:
 			var spot := centre + Vector2.from_angle(rng.randf() * TAU) * TOWER_RADIUS
 			_sim.add_gold(settings.tower_cost)
-			_sim.queue_command(Commands.BuildTower.new(Towers.origin_at(spot)))
+			_sim.queue_command(
+				Commands.Build.new(Buildings.TOWER, Buildings.origin_at(Buildings.TOWER, spot))
+			)
 		var wall_update := _wall_hit
 		_landed = false
 		_tower_built = false
