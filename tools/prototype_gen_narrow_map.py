@@ -1,8 +1,9 @@
 """PROTOTYPE: generates data/maps/v2-narrow.json for The narrow map (#54)."""
-import json, math, sys
+import json, math, random, sys
 
-W, H = 96, 60
-BASE = (55, 47)  # origin of the 4x4 base
+W, H = 96, 64
+BASE = (46, 46)  # origin of the 4x4 base
+rng = random.Random(54)  # fixed seed: the same map every run
 grid = [["#"] * W for _ in range(H)]
 
 
@@ -25,26 +26,47 @@ def path(points, r0, r1=None):
             t = i / steps
             x, y = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
             f = (done + seg * t) / total
-            disc(x, y, r0 + (r1 - r0) * f)
+            disc(x, y, r0 + (r1 - r0) * f + rng.uniform(-0.45, 0.45))
         done += seg
 
 
-R = 3.5  # 7-cell corridors
-# A small clearing around the base; the defence belongs in the chokepoints.
-for y in range(42, 56):
-    for x in range(50, 64):
+# The first, even layout, nudged a cell or two and roughened so it looks
+# less clear cut. Corridors are about 7 cells wide.
+# A clearing around the base, a little uneven and slightly off-centre.
+for y in range(39, 58):
+    for x in range(38, 58):
         grid[y][x] = "."
+for cx, cy, r in [(38, 39, 2.5), (57, 40, 3), (37, 52, 2), (58, 55, 2.5)]:
+    disc(cx, cy, r)
 # Flared mouths, easing into the corridors.
-path([(0, 8), (10, 8)], 6.5, R)
-path([(40, 0), (40, 7)], 6.5, R)
-path([(95, 18), (85, 18)], 6.5, R)
-# West: the long way round, then along the bottom into the clearing.
-path([(10, 8), (18, 8), (18, 22), (10, 30), (10, 44), (50, 44)], R)
-# East: short and direct, down into the clearing from above.
-path([(85, 18), (72, 22), (60, 22), (60, 42)], R)
-# North splits unevenly: a long branch to the west junction, a short one east.
-path([(40, 7), (40, 10), (30, 14), (30, 44)], R)
-path([(40, 10), (52, 10), (60, 22)], R)
+path([(0, 10), (10, 10)], 6.5, 3.5)
+path([(95, 11), (85, 11)], 6.3, 3.5)
+path([(47, 0), (48, 8)], 6.6, 3.5)
+# West and east routes: S-bends down to a junction, then into the clearing.
+path([(10, 10), (17, 10), (16, 26), (39, 27), (41, 39)], 3.5, 3.7)
+path([(85, 11), (78, 11), (79, 25), (57, 26), (55, 39)], 3.4, 3.6)
+# North route splits around a rock island and joins each side route.
+path([(48, 8), (48, 12), (33, 12), (32, 27)], 3.6, 3.3)
+path([(48, 12), (63, 13), (63, 25)], 3.4, 3.7)
+
+
+
+def rock_neighbours(x, y):
+    return sum(
+        1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+        if not (0 <= x + dx < W and 0 <= y + dy < H) or grid[y + dy][x + dx] == "#"
+    )
+
+
+# Smooth away lone nubs and pockets the roughening leaves behind.
+for _ in range(2):
+    for y in range(H):
+        for x in range(W):
+            n = rock_neighbours(x, y)
+            if grid[y][x] == "#" and n <= 1:
+                grid[y][x] = "."
+            elif grid[y][x] == "." and n >= 3 and 0 < x < W - 1 and 0 < y < H - 1:
+                grid[y][x] = "#"
 
 rows = ["".join(r) for r in grid]
 for y in range(BASE[1], BASE[1] + 4):
@@ -59,7 +81,7 @@ out = {
 }
 text = json.dumps(out, indent="\t")
 # One row per line, matching v1.json's layout.
-text = text.replace('"base": {\n\t\t"origin": [\n\t\t\t55,\n\t\t\t47\n\t\t],\n\t\t"size": [\n\t\t\t4,\n\t\t\t4\n\t\t]\n\t}', '"base": {"origin": [55, 47], "size": [4, 4]}')
+text = text.replace('"base": {\n\t\t"origin": [\n\t\t\t46,\n\t\t\t46\n\t\t],\n\t\t"size": [\n\t\t\t4,\n\t\t\t4\n\t\t]\n\t}', '"base": {"origin": [46, 46], "size": [4, 4]}')
 text = text.replace('"spawn_edges": [\n\t\t"N",\n\t\t"E",\n\t\t"W"\n\t]', '"spawn_edges": ["N", "E", "W"]')
 with open(sys.argv[1], "w") as f:
     f.write(text + "\n")
