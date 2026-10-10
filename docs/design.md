@@ -58,7 +58,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 ## Structures
 
-- Walls, buildings (towers and pylons) and the base are all structures, and one rule covers them all.
+- Walls, buildings (towers, pylons and repair yards) and the base are all structures, and one rule covers them all.
 - An enemy attacks a structure only when it is in the way: it is jammed against it, or its route crosses it. Enemies passing a structure that is not in their way ignore it.
 - Every attacker deals 2 damage per second to any structure, with no limit on attackers beyond space around it.
 - Enemies killed at a structure die in front of it, so defending a structure builds a pile in front of it.
@@ -74,6 +74,22 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - **Pylon**: 1×1, 20 gold, 20 HP, does nothing but power cells. Like a tower, a destroyed pylon leaves nothing behind.
 - While a building is being placed, powered cells are tinted. Unpowered buildings are always drawn greyed out with an icon.
 - No selling or demolishing in v2, so a stranded building stays until it is destroyed or reconnected.
+
+## Repair yard
+
+- **Repair yard**: 2×2, 80 gold, 60 HP, power area 4 cells. It follows every power rule: it must be built on the power grid, and an unpowered repair yard stops repairing. Like a tower, a destroyed repair yard leaves nothing behind.
+- Its **repair area** is a square reaching 8 cells from its edge. A building is inside when any of its cells is.
+- It repairs buildings only (towers, pylons and other repair yards), never itself, walls or the base, and only during waves.
+- Each repair yard has one **drone**. A repair is a round trip: the drone flies straight to the building over any terrain at 8 cells/s, repairs it at 5 HP/s until it is full, then flies back to the yard before taking its next job. The travel is the cost of far-off repairs. Enemies cannot attack the drone.
+- **Auto:** the drone picks the damaged building nearest the yard, lowest HP first on a tie. It prefers a building no other drone is repairing, but doubles up when every damaged building is taken. Drones on the same building add their repair rates.
+- **Assignment:** the player can assign one building in the yard's area. Whenever that building is damaged it comes first, once the drone is home from its current trip. Otherwise the drone works on auto. The assignment lasts until the player clears it or the building is destroyed.
+- If the building being repaired is destroyed, the drone picks again. If the yard loses power, or the wave's last enemy dies, the drone flies home and stops. If the yard is destroyed, its drone goes with it.
+- A building being repaired shows a small steady repair effect. The repair area is tinted while the yard is being placed or selected.
+
+## Selecting buildings
+
+- Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
+- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and whether it is powered. A tower adds damage, shots/s, range and its kills this run. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it) and the HP it has repaired this run. A pylon adds its power area.
 
 ## Towers and economy
 
@@ -138,6 +154,8 @@ Not built in the prototypes, but decisions should leave room for it.
 - Meta-progression between runs.
 - A generator that powers an area cut off from the base's power grid.
 - Selling or demolishing buildings.
+- Building upgrades, such as more drones per repair yard (with power-ups in v4).
+- A ranked queue of assignments for a repair yard.
 - Larger piles producing a single brute minion.
 - A landing animation for bodies, with the final art.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
