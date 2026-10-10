@@ -8,7 +8,7 @@ var _events: Array[String]
 
 func before_test() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
-	settings.change("run", "starting_lives", 100)
+	settings.change("piles", "decay_chance", 100)
 	settings = settings.for_next_run()
 	var rows: Array[String] = []
 	for y in 8:
@@ -38,11 +38,11 @@ func test_wave_end_decays_the_piles_at_step_1_of_the_next_tick_and_starts_a_rebu
 
 func test_a_body_from_the_last_kill_lands_before_the_wave_decay() -> void:
 	_play_wave()
-	_sim.piles.queue_bodies(PackedVector2Array([Vector2(5.5, 1.5)]))
+	_sim.piles.queue_bodies(PackedVector2Array([Vector2(6.5, 6.5)]))
 
 	_sim.tick()
 
-	assert_int(_sim.piles.level(Vector2i(5, 1))).is_equal(0)
+	assert_int(_sim.piles.level(Vector2i(6, 6))).is_equal(0)
 
 
 func test_next_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> void:
@@ -92,7 +92,7 @@ func test_a_tower_built_during_the_rebuild_restarts_it_and_is_in_the_swapped_in_
 	_play_wave()
 	_sim.tick()
 
-	_sim.queue_command(Commands.BuildTower.new(Vector2i(5, 5)))
+	_sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(5, 5)))
 	for tick in Simulation.DECAY_REBUILD_TICKS:
 		_sim.tick()
 	assert_bool(_sim.routing.is_rebuilding()).is_true()
@@ -110,4 +110,5 @@ func _play_wave() -> void:
 		_sim.tick()
 		if _sim.waves.phase == Waves.Phase.BUILD:
 			return
+		_sim.queue_command(Commands.KillEnemies.new(1000))
 	fail("the wave did not end within %d ticks" % WAVE_TICKS)

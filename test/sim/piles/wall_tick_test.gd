@@ -41,7 +41,7 @@ func test_a_bucket_change_updates_the_fields_next_tick() -> void:
 
 
 func test_changing_what_a_wall_costs_rebuilds_the_fields() -> void:
-	for key: String in ["speed", "wall_damage"]:
+	for key: String in ["speed", "structure_damage"]:
 		var sim := _sim_with_wall()
 
 		sim.queue_command(Commands.SetSetting.new("enemies", key, 3.0))
@@ -79,6 +79,7 @@ func test_a_run_with_walls_is_identical_for_the_same_seed() -> void:
 
 
 func test_decay_reopens_a_wall_corner_after_the_rebuild() -> void:
+	_settings.change("piles", "wall_decay_chance", 100)
 	var sim := _sim_with_wall()
 	sim.decay_piles()
 

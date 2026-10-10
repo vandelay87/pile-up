@@ -113,6 +113,7 @@ func add_overlay(label: String, toggled: Callable) -> void:
 
 
 func _ready() -> void:
+	var ui := UiRoot.add_to(self)
 	visible = false
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
@@ -122,7 +123,7 @@ func _ready() -> void:
 	_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_box)
 	panel.add_child(scroll)
-	add_child(panel)
+	ui.add_child(panel)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -166,6 +167,14 @@ func _add_cheats() -> void:
 	for control: Control in [gold, add_gold, wave, jump]:
 		row.add_child(control)
 	_box.add_child(row)
+	var victims := _number_field(1, 10000, 1, 10)
+	var kill := Button.new()
+	kill.text = "Kill enemies"
+	kill.pressed.connect(func() -> void: _send(Commands.KillEnemies.new(roundi(victims.value))))
+	var kill_row := HBoxContainer.new()
+	for control: Control in [victims, kill]:
+		kill_row.add_child(control)
+	_box.add_child(kill_row)
 
 
 func _add_settings() -> void:

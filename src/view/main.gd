@@ -21,9 +21,12 @@ var _map: MapData
 @onready var _edge_highlight: EdgeHighlight = $EdgeHighlight
 @onready var _tower_view: TowerView = $TowerView
 @onready var _tracers: Tracers = $Tracers
+@onready var _drone_view: DroneView = $DroneView
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
 @onready var _pile_overlay: PileOverlay = $PileOverlay
+@onready var _power_overlay: PowerOverlay = $PowerOverlay
+@onready var _selection: Selection = $Selection
 
 
 func _ready() -> void:
@@ -41,7 +44,7 @@ func _ready() -> void:
 	_camera.frame(_map)
 	_edge_highlight.setup(_map)
 	_add_overlays()
-	_hud.tower_requested.connect(_placement.enter)
+	_hud.build_requested.connect(_placement.enter)
 	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
 		(
@@ -70,9 +73,12 @@ func _start_run(simulation: Simulation) -> void:
 	_hud.setup(_simulation)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
+	_drone_view.setup(_simulation)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)
 	_pile_overlay.setup(_simulation)
+	_power_overlay.setup(_simulation)
+	_selection.setup(_simulation)
 
 
 func _restart() -> void:
@@ -96,8 +102,10 @@ func _add_overlays() -> void:
 			"Field heatmap: %s" % route_name, _flow_overlay.show_heatmap.bind(route)
 		)
 	_debug_panel.add_overlay("Pile labels", _pile_overlay.show_labels)
+	_debug_panel.add_overlay("Structure HP", _pile_overlay.show_structure_hp)
 	_debug_panel.add_overlay("Enemy route tint", _enemy_renderer.show_route_tint)
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
+	_debug_panel.add_overlay("Power grid", _power_overlay.show_grid)
 
 
 func _draw_map(map: MapData) -> void:

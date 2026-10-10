@@ -12,6 +12,7 @@ const ENEMIES := 1000
 const MEASURED_TICKS := 600
 const TOWER_INTERVAL := 60
 const TOWER_RADIUS := 17.0
+const TOWER_ATTEMPTS := 100
 
 var _sim: Simulation
 var _landed := false
@@ -25,6 +26,8 @@ var _wall_msec := PackedFloat64Array()
 
 func _init() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	# Towers go just outside the crowd, past the base's own power grid.
+	settings.change("run", "base_power_area", 20)
 	var map := MapData.load_file(settings.map_path).map
 	_sim = Simulation.new(settings, map, RUN_SEED)
 	var crowd := BenchCrowd.new(_sim, CROWD_SEED)
@@ -32,14 +35,13 @@ func _init() -> void:
 	rng.seed = TOWER_SEED
 	var centre := Vector2(map.base.get_center())
 	_sim.pile_changed.connect(_on_pile_changed)
-	_sim.tower_placed.connect(func(_origin: Vector2i) -> void: _tower_built = true)
+	_sim.building_placed.connect(func(_id: int) -> void: _tower_built = true)
 	for t in MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
 		crowd.drop_body()
 		if t % TOWER_INTERVAL == 0:
-			var spot := centre + Vector2.from_angle(rng.randf() * TAU) * TOWER_RADIUS
 			_sim.add_gold(settings.tower_cost)
-			_sim.queue_command(Commands.BuildTower.new(Towers.origin_at(spot)))
+			_sim.queue_command(Commands.Build.new(Buildings.TOWER, _tower_spot(centre, rng)))
 		var wall_update := _wall_hit
 		_landed = false
 		_tower_built = false
@@ -67,6 +69,18 @@ func _init() -> void:
 	print(_row("Tower built", _tower_msec))
 	print(_row("Wall hit or broken", _wall_msec))
 	quit()
+
+
+# A random spot on the ring where a tower can stand. Most of the narrow map's ring is rock, so
+# drawing one angle and building there was rejected nearly every time.
+func _tower_spot(centre: Vector2, rng: RandomNumberGenerator) -> Vector2i:
+	var origin := Vector2i.ZERO
+	for attempt in TOWER_ATTEMPTS:
+		var spot := centre + Vector2.from_angle(rng.randf() * TAU) * TOWER_RADIUS
+		origin = Buildings.origin_at(Buildings.TOWER, spot)
+		if _sim.buildings.can_place(Buildings.TOWER, origin):
+			break
+	return origin
 
 
 func _on_pile_changed(cells: Array[Vector2i]) -> void:

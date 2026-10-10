@@ -32,21 +32,60 @@ class NextWave:
 		sim.next_wave()
 
 
-class BuildTower:
+class Build:
 	extends Commands.Play
 
-	const LABEL := "build tower"
-
+	var _kind: StringName
 	var _origin: Vector2i
 
-	func _init(origin: Vector2i) -> void:
+	func _init(kind: StringName, origin: Vector2i) -> void:
+		_kind = kind
 		_origin = origin
+
+	static func label_for(kind: StringName) -> String:
+		return "build %s" % String(kind).replace("_", " ")
+
+	func label() -> String:
+		return label_for(_kind)
+
+	func apply(sim: Simulation) -> void:
+		sim.build(_kind, _origin)
+
+
+class Assign:
+	extends Commands.Play
+
+	const LABEL := "assign"
+
+	var _yard_id: int
+	var _building_id: int
+
+	func _init(yard_id: int, building_id: int) -> void:
+		_yard_id = yard_id
+		_building_id = building_id
 
 	func label() -> String:
 		return LABEL
 
 	func apply(sim: Simulation) -> void:
-		sim.build_tower(_origin)
+		sim.assign(_yard_id, _building_id)
+
+
+class ClearAssignment:
+	extends Commands.Play
+
+	const LABEL := "clear assignment"
+
+	var _yard_id: int
+
+	func _init(yard_id: int) -> void:
+		_yard_id = yard_id
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.clear_assignment(_yard_id)
 
 
 class Restart:
@@ -133,3 +172,20 @@ class JumpToWave:
 
 	func apply(sim: Simulation) -> void:
 		sim.jump_to_wave(_wave)
+
+
+class KillEnemies:
+	extends Commands.Play
+
+	const LABEL := "kill enemies"
+
+	var _count: int
+
+	func _init(count: int) -> void:
+		_count = count
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.kill_enemies(_count)

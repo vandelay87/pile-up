@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 const ONE_TICK: Array[String] = [
-	"step 0", "step 1", "step 2", "step 3", "step 4", "step 5", "step 6", "step 7"
+	"step 0", "step 1", "step 2", "step 3", "step 4", "step 5", "step 6", "step 7", "step 8"
 ]
 
 const WAVE_TICKS := 120
@@ -18,7 +18,7 @@ func before_test() -> void:
 	_sim.step_observer = func(step: int) -> void: _trace.append("step %d" % step)
 
 
-func test_tick_runs_steps_0_to_7_in_order_exactly_once() -> void:
+func test_tick_runs_steps_0_to_8_in_order_exactly_once() -> void:
 	_sim.tick()
 
 	assert_array(_trace).contains_exactly(ONE_TICK)

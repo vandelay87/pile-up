@@ -71,7 +71,7 @@ const SCHEMA := {
 			"unit": "cells/s",
 			"apply": Apply.LIVE,
 		},
-		"wall_damage":
+		"structure_damage":
 		{
 			"type": TYPE_FLOAT,
 			"min": 0.1,
@@ -114,6 +114,60 @@ const SCHEMA := {
 			"max": 100,
 			"step": 1,
 			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"speed_variety":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "± percent pace, rolled at spawn",
+			"apply": Apply.LIVE,
+		},
+		"wander":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 90.0,
+			"step": 1.0,
+			"unit": "± degrees of weave",
+			"apply": Apply.LIVE,
+		},
+		"wander_period":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 20.0,
+			"step": 0.5,
+			"unit": "s per weave",
+			"apply": Apply.LIVE,
+		},
+		"personal_space_radius":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 3.0,
+			"step": 0.05,
+			"unit": "cells, 0 = off",
+			"apply": Apply.LIVE,
+		},
+		"personal_space_push":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 1.0,
+			"step": 0.01,
+			"unit": "push per neighbour per tick",
+			"apply": Apply.LIVE,
+		},
+		"turn_back_angle":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 180.0,
+			"step": 5.0,
+			"unit": "degrees of turn that push through in the wave tail",
 			"apply": Apply.LIVE,
 		},
 	},
@@ -162,6 +216,24 @@ const SCHEMA := {
 			"max": 1000.0,
 			"step": 1.0,
 			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"decay_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"wall_decay_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent",
 			"apply": Apply.LIVE,
 		},
 	},
@@ -260,6 +332,33 @@ const SCHEMA := {
 			"unit": "percent",
 			"apply": Apply.LIVE,
 		},
+		"clump_size":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 50,
+			"step": 1,
+			"unit": "enemies per spawn burst",
+			"apply": Apply.LIVE,
+		},
+		"wave_tail":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 500,
+			"step": 1,
+			"unit": "enemies left when the wave tail starts",
+			"apply": Apply.LIVE,
+		},
+		"wave_tail_per_wave":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "more wave-tail enemies per wave",
+			"apply": Apply.LIVE,
+		},
 	},
 	"towers":
 	{
@@ -299,16 +398,121 @@ const SCHEMA := {
 			"unit": "gold",
 			"apply": Apply.LIVE,
 		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+	},
+	"pylons":
+	{
+		"cost":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1000,
+			"step": 5,
+			"unit": "gold",
+			"apply": Apply.LIVE,
+		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+	},
+	"repair_yards":
+	{
+		"cost":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1000,
+			"step": 5,
+			"unit": "gold",
+			"apply": Apply.LIVE,
+		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+		"repair_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+		"drone_speed":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 60.0,
+			"step": 0.5,
+			"unit": "cells/s",
+			"apply": Apply.LIVE,
+		},
+		"repair_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "HP/s",
+			"apply": Apply.LIVE,
+		},
 	},
 	"run":
 	{
-		"starting_lives":
+		"base_hp":
 		{
 			"type": TYPE_INT,
 			"min": 1,
-			"max": 100,
-			"step": 1,
-			"unit": "lives",
+			"max": 10000,
+			"step": 10,
+			"unit": "HP",
 			"apply": Apply.RESTART,
 		},
 		"starting_gold":
@@ -319,6 +523,51 @@ const SCHEMA := {
 			"step": 10,
 			"unit": "gold",
 			"apply": Apply.RESTART,
+		},
+		"base_power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the base",
+			"apply": Apply.LIVE,
+		},
+		"combo_window":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 10.0,
+			"step": 0.5,
+			"unit": "s of kills counted",
+			"apply": Apply.LIVE,
+		},
+		"combo_tier_2_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in the window for x2",
+			"apply": Apply.LIVE,
+		},
+		"combo_tier_3_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in the window for x3",
+			"apply": Apply.LIVE,
+		},
+		"combo_cap":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 3,
+			"step": 1,
+			"unit": "highest combo tier",
+			"apply": Apply.LIVE,
 		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
 	},
@@ -361,12 +610,12 @@ var enemy_speed: float:
 var enemy_speed_per_tick: float:
 	get:
 		return enemy_speed / Simulation.TICKS_PER_SECOND
-var wall_damage: float:
+var structure_damage: float:
 	get:
-		return value("enemies", "wall_damage")
-var wall_damage_per_tick: float:
+		return value("enemies", "structure_damage")
+var structure_damage_per_tick: float:
 	get:
-		return wall_damage / Simulation.TICKS_PER_SECOND
+		return structure_damage / Simulation.TICKS_PER_SECOND
 var wall_reach: float:
 	get:
 		return value("enemies", "wall_reach")
@@ -382,9 +631,48 @@ var wall_roll_chance: float:
 	get:
 		var percent: int = value("enemies", "wall_roll_chance")
 		return percent / 100.0
+var speed_variety: float:
+	get:
+		var percent: int = value("enemies", "speed_variety")
+		return percent / 100.0
+var wander_radians: float:
+	get:
+		var degrees: float = value("enemies", "wander")
+		return deg_to_rad(degrees)
+var wander_period_ticks: float:
+	get:
+		var seconds: float = value("enemies", "wander_period")
+		return seconds * Simulation.TICKS_PER_SECOND
+var personal_space_radius: float:
+	get:
+		return value("enemies", "personal_space_radius")
+var personal_space_push: float:
+	get:
+		return value("enemies", "personal_space_push")
+var turn_back_radians: float:
+	get:
+		var degrees: float = value("enemies", "turn_back_angle")
+		return deg_to_rad(degrees)
+var clump_size: int:
+	get:
+		return value("waves", "clump_size")
+var wave_tail: int:
+	get:
+		return value("waves", "wave_tail")
+var wave_tail_per_wave: int:
+	get:
+		return value("waves", "wave_tail_per_wave")
 var wall_hp: float:
 	get:
 		return value("piles", "wall_hp")
+var pile_decay_chance: float:
+	get:
+		var percent: int = value("piles", "decay_chance")
+		return percent / 100.0
+var wall_decay_chance: float:
+	get:
+		var percent: int = value("piles", "wall_decay_chance")
+		return percent / 100.0
 var wall_hp_bucket: float:
 	get:
 		return value("routing", "wall_hp_bucket")
@@ -416,6 +704,19 @@ var second_edge_chance: float:
 	get:
 		var percent: int = value("waves", "second_edge_chance")
 		return percent / 100.0
+var combo_window_ticks: int:
+	get:
+		var seconds: float = value("run", "combo_window")
+		return ticks_from_seconds(seconds)
+var combo_tier_2_kills: int:
+	get:
+		return value("run", "combo_tier_2_kills")
+var combo_tier_3_kills: int:
+	get:
+		return value("run", "combo_tier_3_kills")
+var combo_cap: int:
+	get:
+		return value("run", "combo_cap")
 var tower_damage: float:
 	get:
 		return value("towers", "damage")
@@ -429,12 +730,37 @@ var tower_range: float:
 var tower_cost: int:
 	get:
 		return value("towers", "cost")
+var tower_hp: float:
+	get:
+		return value("towers", "hp")
+var pylon_cost: int:
+	get:
+		return value("pylons", "cost")
+var repair_yard_cost: int:
+	get:
+		return value("repair_yards", "cost")
+var repair_area: int:
+	get:
+		return value("repair_yards", "repair_area")
+## Cells a drone flies per tick.
+var drone_step: float:
+	get:
+		var per_second: float = value("repair_yards", "drone_speed")
+		return per_second / Simulation.TICKS_PER_SECOND
+## HP a drone repairs per tick.
+var repair_per_tick: float:
+	get:
+		var per_second: float = value("repair_yards", "repair_rate")
+		return per_second / Simulation.TICKS_PER_SECOND
+var base_power_area: int:
+	get:
+		return value("run", "base_power_area")
 var tracer_speed: float:
 	get:
 		return value("view", "tracer_speed")
-var starting_lives: int:
+var base_hp: int:
 	get:
-		return value("run", "starting_lives")
+		return value("run", "base_hp")
 var starting_gold: int:
 	get:
 		return value("run", "starting_gold")
