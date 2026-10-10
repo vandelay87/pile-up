@@ -38,11 +38,11 @@ func _init(
 
 
 func level(cell: Vector2i) -> int:
-	return levels[_index(cell)]
+	return levels[_map.index_of(cell)]
 
 
 func wall_hp(cell: Vector2i) -> float:
-	return wall_hps[_index(cell)]
+	return wall_hps[_map.index_of(cell)]
 
 
 func queue_bodies(positions: PackedVector2Array) -> void:
@@ -54,7 +54,7 @@ func land() -> void:
 		var cell := _landing_cell(pos)
 		if not _map.in_bounds(cell) or not is_valid_landing(cell):
 			continue
-		var index := _index(cell)
+		var index := _map.index_of(cell)
 		levels[index] += 1
 		if levels[index] == WALL_LEVEL:
 			wall_hps[index] = _settings.wall_hp
@@ -65,7 +65,7 @@ func land() -> void:
 
 
 func damage_wall(cell: Vector2i, amount: float) -> void:
-	var index := _index(cell)
+	var index := _map.index_of(cell)
 	if levels[index] != WALL_LEVEL:
 		return
 	var bucket := _bucket(wall_hps[index])
@@ -96,7 +96,7 @@ func decay() -> void:
 		var is_wall := levels[index] == WALL_LEVEL
 		if not _rolls_under(wall_chance if is_wall else pile_chance):
 			continue
-		var cell := Vector2i(index % _map.width, index / _map.width)
+		var cell := _map.cell_of(index)
 		if is_wall:
 			_count_wall(cell, -1)
 			wall_hps[index] = 0.0
@@ -113,7 +113,7 @@ func _rolls_under(chance: float) -> bool:
 
 func clear_changes() -> void:
 	for cell in changed:
-		_changed_mask[_index(cell)] = 0
+		_changed_mask[_map.index_of(cell)] = 0
 	changed.clear()
 
 
@@ -131,7 +131,7 @@ func take_field_changes() -> Array[Vector2i]:
 
 func is_valid_landing(cell: Vector2i) -> bool:
 	return (
-		levels[_index(cell)] < WALL_LEVEL
+		levels[_map.index_of(cell)] < WALL_LEVEL
 		and not _map.is_rock(cell)
 		and not _map.is_base(cell)
 		and not _occupancy.is_occupied(cell)
@@ -173,13 +173,14 @@ func _nearest_valid(death_pos: Vector2, death_cell: Vector2i) -> Vector2i:
 
 
 func _count_wall(cell: Vector2i, change: int) -> void:
-	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
-		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
-			walls_nearby[y * _map.width + x] += change
+	var area := _map.neighbourhood(cell)
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			walls_nearby[_map.index_of(Vector2i(x, y))] += change
 
 
 func _mark_changed(cell: Vector2i) -> void:
-	var index := _index(cell)
+	var index := _map.index_of(cell)
 	if _changed_mask[index] == 0:
 		_changed_mask[index] = 1
 		changed.append(cell)
@@ -187,10 +188,6 @@ func _mark_changed(cell: Vector2i) -> void:
 
 func _bucket(hp: float) -> int:
 	return ceili(hp / _settings.wall_hp_bucket)
-
-
-func _index(cell: Vector2i) -> int:
-	return cell.y * _map.width + cell.x
 
 
 static func _before(cell: Vector2i, other: Vector2i) -> bool:

@@ -206,7 +206,7 @@ func move(in_wave_tail := false) -> void:
 	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
 		if structure_targets[i] != NONE:
-			_structures.damage(_cell_of(structure_targets[i]), damage_per_tick)
+			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
 
 
 func _roll_route(
@@ -253,7 +253,7 @@ func _push_through_turned_back(
 
 
 func _is_past_obstacle(i: int, pos: Vector2) -> bool:
-	var obstacle_value := _routing.value(Routing.Route.DIRECT, _cell_of(last_rolled_cells[i]))
+	var obstacle_value := _routing.value(Routing.Route.DIRECT, _map.cell_of(last_rolled_cells[i]))
 	return _routing.sample_value(Routing.Route.DIRECT, pos) < obstacle_value
 
 
@@ -306,10 +306,10 @@ func _route_crosses_structure(route: Routing.Route, pos: Vector2) -> bool:
 	var next := _routing.parent(route, Vector2i(pos.floor()))
 	if next == Routing.NO_PARENT:
 		return false
-	if _structures.is_structure(_index(next)):
+	if _structures.is_structure(_map.index_of(next)):
 		return true
 	var after := _routing.parent(route, next)
-	return after != Routing.NO_PARENT and _structures.is_structure(_index(after))
+	return after != Routing.NO_PARENT and _structures.is_structure(_map.index_of(after))
 
 
 func _nearest_pressed_structure(pos: Vector2, reach: float) -> int:
@@ -329,7 +329,7 @@ func _nearest_pressed_structure(pos: Vector2, reach: float) -> int:
 
 
 func _distance_to_cell(pos: Vector2, index: int) -> float:
-	var corner := Vector2(_cell_of(index))
+	var corner := Vector2(_map.cell_of(index))
 	return pos.distance_to(pos.clamp(corner, corner + Vector2.ONE))
 
 
@@ -430,7 +430,7 @@ func _leave_through_nearest_open_face(pos: Vector2, cell: Vector2i, radius: floa
 func _is_impassable(cell: Vector2i) -> bool:
 	if not _map.in_bounds(cell):
 		return true
-	var index := _index(cell)
+	var index := _map.index_of(cell)
 	return (
 		_map.rock[index] == 1
 		or _structures.is_base(index)
@@ -458,14 +458,6 @@ func remove_dead() -> PackedVector2Array:
 
 func _cell_index(pos: Vector2) -> int:
 	return int(pos.y) * _map.width + int(pos.x)
-
-
-func _index(cell: Vector2i) -> int:
-	return cell.y * _map.width + cell.x
-
-
-func _cell_of(index: int) -> Vector2i:
-	return Vector2i(index % _map.width, index / _map.width)
 
 
 func _swap_remove(index: int) -> void:

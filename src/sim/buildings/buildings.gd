@@ -4,7 +4,13 @@ extends RefCounted
 const TOWER := &"tower"
 const PYLON := &"pylon"
 const REPAIR_YARD := &"repair_yard"
-const FOOTPRINTS := {TOWER: Vector2i(2, 2), PYLON: Vector2i(1, 1), REPAIR_YARD: Vector2i(2, 2)}
+## Every kind of building: its footprint, and the settings group holding its cost, hp and
+## power_area. The one per-kind lookup; add new kinds here.
+const KINDS := {
+	TOWER: {"footprint": Vector2i(2, 2), "settings": "towers"},
+	PYLON: {"footprint": Vector2i(1, 1), "settings": "pylons"},
+	REPAIR_YARD: {"footprint": Vector2i(2, 2), "settings": "repair_yards"},
+}
 const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
 const OFF_GRID := "off the power grid"
@@ -58,10 +64,10 @@ class Shot:
 	var target_id: int
 	var position: Vector2
 
-	func _init(shooter: int, target: int, hit: Vector2) -> void:
-		tower_id = shooter
-		target_id = target
-		position = hit
+	func _init(shot_tower_id: int, shot_target_id: int, shot_position: Vector2) -> void:
+		tower_id = shot_tower_id
+		target_id = shot_target_id
+		position = shot_position
 
 
 func _init(
@@ -82,11 +88,18 @@ func _init(
 
 
 static func is_kind(kind: StringName) -> bool:
-	return FOOTPRINTS.has(kind)
+	return KINDS.has(kind)
 
 
 static func footprint_size(kind: StringName) -> Vector2i:
-	return FOOTPRINTS[kind]
+	var size: Vector2i = KINDS[kind]["footprint"]
+	return size
+
+
+## One of a kind's per-kind settings ("cost", "hp" or "power_area") from its settings group.
+static func kind_setting(settings: Settings, kind: StringName, key: String) -> Variant:
+	var group: String = KINDS[kind]["settings"]
+	return settings.value(group, key)
 
 
 static func centre_of(kind: StringName, origin: Vector2i) -> Vector2:
@@ -114,15 +127,20 @@ func can_place(kind: StringName, origin: Vector2i) -> bool:
 	return _placement_error(kind, origin).is_empty()
 
 
-## Places a building at the end of [member built], or returns the reason it was rejected.
-func build(kind: StringName, origin: Vector2i) -> String:
+## Why a build here would be rejected, or empty when it would succeed.
+func build_error(kind: StringName, origin: Vector2i) -> String:
 	var error := _placement_error(kind, origin)
-	if not error.is_empty():
-		return error
-	var cost := cost_of(kind)
-	if not _run_state.can_afford(cost):
+	if error.is_empty() and not _run_state.can_afford(cost_of(kind)):
 		return NOT_ENOUGH_GOLD
-	_run_state.spend(cost)
+	return error
+
+
+## Spends the cost and places a building at the end of [member built], returning it; returns
+## null and changes nothing when [method build_error] gives a reason.
+func build(kind: StringName, origin: Vector2i) -> Building:
+	if not build_error(kind, origin).is_empty():
+		return null
+	_run_state.spend(cost_of(kind))
 	var placed := Building.new(_next_id, kind, origin)
 	_next_id += 1
 	placed.hp = max_hp(kind)
@@ -131,18 +149,19 @@ func build(kind: StringName, origin: Vector2i) -> String:
 	built.append(placed)
 	_by_id[placed.id] = placed
 	_power_grid.recompute(self)
-	return ""
+	return placed
 
 
 func max_hp(kind: StringName) -> float:
-	match kind:
-		TOWER:
-			return _settings.tower_hp
-		PYLON:
-			return _settings.pylon_hp
-		REPAIR_YARD:
-			return _settings.repair_yard_hp
-	return 0.0
+	return kind_setting(_settings, kind, "hp")
+
+
+func cost_of(kind: StringName) -> int:
+	return kind_setting(_settings, kind, "cost")
+
+
+func power_area(kind: StringName) -> int:
+	return kind_setting(_settings, kind, "power_area")
 
 
 ## Lowers a building's HP at once. A bucket change queues its cells for a field update; at 0
@@ -216,7 +235,7 @@ func fire(enemies: Enemies) -> Array[Shot]:
 			continue
 		enemies.damage(target, _settings.tower_damage)
 		var index := enemies.index_of(target)
-		if enemies.hp[index] <= 0.0:
+		if not enemies.is_alive(index):
 			tower.kills += 1
 		tower.target_id = target
 		tower.cooldown = _settings.tower_cooldown_ticks
@@ -236,24 +255,14 @@ func _destroy(target: Building) -> void:
 
 func _count_nearby(cells: Array[Vector2i], change: int) -> void:
 	for cell in cells:
-		for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
-			for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
-				nearby[y * _map.width + x] += change
+		var area := _map.neighbourhood(cell)
+		for y in range(area.position.y, area.end.y):
+			for x in range(area.position.x, area.end.x):
+				nearby[_map.index_of(Vector2i(x, y))] += change
 
 
 func _bucket(hp: float) -> int:
 	return ceili(hp / _settings.wall_hp_bucket)
-
-
-func cost_of(kind: StringName) -> int:
-	match kind:
-		TOWER:
-			return _settings.tower_cost
-		PYLON:
-			return _settings.pylon_cost
-		REPAIR_YARD:
-			return _settings.repair_yard_cost
-	return 0
 
 
 func _placement_error(kind: StringName, origin: Vector2i) -> String:

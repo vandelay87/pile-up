@@ -136,6 +136,19 @@ func test_changing_a_power_area_setting_recomputes_the_grid() -> void:
 	assert_array(_events).contains_exactly(["power changed"])
 
 
+func test_changing_a_building_kinds_power_area_recomputes_the_grid() -> void:
+	_sim.queue_command(Commands.Build.new(Buildings.PYLON, Vector2i(25, 13)))
+	_sim.tick()
+	assert_bool(_sim.power_grid.is_on_grid(Vector2i(37, 13))).is_false()
+	_events.clear()
+
+	_sim.queue_command(Commands.SetSetting.new("pylons", "power_area", 12))
+	_sim.tick()
+
+	assert_bool(_sim.power_grid.is_on_grid(Vector2i(37, 13))).is_true()
+	assert_array(_events).contains_exactly(["power changed"])
+
+
 # A pylon at the base grid's edge, a pylon at that one's edge, and a tower beyond it, all
 # powered. Returns their ids in build order.
 func _build_branch() -> Array[int]:

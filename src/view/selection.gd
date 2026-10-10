@@ -169,7 +169,7 @@ func _building_stats(building: Buildings.Building) -> String:
 			lines.append("Range %s" % _number(settings.tower_range))
 			lines.append("Kills %d" % building.kills)
 		Buildings.PYLON:
-			lines.append("Power area %d" % _simulation.power_grid.power_area(building.kind))
+			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
 			lines.append_array(_yard_stats(building))
 	return "\n".join(lines)

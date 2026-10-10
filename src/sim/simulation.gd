@@ -34,6 +34,13 @@ enum Step {
 const TICKS_PER_SECOND := 60
 const SPEEDS: Array[int] = [1, 2, 4]
 const DECAY_REBUILD_TICKS := 12
+## The settings, as [group, key], whose change recomputes the power grid.
+const POWER_AREA_SETTINGS := [
+	["run", "base_power_area"],
+	["towers", "power_area"],
+	["pylons", "power_area"],
+	["repair_yards", "power_area"],
+]
 
 var settings: Settings
 var map: MapData
@@ -75,7 +82,7 @@ var _reported_gold: int
 var _reported_base_hp: float
 var _reported_kills := 0
 var _reported_combo_tier := 1
-var _multiplied_payout := false
+var _payout_was_multiplied := false
 var _reported_enemies_left: int
 var _wave_ended := false
 var _reported_phase := Waves.Phase.BUILD
@@ -126,7 +133,7 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	if not error.is_empty():
 		reject_command(error)
 		return
-	if key.ends_with("power_area"):
+	if [group, key] in POWER_AREA_SETTINGS:
 		power_grid.recompute(buildings)
 	var costs_walls := group == "enemies" and key in ["speed", "structure_damage"]
 	if (group in ["routing", "piles"] or costs_walls) and routing.rebuild():
@@ -168,11 +175,11 @@ func is_decay_rebuild_in_flight() -> bool:
 
 
 func build(kind: StringName, origin: Vector2i) -> void:
-	var error := buildings.build(kind, origin)
+	var error := buildings.build_error(kind, origin)
 	if not error.is_empty():
 		reject_command("%s: %s" % [Commands.Build.label_for(kind), error])
 		return
-	var placed := buildings.built[buildings.built.size() - 1]
+	var placed := buildings.build(kind, origin)
 	_placed.append(placed.id)
 	_changed_cells.append_array(placed.footprint)
 	if placed.kind == Buildings.REPAIR_YARD:
@@ -267,8 +274,8 @@ func _emit_signals() -> void:
 	if run_state.combo_tier != _reported_combo_tier:
 		_reported_combo_tier = run_state.combo_tier
 		combo_changed.emit(_reported_combo_tier)
-	if _multiplied_payout:
-		_multiplied_payout = false
+	if _payout_was_multiplied:
+		_payout_was_multiplied = false
 		payout.emit(run_state.payout, run_state.payout_tier)
 	var placed := _placed
 	_placed = []
@@ -392,7 +399,7 @@ func _remove_dead() -> void:
 	var deaths := enemies.remove_dead()
 	piles.queue_bodies(deaths)
 	run_state.record_kills(deaths.size(), tick_count)
-	_multiplied_payout = run_state.payout_tier > 1
+	_payout_was_multiplied = run_state.payout_tier > 1
 	waves.record_kills(deaths.size())
 
 

@@ -30,14 +30,15 @@ func _init(
 	_base_cells.resize(_map.width * _map.height)
 	_near_base.resize(_map.width * _map.height)
 	for cell in _map.base_cells():
-		_base_cells[_index(cell)] = 1
-		for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
-			for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
-				_near_base[y * _map.width + x] = 1
+		_base_cells[_map.index_of(cell)] = 1
+		var area := _map.neighbourhood(cell)
+		for y in range(area.position.y, area.end.y):
+			for x in range(area.position.x, area.end.x):
+				_near_base[_map.index_of(Vector2i(x, y))] = 1
 
 
 func structure_at(cell: Vector2i) -> Kind:
-	var index := _index(cell)
+	var index := _map.index_of(cell)
 	if _base_cells[index] == 1:
 		return Kind.BASE
 	if _occupancy.building_ids[index] != Occupancy.EMPTY:
@@ -106,7 +107,3 @@ func is_breakable(index: int) -> bool:
 # True when a structure is in this cell or one of its 8 neighbours.
 func is_nearby(index: int) -> bool:
 	return _near_base[index] == 1 or _piles.walls_nearby[index] > 0 or _buildings.nearby[index] > 0
-
-
-func _index(cell: Vector2i) -> int:
-	return cell.y * _map.width + cell.x

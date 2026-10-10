@@ -23,7 +23,7 @@ func _init(run_settings: Settings, run_map: MapData) -> void:
 
 
 func is_on_grid(cell: Vector2i) -> bool:
-	return _map.in_bounds(cell) and cells[cell.y * _map.width + cell.x] == 1
+	return _map.in_bounds(cell) and cells[_map.index_of(cell)] == 1
 
 
 func is_powered(id: int) -> bool:
@@ -38,18 +38,8 @@ func base_area() -> Rect2i:
 ## A building's power area, clipped to the map.
 func area_of(kind: StringName, origin: Vector2i) -> Rect2i:
 	var footprint := Rect2i(origin, Buildings.footprint_size(kind))
-	return _area(footprint, power_area(kind))
-
-
-func power_area(kind: StringName) -> int:
-	match kind:
-		Buildings.TOWER:
-			return _settings.tower_power_area
-		Buildings.PYLON:
-			return _settings.pylon_power_area
-		Buildings.REPAIR_YARD:
-			return _settings.repair_yard_power_area
-	return 0
+	var reach: int = Buildings.kind_setting(_settings, kind, "power_area")
+	return _area(footprint, reach)
 
 
 ## Walks outwards from the base through overlapping power areas, setting each building's
@@ -89,7 +79,7 @@ func take_changed() -> bool:
 
 func _touches_grid(building: Buildings.Building) -> bool:
 	for cell in building.footprint:
-		if cells[cell.y * _map.width + cell.x] == 1:
+		if cells[_map.index_of(cell)] == 1:
 			return true
 	return false
 

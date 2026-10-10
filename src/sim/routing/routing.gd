@@ -188,14 +188,14 @@ func _keep_sensible_before(copy: bool) -> void:
 
 
 func value(route: Route, cell: Vector2i) -> float:
-	return _fields[route].values[_index(cell)]
+	return _fields[route].values[_map.index_of(cell)]
 
 
 func parent(route: Route, cell: Vector2i) -> Vector2i:
-	var parent_index := _fields[route].parents[_index(cell)]
+	var parent_index := _fields[route].parents[_map.index_of(cell)]
 	if parent_index < 0:
 		return NO_PARENT
-	return Vector2i(parent_index % _map.width, parent_index / _map.width)
+	return _map.cell_of(parent_index)
 
 
 func parents(route: Route) -> PackedInt32Array:
@@ -203,7 +203,7 @@ func parents(route: Route) -> PackedInt32Array:
 
 
 func direction(route: Route, cell: Vector2i) -> Vector2:
-	return _fields[route].directions[_index(cell)]
+	return _fields[route].directions[_map.index_of(cell)]
 
 
 func sample_direction(route: Route, pos: Vector2) -> Vector2:
@@ -295,7 +295,7 @@ func _apply_factors(
 	var height := _map.height
 	var region := PackedInt32Array()
 	for cell in cells:
-		var index := _index(cell)
+		var index := _map.index_of(cell)
 		var factor := _cell_factor(route, level_factors, index)
 		if factor == factors[index] and _marks[index] & _RESHAPED == 0:
 			continue
@@ -446,7 +446,7 @@ func _solid_cells() -> PackedByteArray:
 func _apply_solid(cells: Array[Vector2i]) -> PackedInt32Array:
 	var reshaped := PackedInt32Array()
 	for cell in cells:
-		var index := _index(cell)
+		var index := _map.index_of(cell)
 		var solid := 1 if _is_solid(index) else 0
 		if solid != _solid[index]:
 			_solid[index] = solid
@@ -471,7 +471,7 @@ static func _build_field(
 
 	var heap := _Heap.new(count)
 	for cell in map.base_cells():
-		var base_index := cell.y * width + cell.x
+		var base_index := map.index_of(cell)
 		field.values[base_index] = 0.0
 		heap.push(0.0, base_index)
 	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array())
@@ -566,10 +566,6 @@ func _blend(field: Field, pos: Vector2) -> void:
 				weight = weight_x * weight_y
 				_blend_cells[i] = cell
 		_blend_weights[i] = weight
-
-
-func _index(cell: Vector2i) -> int:
-	return cell.y * _map.width + cell.x
 
 
 class _Heap:

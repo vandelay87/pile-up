@@ -36,6 +36,4 @@ func enemies(run_routing: Routing, rng: RandomNumberGenerator) -> Enemies:
 ## Builds a tower for free, or returns null when it cannot be placed.
 func build_tower(origin: Vector2i) -> Buildings.Building:
 	run_state.add_gold(settings.tower_cost)
-	if not buildings.build(Buildings.TOWER, origin).is_empty():
-		return null
-	return buildings.built.back()
+	return buildings.build(Buildings.TOWER, origin)

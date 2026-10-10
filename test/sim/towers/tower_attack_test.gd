@@ -139,7 +139,7 @@ func _build_tower(sim: Simulation, origin: Vector2i) -> Buildings.Building:
 	sim.tick()
 	assert_array(_events).contains(["placed 0"])
 	_events.clear()
-	return sim.buildings.built[sim.buildings.built.size() - 1]
+	return sim.buildings.building(0)
 
 
 func _run_until(sim: Simulation, done: Callable) -> void:

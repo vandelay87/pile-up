@@ -109,71 +109,71 @@ func clear(yard_id: int) -> String:
 ## flies home and stops. A destroyed yard's drone is gone.
 func step(in_wave: bool) -> void:
 	var gone := false
-	for each in drones:
-		var yard := _buildings.building(each.yard_id)
+	for drone in drones:
+		var yard := _buildings.building(drone.yard_id)
 		if yard == null:
-			_by_yard.erase(each.yard_id)
+			_by_yard.erase(drone.yard_id)
 			gone = true
 			continue
-		if each.assignment != NONE and _buildings.building(each.assignment) == null:
-			each.assignment = NONE
+		if drone.assignment != NONE and _buildings.building(drone.assignment) == null:
+			drone.assignment = NONE
 		if not (in_wave and yard.powered):
-			_send_home(each)
-		elif each.state == State.HOME:
-			_pick(each, yard)
-		elif each.is_on_job() and _buildings.building(each.target_id) == null:
-			if not _pick(each, yard):
-				_send_home(each)
-		_advance(each)
+			_send_home(drone)
+		elif drone.state == State.HOME:
+			_pick(drone, yard)
+		elif drone.is_on_job() and _buildings.building(drone.target_id) == null:
+			if not _pick(drone, yard):
+				_send_home(drone)
+		_advance(drone)
 	# Drones on one building all leave on the tick it is full, whichever of them topped it up.
-	for each in drones:
-		if each.state == State.REPAIRING:
-			var target := _buildings.building(each.target_id)
+	for drone in drones:
+		if drone.state == State.REPAIRING:
+			var target := _buildings.building(drone.target_id)
 			if target != null and not _buildings.is_damaged(target):
-				_send_home(each)
+				_send_home(drone)
 	if gone:
-		drones = drones.filter(func(each: Drone) -> bool: return _by_yard.has(each.yard_id))
+		drones = drones.filter(func(drone: Drone) -> bool: return _by_yard.has(drone.yard_id))
 
 
-func _advance(each: Drone) -> void:
-	match each.state:
+func _advance(drone: Drone) -> void:
+	match drone.state:
 		State.OUTBOUND:
-			if _fly(each, _buildings.building(each.target_id).centre):
-				each.state = State.REPAIRING
+			if _fly(drone, _buildings.building(drone.target_id).centre):
+				drone.state = State.REPAIRING
 		State.REPAIRING:
-			var target := _buildings.building(each.target_id)
-			each.repaired += _buildings.repair(target.id, _settings.repair_per_tick)
+			var target := _buildings.building(drone.target_id)
+			drone.repaired += _buildings.repair(target.id, _settings.repair_per_tick)
 		State.RETURNING:
-			if _fly(each, each.home):
-				each.state = State.HOME
+			if _fly(drone, drone.home):
+				drone.state = State.HOME
 
 
 ## Moves a drone one step towards a point; true when it arrives.
-func _fly(each: Drone, to: Vector2) -> bool:
+func _fly(drone: Drone, to: Vector2) -> bool:
 	var step := _settings.drone_step
-	if each.position.distance_to(to) <= step + _ARRIVE_SLACK:
-		each.position = to
+	if drone.position.distance_to(to) <= step + _ARRIVE_SLACK:
+		drone.position = to
 		return true
-	each.position = each.position.move_toward(to, step)
+	drone.position = drone.position.move_toward(to, step)
 	return false
 
 
-func _send_home(each: Drone) -> void:
-	each.target_id = NONE
-	if each.state != State.HOME:
-		each.state = State.RETURNING
+func _send_home(drone: Drone) -> void:
+	drone.target_id = NONE
+	if drone.state != State.HOME:
+		drone.state = State.RETURNING
 
 
 ## Picks a job: the assignment when it is damaged, otherwise the nearest candidate (then lowest HP,
 ## then lowest id), preferring one no other drone is on. False when there is nothing to repair.
-func _pick(each: Drone, yard: Buildings.Building) -> bool:
-	var assigned := _buildings.building(each.assignment)
+func _pick(drone: Drone, yard: Buildings.Building) -> bool:
+	var assigned := _buildings.building(drone.assignment)
 	if assigned != null and _buildings.is_damaged(assigned):
-		_start_job(each, assigned.id)
+		_start_job(drone, assigned.id)
 		return true
 	var taken := {}
 	for other in drones:
-		if other != each and other.is_on_job():
+		if other != drone and other.is_on_job():
 			taken[other.target_id] = true
 	var best: Buildings.Building = null
 	var best_taken := true
@@ -188,7 +188,7 @@ func _pick(each: Drone, yard: Buildings.Building) -> bool:
 			best_taken = is_taken
 	if best == null:
 		return false
-	_start_job(each, best.id)
+	_start_job(drone, best.id)
 	return true
 
 
@@ -210,6 +210,6 @@ func _is_better(
 	return candidate.id < best.id
 
 
-func _start_job(each: Drone, target_id: int) -> void:
-	each.target_id = target_id
-	each.state = State.OUTBOUND
+func _start_job(drone: Drone, target_id: int) -> void:
+	drone.target_id = target_id
+	drone.state = State.OUTBOUND
