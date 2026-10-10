@@ -11,7 +11,12 @@
 		"wall_reach": 0.1,
 		"jam_seconds": 0.5,
 		"pile_roll_chance": 5,
-		"wall_roll_chance": 3
+		"wall_roll_chance": 3,
+		"speed_variety": 0,
+		"wander": 0,
+		"wander_period": 4,
+		"spread_radius": 0,
+		"spread_push": 0.02
 	},
 	"piles": {
 		"slow_level_1": 15,
@@ -32,7 +37,8 @@
 		"growth": 1.2,
 		"hp_growth": 1.05,
 		"spawn_rate": 10,
-		"second_edge_chance": 50
+		"second_edge_chance": 50,
+		"clump_size": 1
 	},
 	"towers": {
 		"damage": 3,

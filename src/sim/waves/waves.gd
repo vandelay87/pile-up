@@ -47,16 +47,21 @@ func start(wave: int) -> void:
 func spawn() -> void:
 	if phase != Phase.WAVE:
 		return
-	while _spawned < _size and _spawn_budget >= Simulation.TICKS_PER_SECOND:
-		_spawn_budget -= Simulation.TICKS_PER_SECOND
-		var cells := _map.spawn_cells(edges[_spawned % edges.size()])
-		var cell := cells[_rng.randi_range(0, cells.size() - 1)]
-		var jitter := Vector2(
-			_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER),
-			_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
-		)
-		_enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter, _hp)
-		_spawned += 1
+	# PROTOTYPE (swarm spread): spawn in bursts of clump_size, keeping the average rate.
+	var clump := _settings.clump_size
+	var burst_cost := Simulation.TICKS_PER_SECOND * clump
+	while _spawned < _size and _spawn_budget >= burst_cost:
+		_spawn_budget -= burst_cost
+		var edge := edges[(_spawned / clump) % edges.size()]
+		var cells := _map.spawn_cells(edge)
+		for _k in mini(clump, _size - _spawned):
+			var cell := cells[_rng.randi_range(0, cells.size() - 1)]
+			var jitter := Vector2(
+				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER),
+				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
+			)
+			_enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter, _hp)
+			_spawned += 1
 	_spawn_budget += _settings.spawn_rate
 
 
