@@ -6,6 +6,9 @@ const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
 const _PROGRESS := 0.02
 const _ROLL_STEPS := 40
+# Single-precision headings put an exact reversal a hair either side of pi, so a turn must
+# beat the turn-back angle by this much to count.
+const _TURN_SLACK := 1e-4
 const _FACES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 
 var count := 0
@@ -241,7 +244,7 @@ func _push_through_turned_back(
 		var after := _routing.sample_direction(Routing.Route.SENSIBLE, pos)
 		if before == Vector2.ZERO or after == Vector2.ZERO:
 			continue
-		if absf(before.angle_to(after)) <= turn_back:
+		if absf(before.angle_to(after)) <= turn_back + _TURN_SLACK:
 			continue
 		var next := direct_parents[_cell_index(pos)]
 		if next < 0:
