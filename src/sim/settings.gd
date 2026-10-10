@@ -209,6 +209,24 @@ const SCHEMA := {
 			"unit": "HP",
 			"apply": Apply.LIVE,
 		},
+		"decay_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
+		"wall_decay_chance":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent",
+			"apply": Apply.LIVE,
+		},
 	},
 	"routing":
 	{
@@ -460,6 +478,14 @@ var clump_size: int:
 var wall_hp: float:
 	get:
 		return value("piles", "wall_hp")
+var pile_decay_chance: float:
+	get:
+		var percent: int = value("piles", "decay_chance")
+		return percent / 100.0
+var wall_decay_chance: float:
+	get:
+		var percent: int = value("piles", "wall_decay_chance")
+		return percent / 100.0
 var wall_hp_bucket: float:
 	get:
 		return value("routing", "wall_hp_bucket")

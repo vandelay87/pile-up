@@ -139,6 +139,7 @@ func test_a_direct_route_enemy_returns_to_sensible_after_its_wall_breaks() -> vo
 
 func test_a_direct_route_enemy_returns_to_sensible_after_its_pile_decays() -> void:
 	_settings.change("enemies", "pile_roll_chance", 100)
+	_settings.change("piles", "decay_chance", 100)
 	var enemies := _enemies(CORRIDOR, CORRIDOR_BASE)
 	_add_bodies(PILE, 4)
 	var id := enemies.spawn(BESIDE_OBSTACLE, _settings.enemy_hp)

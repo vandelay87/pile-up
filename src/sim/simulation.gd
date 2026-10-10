@@ -66,7 +66,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	map = run_map
 	_run_seed = run_seed
 	occupancy = Occupancy.new(map.width, map.height)
-	piles = Piles.new(settings, map, occupancy)
+	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
 	routing = Routing.new(settings, map, occupancy, piles)
 	enemies = Enemies.new(
 		settings, map, occupancy, piles, routing, _system_rng("enemies"), _system_rng("swarm")

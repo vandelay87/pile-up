@@ -9,6 +9,7 @@ var _events: Array[String]
 func before_test() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 	settings.change("run", "starting_lives", 100)
+	settings.change("piles", "decay_chance", 100)
 	settings = settings.for_next_run()
 	var rows: Array[String] = []
 	for y in 8:

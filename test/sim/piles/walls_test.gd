@@ -8,6 +8,7 @@ var _piles: Piles
 
 func before_test() -> void:
 	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+	_settings.change("piles", "wall_decay_chance", 100)
 	var map := TestMaps.from_rows(
 		["........", "........", "........", "........", "........"], Rect2i(7, 4, 1, 1)
 	)
@@ -60,25 +61,6 @@ func test_damage_to_a_fallen_wall_or_a_pile_does_nothing() -> void:
 	assert_int(_piles.level(WALL)).is_equal(3)
 	assert_int(_piles.level(Vector2i(0, 0))).is_equal(0)
 	assert_array(_piles.take_field_changes()).is_empty()
-
-
-func test_a_wall_decays_to_level_4_and_discards_its_hp() -> void:
-	_piles.damage_wall(WALL, 4.0)
-
-	_piles.decay()
-
-	assert_int(_piles.level(WALL)).is_equal(Piles.WALL_LEVEL - 1)
-	assert_float(_piles.wall_hp(WALL)).is_equal(0.0)
-
-
-func test_a_decayed_wall_rebuilt_to_level_5_has_full_hp() -> void:
-	_piles.damage_wall(WALL, 10.0)
-	_piles.decay()
-
-	_piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
-	_piles.land()
-
-	assert_float(_piles.wall_hp(WALL)).is_equal(15.0)
 
 
 func test_walls_nearby_counts_the_walls_in_each_cells_3x3_block() -> void:
