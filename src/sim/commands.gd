@@ -52,6 +52,42 @@ class Build:
 		sim.build(_kind, _origin)
 
 
+class Assign:
+	extends Commands.Play
+
+	const LABEL := "assign"
+
+	var _yard_id: int
+	var _building_id: int
+
+	func _init(yard_id: int, building_id: int) -> void:
+		_yard_id = yard_id
+		_building_id = building_id
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.assign(_yard_id, _building_id)
+
+
+class ClearAssignment:
+	extends Commands.Play
+
+	const LABEL := "clear assignment"
+
+	var _yard_id: int
+
+	func _init(yard_id: int) -> void:
+		_yard_id = yard_id
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.clear_assignment(_yard_id)
+
+
 class Restart:
 	extends Commands.Command
 

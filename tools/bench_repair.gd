@@ -12,6 +12,7 @@ const ENEMIES := 1000
 const MEASURED_TICKS := 600
 const TOWER_INTERVAL := 60
 const TOWER_RADIUS := 17.0
+const TOWER_ATTEMPTS := 100
 
 var _sim: Simulation
 var _landed := false
@@ -39,11 +40,8 @@ func _init() -> void:
 		crowd.top_up(ENEMIES)
 		crowd.drop_body()
 		if t % TOWER_INTERVAL == 0:
-			var spot := centre + Vector2.from_angle(rng.randf() * TAU) * TOWER_RADIUS
 			_sim.add_gold(settings.tower_cost)
-			_sim.queue_command(
-				Commands.Build.new(Buildings.TOWER, Buildings.origin_at(Buildings.TOWER, spot))
-			)
+			_sim.queue_command(Commands.Build.new(Buildings.TOWER, _tower_spot(centre, rng)))
 		var wall_update := _wall_hit
 		_landed = false
 		_tower_built = false
@@ -71,6 +69,18 @@ func _init() -> void:
 	print(_row("Tower built", _tower_msec))
 	print(_row("Wall hit or broken", _wall_msec))
 	quit()
+
+
+# A random spot on the ring where a tower can stand. Most of the narrow map's ring is rock, so
+# drawing one angle and building there was rejected nearly every time.
+func _tower_spot(centre: Vector2, rng: RandomNumberGenerator) -> Vector2i:
+	var origin := Vector2i.ZERO
+	for attempt in TOWER_ATTEMPTS:
+		var spot := centre + Vector2.from_angle(rng.randf() * TAU) * TOWER_RADIUS
+		origin = Buildings.origin_at(Buildings.TOWER, spot)
+		if _sim.buildings.can_place(Buildings.TOWER, origin):
+			break
+	return origin
 
 
 func _on_pile_changed(cells: Array[Vector2i]) -> void:

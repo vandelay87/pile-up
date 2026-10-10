@@ -63,6 +63,14 @@
 		"hp": 20,
 		"power_area": 10
 	},
+	"repair_yards": {
+		"cost": 80,
+		"hp": 60,
+		"power_area": 4,
+		"repair_area": 8,
+		"drone_speed": 8,
+		"repair_rate": 5
+	},
 	"run": {
 		"base_hp": 200,
 		"starting_gold": 200,

@@ -26,6 +26,7 @@ enum Step {
 	REBUILD_SPATIAL_HASH,
 	MOVE_ENEMIES,
 	FIRE_TOWERS,
+	REPAIR_BUILDINGS,
 	REMOVE_DEAD,
 	CHECK_WAVE_END,
 }
@@ -45,6 +46,7 @@ var buildings: Buildings
 var run_state: RunState
 var structures: Structures
 var power_grid: PowerGrid
+var repair_yards: RepairYards
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -89,6 +91,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	run_state = RunState.new(settings)
 	power_grid = PowerGrid.new(settings, map)
 	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
+	repair_yards = RepairYards.new(settings, buildings)
 	structures = Structures.new(map, occupancy, piles, buildings, run_state)
 	routing = Routing.new(settings, map, occupancy, piles, structures)
 	enemies = (
@@ -157,6 +160,20 @@ func build(kind: StringName, origin: Vector2i) -> void:
 	var placed := buildings.built[buildings.built.size() - 1]
 	_placed.append(placed.id)
 	_changed_cells.append_array(placed.footprint)
+	if placed.kind == Buildings.REPAIR_YARD:
+		repair_yards.add(placed)
+
+
+func assign(yard_id: int, building_id: int) -> void:
+	var error := repair_yards.assign(yard_id, building_id)
+	if not error.is_empty():
+		reject_command("%s: %s" % [Commands.Assign.LABEL, error])
+
+
+func clear_assignment(yard_id: int) -> void:
+	var error := repair_yards.clear(yard_id)
+	if not error.is_empty():
+		reject_command("%s: %s" % [Commands.ClearAssignment.LABEL, error])
 
 
 func add_gold(amount: int) -> void:
@@ -214,6 +231,7 @@ func tick() -> void:
 	_rebuild_spatial_hash()
 	_move_enemies()
 	_fire_towers()
+	_repair_buildings()
 	_remove_dead()
 	_check_wave_end()
 	tick_count += 1
@@ -347,6 +365,11 @@ func _move_enemies() -> void:
 func _fire_towers() -> void:
 	_observe(Step.FIRE_TOWERS)
 	_shots = buildings.fire(enemies)
+
+
+func _repair_buildings() -> void:
+	_observe(Step.REPAIR_BUILDINGS)
+	repair_yards.step(waves.phase == Waves.Phase.WAVE)
 
 
 func _remove_dead() -> void:

@@ -47,6 +47,8 @@ func power_area(kind: StringName) -> int:
 			return _settings.tower_power_area
 		Buildings.PYLON:
 			return _settings.pylon_power_area
+		Buildings.REPAIR_YARD:
+			return _settings.repair_yard_power_area
 	return 0
 
 

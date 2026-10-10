@@ -3,12 +3,14 @@ extends RefCounted
 
 const TOWER := &"tower"
 const PYLON := &"pylon"
-const FOOTPRINTS := {TOWER: Vector2i(2, 2), PYLON: Vector2i(1, 1)}
+const REPAIR_YARD := &"repair_yard"
+const FOOTPRINTS := {TOWER: Vector2i(2, 2), PYLON: Vector2i(1, 1), REPAIR_YARD: Vector2i(2, 2)}
 const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
 const OFF_GRID := "off the power grid"
 const OCCUPIED := "occupied"
 const NOT_ENOUGH_GOLD := "not enough gold"
+const _REPAIR_SLACK := 1e-6
 
 var built: Array[Building] = []
 ## How many building cells are in each cell's 3x3 neighbourhood (row-major).
@@ -138,6 +140,8 @@ func max_hp(kind: StringName) -> float:
 			return _settings.tower_hp
 		PYLON:
 			return _settings.pylon_hp
+		REPAIR_YARD:
+			return _settings.repair_yard_hp
 	return 0.0
 
 
@@ -154,6 +158,28 @@ func damage(id: int, amount: float) -> void:
 		_destroy(target)
 	elif _bucket(target.hp) != bucket:
 		_field_changes.append_array(target.footprint)
+
+
+## Raises a building's HP by up to [param amount], capped at its max HP, and returns the HP it
+## gained. A bucket change queues its cells for a field update.
+func repair(id: int, amount: float) -> float:
+	var target := building(id)
+	if target == null:
+		return 0.0
+	var bucket := _bucket(target.hp)
+	var missing := max_hp(target.kind) - target.hp
+	if missing <= 0.0:
+		return 0.0
+	# Float slack, so rate × ticks tops a building up on the tick the sum says.
+	var gained := missing if missing - amount < _REPAIR_SLACK else amount
+	target.hp += gained
+	if _bucket(target.hp) != bucket:
+		_field_changes.append_array(target.footprint)
+	return gained
+
+
+func is_damaged(target: Building) -> bool:
+	return target.hp < max_hp(target.kind)
 
 
 ## A building's HP rounded up to the routing bucket, as the fields cost it.
@@ -225,6 +251,8 @@ func cost_of(kind: StringName) -> int:
 			return _settings.tower_cost
 		PYLON:
 			return _settings.pylon_cost
+		REPAIR_YARD:
+			return _settings.repair_yard_cost
 	return 0
 
 

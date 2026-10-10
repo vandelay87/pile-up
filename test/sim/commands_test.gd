@@ -59,8 +59,8 @@ func test_a_route_weight_change_reports_fields_changed_at_the_end_of_the_tick() 
 	sim.queue_command(Commands.SetSetting.new("routing", "direct_wall_weight", 0.5))
 	sim.tick()
 
-	assert_array(trace).has_size(9)
-	assert_str(trace[8]).is_equal("fields changed")
+	assert_array(trace).has_size(10)
+	assert_str(trace[9]).is_equal("fields changed")
 	assert_float(sim.routing.wall_factor(Routing.Route.DIRECT, 30.0)).is_equal_approx(16.0, 1e-6)
 
 

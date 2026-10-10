@@ -1,14 +1,15 @@
 class_name TowerView
 extends Node
 
-## Draws towers and pylons from building_placed, greys out unpowered ones with the unpowered
-## icon on power_changed, and removes them on building_destroyed.
+## Draws towers, pylons and repair yards from building_placed, greys out unpowered ones with the
+## unpowered icon on power_changed, and removes them on building_destroyed.
 
 const TINT := Color(0.62, 0.66, 0.75)
 const UNPOWERED_TINT := Color(0.32, 0.32, 0.34)
 const REGIONS := {
 	Buildings.TOWER: [Atlas.TOWER, Atlas.TOWER_SIZE],
 	Buildings.PYLON: [Atlas.PYLON, Atlas.PYLON_SIZE],
+	Buildings.REPAIR_YARD: [Atlas.REPAIR_YARD, Atlas.REPAIR_YARD_SIZE],
 }
 
 var _simulation: Simulation

@@ -9,6 +9,9 @@ const BASE_HP := 1_000_000_000.0
 const TOWERS := 8
 const TOWER_RADIUS := 10.0
 
+## Where the ring's towers stand (or stood, once the crowd breaks them).
+var tower_origins: Array[Vector2i] = []
+
 var _sim: Simulation
 var _rng := RandomNumberGenerator.new()
 var _centre: Vector2
@@ -22,9 +25,9 @@ func _init(sim: Simulation, crowd_seed: int) -> void:
 	_sim.run_state.add_gold(TOWERS * _sim.settings.tower_cost)
 	for k in TOWERS:
 		var centre := _centre + Vector2.from_angle(TAU * k / TOWERS) * TOWER_RADIUS
-		_sim.queue_command(
-			Commands.Build.new(Buildings.TOWER, Buildings.origin_at(Buildings.TOWER, centre))
-		)
+		var origin := Buildings.origin_at(Buildings.TOWER, centre)
+		tower_origins.append(origin)
+		_sim.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 	_sim.tick()
 
 

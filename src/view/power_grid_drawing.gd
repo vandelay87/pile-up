@@ -18,6 +18,13 @@ static func tint_grid(canvas: CanvasItem, grid: PowerGrid, map: MapData, colour:
 				start = -1
 
 
+## Fills an area's cells with one colour, clipped to the map.
+static func tint_area(canvas: CanvasItem, area: Rect2i, map: MapData, colour: Color) -> void:
+	var clipped := area.intersection(Rect2i(0, 0, map.width, map.height))
+	if clipped.has_area():
+		canvas.draw_colored_polygon(_corners(Rect2(clipped)), colour)
+
+
 static func outline(canvas: CanvasItem, area: Rect2i, colour: Color, width := 1.5) -> void:
 	var corners := _corners(Rect2(area))
 	corners.append(corners[0])

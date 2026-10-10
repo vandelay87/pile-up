@@ -3,7 +3,7 @@ extends RefCounted
 
 const PATH := "res://assets/atlas.png"
 const UNIT := GridTransform.TILE_SIZE
-const SIZE_IN_UNITS := Vector2i(5, 7)
+const SIZE_IN_UNITS := Vector2i(7, 7)
 const SOURCE_ID := 0
 
 const CLEAR := Vector2i(0, 0)
@@ -17,6 +17,10 @@ const TOWER := Vector2i(1, 3)
 const TOWER_SIZE := Vector2i(2, 4)
 const PYLON := Vector2i(3, 4)
 const PYLON_SIZE := Vector2i(1, 3)
+const REPAIR_YARD := Vector2i(5, 4)
+const REPAIR_YARD_SIZE := Vector2i(2, 3)
+const DRONE_REGION := Rect2i(320, 0, 20, 12)
+const REPAIR_EFFECT_REGION := Rect2i(352, 0, 16, 16)
 const UNPOWERED_REGION := Rect2i(128, 0, 16, 16)
 const ENEMY_REGION := Rect2i(192, 96, 16, 24)
 const TRACER_REGION := Rect2i(256, 96, 16, 4)

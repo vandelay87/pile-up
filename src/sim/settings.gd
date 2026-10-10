@@ -477,6 +477,63 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 	},
+	"repair_yards":
+	{
+		"cost":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1000,
+			"step": 5,
+			"unit": "gold",
+			"apply": Apply.LIVE,
+		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Apply.LIVE,
+		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+		"repair_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Apply.LIVE,
+		},
+		"drone_speed":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 60.0,
+			"step": 0.5,
+			"unit": "cells/s",
+			"apply": Apply.LIVE,
+		},
+		"repair_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "HP/s",
+			"apply": Apply.LIVE,
+		},
+	},
 	"run":
 	{
 		"base_hp":
@@ -679,6 +736,28 @@ var pylon_hp: float:
 var pylon_power_area: int:
 	get:
 		return value("pylons", "power_area")
+var repair_yard_cost: int:
+	get:
+		return value("repair_yards", "cost")
+var repair_yard_hp: float:
+	get:
+		return value("repair_yards", "hp")
+var repair_yard_power_area: int:
+	get:
+		return value("repair_yards", "power_area")
+var repair_area: int:
+	get:
+		return value("repair_yards", "repair_area")
+## Cells a drone flies per tick.
+var drone_step: float:
+	get:
+		var per_second: float = value("repair_yards", "drone_speed")
+		return per_second / Simulation.TICKS_PER_SECOND
+## HP a drone repairs per tick.
+var repair_per_tick: float:
+	get:
+		var per_second: float = value("repair_yards", "repair_rate")
+		return per_second / Simulation.TICKS_PER_SECOND
 var base_power_area: int:
 	get:
 		return value("run", "base_power_area")

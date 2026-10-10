@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://src/view/debug/pile_overlay.gd" id="14"]
 [ext_resource type="Script" path="res://src/view/debug/power_overlay.gd" id="15"]
 [ext_resource type="Script" path="res://src/view/selection.gd" id="16"]
+[ext_resource type="Script" path="res://src/view/drone_view.gd" id="17"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -52,6 +53,9 @@ script = ExtResource("14")
 
 [node name="Tracers" type="Node2D" parent="."]
 script = ExtResource("10")
+
+[node name="DroneView" type="Node2D" parent="."]
+script = ExtResource("17")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2")
