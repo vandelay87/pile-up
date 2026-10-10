@@ -38,11 +38,11 @@ func test_wave_end_decays_the_piles_at_step_1_of_the_next_tick_and_starts_a_rebu
 
 func test_a_body_from_the_last_kill_lands_before_the_wave_decay() -> void:
 	_play_wave()
-	_sim.piles.queue_bodies(PackedVector2Array([Vector2(5.5, 1.5)]))
+	_sim.piles.queue_bodies(PackedVector2Array([Vector2(6.5, 6.5)]))
 
 	_sim.tick()
 
-	assert_int(_sim.piles.level(Vector2i(5, 1))).is_equal(0)
+	assert_int(_sim.piles.level(Vector2i(6, 6))).is_equal(0)
 
 
 func test_next_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> void:
@@ -110,13 +110,5 @@ func _play_wave() -> void:
 		_sim.tick()
 		if _sim.waves.phase == Waves.Phase.BUILD:
 			return
-		_clear_enemies()
+		_sim.queue_command(Commands.KillEnemies.new(1000))
 	fail("the wave did not end within %d ticks" % WAVE_TICKS)
-
-
-# Enemies no longer leave by reaching the base, so the wave is ended by taking them off the
-# field outside the tick, leaving no bodies.
-func _clear_enemies() -> void:
-	for k in _sim.enemies.count:
-		_sim.enemies.hp[k] = 0.0
-	_sim.enemies.remove_dead()

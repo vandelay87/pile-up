@@ -733,27 +733,12 @@ var tower_cost: int:
 var tower_hp: float:
 	get:
 		return value("towers", "hp")
-var tower_power_area: int:
-	get:
-		return value("towers", "power_area")
 var pylon_cost: int:
 	get:
 		return value("pylons", "cost")
-var pylon_hp: float:
-	get:
-		return value("pylons", "hp")
-var pylon_power_area: int:
-	get:
-		return value("pylons", "power_area")
 var repair_yard_cost: int:
 	get:
 		return value("repair_yards", "cost")
-var repair_yard_hp: float:
-	get:
-		return value("repair_yards", "hp")
-var repair_yard_power_area: int:
-	get:
-		return value("repair_yards", "power_area")
 var repair_area: int:
 	get:
 		return value("repair_yards", "repair_area")
