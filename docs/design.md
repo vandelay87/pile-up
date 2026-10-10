@@ -63,9 +63,9 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 ## Power grid
 
-- The base and every building power a square of cells around their footprint, measured from its edge: the base 8 cells, a tower 2, a pylon 6. That square is their **power area**. It ignores piles, walls and rock.
+- The base and every building power a square of cells around their footprint, measured from its edge: the base 10 cells, a tower 4, a pylon 10. That square is their **power area**. It ignores piles, walls and rock.
 - A building is powered when any of its cells lies in the power area of the base or of another powered building. Power spreads through these overlaps. The base is always powered, and an unpowered building powers nothing.
-- The power grid is every cell in a powered area. At the start of a run the base's area alone (20×20 cells) is room for the first three towers.
+- The power grid is every cell in a powered area. At the start of a run the base's area alone (24×24 cells) is room for the first three towers.
 - A new building's whole footprint must be on the power grid, so the grid grows outwards from its edge.
 - Losing a link (a destroyed pylon or tower) can cut off a whole branch. An unpowered tower stops firing, but it is still a structure: it keeps its HP, blocks routes, can be attacked and holds its cells. Power returns at once when a new building links it back up.
 - **Pylon**: 1×1, 20 gold, 20 HP, does nothing but power cells. Like a tower, a destroyed pylon leaves nothing behind.
