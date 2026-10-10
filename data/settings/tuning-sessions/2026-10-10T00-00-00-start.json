@@ -1,0 +1,57 @@
+{
+	"enemies": {
+		"hp": 10,
+		"bounty": 1,
+		"separation_radius": 0.3,
+		"separation_push": 0.5,
+		"neighbour_cap": 0,
+		"heading_offset": 10,
+		"speed": 1.5,
+		"wall_damage": 1,
+		"wall_reach": 0.1,
+		"jam_seconds": 0.5,
+		"pile_roll_chance": 5,
+		"wall_roll_chance": 3,
+		"speed_variety": 2,
+		"wander": 30,
+		"wander_period": 4,
+		"spread_radius": 0.7,
+		"spread_push": 0.06
+	},
+	"piles": {
+		"slow_level_1": 15,
+		"slow_level_2": 30,
+		"slow_level_3": 45,
+		"slow_level_4": 60,
+		"wall_hp": 30
+	},
+	"routing": {
+		"sensible_pile_weight": 1,
+		"sensible_wall_weight": 1,
+		"direct_pile_weight": 0,
+		"direct_wall_weight": 0.1,
+		"wall_hp_bucket": 10
+	},
+	"waves": {
+		"wave_1_size": 20,
+		"growth": 1.2,
+		"hp_growth": 1.05,
+		"spawn_rate": 10,
+		"second_edge_chance": 50,
+		"clump_size": 30
+	},
+	"towers": {
+		"damage": 5,
+		"fire_rate": 2,
+		"range": 8,
+		"cost": 50
+	},
+	"run": {
+		"starting_lives": 20,
+		"starting_gold": 150,
+		"map_path": "res://data/maps/v2-narrow.json"
+	},
+	"view": {
+		"tracer_speed": 60
+	}
+}

@@ -1,9 +1,9 @@
 class_name Main
 extends Node
 
-# PROTOTYPE (swarm spread): record each session's live settings as they change, so
+# PROTOTYPE (swarm spread, v2 tuning): record each session's live settings as they change, so
 # the values tried in the game are kept without saving over defaults.json.
-const _SESSIONS_DIR := "res://data/settings/swarm-sessions"
+const _SESSIONS_DIR := "res://data/settings/tuning-sessions"
 
 var simulation: Simulation:
 	get:
