@@ -28,8 +28,23 @@ Anything with HP that enemies attack when it is in their way: a wall, a building
 _Avoid_: Target, obstacle
 
 **Building**:
-Anything the player builds: a tower or a pylon.
+Anything the player builds: a tower, a pylon or a repair yard.
 _Avoid_: Structure (which also covers walls and the base)
+
+**Repair yard**:
+A building that restores HP to the other buildings around it. It never repairs itself, walls or the base.
+_Avoid_: Healer, medic
+
+**Repair**:
+Restoring HP to a damaged building. Only buildings are repaired.
+_Avoid_: Heal
+
+**Drone**:
+A repair yard's unit that flies out to one damaged building, repairs it to full and flies back.
+
+**Assignment**:
+A building the player has chosen for a repair yard's drone to repair first whenever it is damaged. Without one, the drone picks for itself.
+_Avoid_: Target, priority
 
 ### Power
 
