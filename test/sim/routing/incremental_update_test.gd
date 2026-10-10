@@ -60,8 +60,8 @@ func test_both_fields_equal_a_full_rebuild_after_each_random_rise_fall_and_wall_
 
 func test_a_tower_built_beside_the_base_equals_a_full_rebuild() -> void:
 	_raise_piles_around(BASE.grow(2))
-	var cells := Towers.footprint(BASE.position + Vector2i(-2, 0))
-	_occupancy.occupy(cells)
+	var cells := Buildings.cells_of(Buildings.TOWER, BASE.position + Vector2i(-2, 0))
+	_occupancy.occupy(cells, 0)
 
 	_routing.update(cells)
 
@@ -69,8 +69,8 @@ func test_a_tower_built_beside_the_base_equals_a_full_rebuild() -> void:
 
 
 func test_a_pile_rising_to_a_wall_and_falling_at_a_tower_corner_equals_a_full_rebuild() -> void:
-	var tower := Towers.footprint(Vector2i(6, 6))
-	_occupancy.occupy(tower)
+	var tower := Buildings.cells_of(Buildings.TOWER, Vector2i(6, 6))
+	_occupancy.occupy(tower, 0)
 	_routing.update(tower)
 	var beside := Vector2i(8, 8)
 
@@ -92,7 +92,7 @@ func test_a_tower_cutting_a_diagonal_parent_edge_equals_a_full_rebuild() -> void
 	var corner: Array[Vector2i] = [Vector2i(1, 0)]
 	assert_vector(routing.parent(Routing.Route.SENSIBLE, Vector2i(1, 1))).is_equal(Vector2i.ZERO)
 
-	occupancy.occupy(corner)
+	occupancy.occupy(corner, 0)
 	routing.update(corner)
 
 	var rebuilt := Routing.new(_settings, map, occupancy, piles)
@@ -145,9 +145,9 @@ func _random_change() -> Array[Vector2i]:
 		if _map.is_rock(cell) or _map.is_base(cell) or _occupancy.is_occupied(cell):
 			continue
 		if _rng.randf() < 0.03:
-			var footprint := Towers.footprint(cell)
+			var footprint := Buildings.cells_of(Buildings.TOWER, cell)
 			if _can_build(footprint):
-				_occupancy.occupy(footprint)
+				_occupancy.occupy(footprint, 0)
 				return footprint
 			continue
 		var level := _piles.level(cell)

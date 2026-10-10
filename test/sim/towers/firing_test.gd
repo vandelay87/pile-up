@@ -4,7 +4,7 @@ const TOUGH := 1000.0
 
 var _settings: Settings
 var _sim: Simulation
-var _shots: Array[Towers.Shot]
+var _shots: Array[Buildings.Shot]
 var _shot_ticks: Array[int]
 
 
@@ -20,7 +20,7 @@ func before_test() -> void:
 	_shots = []
 	_shot_ticks = []
 	_sim.shots_fired.connect(
-		func(shots: Array[Towers.Shot]) -> void:
+		func(shots: Array[Buildings.Shot]) -> void:
 			_shots.append_array(shots)
 			for shot in shots:
 				_shot_ticks.append(_sim.tick_count - 1)
@@ -68,7 +68,7 @@ func test_the_target_is_the_enemy_in_range_closest_to_the_base() -> void:
 	_sim.tick()
 
 	assert_array(_targets()).contains_exactly([nearer_the_base])
-	assert_int(_sim.towers.built[0].target_id).is_equal(nearer_the_base)
+	assert_int(_sim.buildings.built[0].target_id).is_equal(nearer_the_base)
 
 
 func test_a_later_tower_skips_an_enemy_killed_earlier_in_the_same_tick() -> void:
@@ -91,7 +91,7 @@ func test_towers_fire_in_build_order_and_the_shot_list_matches_the_shots() -> vo
 	_build(Vector2i(2, 8))
 	var shot_lists: Array[int] = []
 	_sim.shots_fired.connect(
-		func(shots_in_tick: Array[Towers.Shot]) -> void: shot_lists.append(shots_in_tick.size())
+		func(shots_in_tick: Array[Buildings.Shot]) -> void: shot_lists.append(shots_in_tick.size())
 	)
 
 	_sim.tick()
@@ -105,7 +105,9 @@ func test_towers_fire_in_build_order_and_the_shot_list_matches_the_shots() -> vo
 	assert_array(tower_ids).contains_exactly([0, 1, 2])
 	(
 		assert_array(
-			_sim.towers.built.map(func(tower: Towers.Tower) -> Vector2i: return tower.cell)
+			_sim.buildings.built.map(
+				func(tower: Buildings.Building) -> Vector2i: return tower.origin
+			)
 		)
 		. contains_exactly([Vector2i(8, 2), Vector2i(2, 2), Vector2i(2, 8)])
 	)
@@ -114,7 +116,9 @@ func test_towers_fire_in_build_order_and_the_shot_list_matches_the_shots() -> vo
 
 func test_no_shot_list_is_reported_when_no_tower_fires() -> void:
 	var reports: Array[bool] = []
-	_sim.shots_fired.connect(func(_shots_in_tick: Array[Towers.Shot]) -> void: reports.append(true))
+	_sim.shots_fired.connect(
+		func(_shots_in_tick: Array[Buildings.Shot]) -> void: reports.append(true)
+	)
 	_build(Vector2i(2, 2))
 
 	_sim.tick()
@@ -130,7 +134,7 @@ func _targets() -> Array[int]:
 
 
 func _build(origin: Vector2i) -> void:
-	_sim.queue_command(Commands.BuildTower.new(origin))
+	_sim.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 
 
 func _hp(id: int) -> float:

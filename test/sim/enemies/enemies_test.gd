@@ -11,7 +11,7 @@ func before_test() -> void:
 func _enemies(rows: Array[String], base: Rect2i, towers: Array[Vector2i] = []) -> Enemies:
 	var map := TestMaps.from_rows(rows, base)
 	var occupancy := Occupancy.new(map.width, map.height)
-	occupancy.occupy(towers)
+	occupancy.occupy(towers, 0)
 	_piles = Piles.new(_settings, map, occupancy)
 	var routing := Routing.new(_settings, map, occupancy, _piles)
 	var rng := RandomNumberGenerator.new()
