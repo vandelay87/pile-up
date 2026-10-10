@@ -136,7 +136,10 @@ func rebuild_spatial_hash() -> void:
 		next_slot[cell] += 1
 
 
-func move() -> void:
+# In the wave tail, sensible-route enemies that a sensible field change turns back push
+# through on the direct route instead.
+func move(in_wave_tail := false) -> void:
+	var sensible_before := _routing.take_sensible_before()
 	if count == 0:
 		return
 	var step := _settings.enemy_speed_per_tick
@@ -159,6 +162,8 @@ func move() -> void:
 	var space_push := _settings.personal_space_push
 	var spreads := space_radius > 2.0 * radius and space_push > 0.0
 	_ticks += 1
+	if in_wave_tail and sensible_before != null:
+		_push_through_turned_back(sensible_before, direct_parents)
 	for i in count:
 		structure_targets[i] = _structure_target(i, reach, jam_ticks)
 	_moved.resize(count)
@@ -200,7 +205,7 @@ func _roll_route(
 	var next := direct_parents[cell]
 	if next < 0 or next == sensible_parents[cell]:
 		return
-	var obstacle := _first_obstacle_on_chain(next, direct_parents)
+	var obstacle := _first_obstacle_on_chain(next, direct_parents, _ROLL_STEPS)
 	if obstacle == NONE or obstacle == last_rolled_cells[i]:
 		return
 	last_rolled_cells[i] = obstacle
@@ -210,16 +215,43 @@ func _roll_route(
 		routes[i] = Routing.Route.DIRECT
 
 
+# Each sensible-route enemy whose sampled heading the change turned by more than the
+# turn-back angle takes the direct route, locked in on the first obstacle down the direct
+# field's chain as with a roll.
+func _push_through_turned_back(
+	sensible_before: Routing.Field, direct_parents: PackedInt32Array
+) -> void:
+	var turn_back := _settings.turn_back_radians
+	var whole_chain := _map.width * _map.height
+	for i in count:
+		if routes[i] != Routing.Route.SENSIBLE:
+			continue
+		var pos := positions[i]
+		var before := _routing.sample_field_direction(sensible_before, pos)
+		var after := _routing.sample_direction(Routing.Route.SENSIBLE, pos)
+		if before == Vector2.ZERO or after == Vector2.ZERO:
+			continue
+		if absf(before.angle_to(after)) <= turn_back:
+			continue
+		var next := direct_parents[_cell_index(pos)]
+		if next < 0:
+			continue
+		var obstacle := _first_obstacle_on_chain(next, direct_parents, whole_chain)
+		if obstacle != NONE:
+			last_rolled_cells[i] = obstacle
+			routes[i] = Routing.Route.DIRECT
+
+
 func _is_past_obstacle(i: int, pos: Vector2) -> bool:
 	var obstacle_value := _routing.value(Routing.Route.DIRECT, _cell_of(last_rolled_cells[i]))
 	return _routing.sample_value(Routing.Route.DIRECT, pos) < obstacle_value
 
 
-# The first pile, wall or building on the chain within the roll's reach, or NONE.
-func _first_obstacle_on_chain(cell: int, chain_parents: PackedInt32Array) -> int:
+# The first pile, wall or building on the chain within the given steps, or NONE.
+func _first_obstacle_on_chain(cell: int, chain_parents: PackedInt32Array, steps: int) -> int:
 	var levels := _piles.levels
 	var building_ids := _occupancy.building_ids
-	for _step in _ROLL_STEPS:
+	for _step in steps:
 		if levels[cell] > 0 or building_ids[cell] != Occupancy.EMPTY:
 			return cell
 		cell = chain_parents[cell]

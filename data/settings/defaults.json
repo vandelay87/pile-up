@@ -16,7 +16,8 @@
 		"wander": 30,
 		"wander_period": 4,
 		"personal_space_radius": 0.7,
-		"personal_space_push": 0.06
+		"personal_space_push": 0.06,
+		"turn_back_angle": 90
 	},
 	"piles": {
 		"slow_level_1": 15,
@@ -40,7 +41,9 @@
 		"hp_growth": 1.05,
 		"spawn_rate": 10,
 		"second_edge_chance": 50,
-		"clump_size": 16
+		"clump_size": 16,
+		"wave_tail": 10,
+		"wave_tail_per_wave": 2
 	},
 	"combo": {
 		"window": 2,

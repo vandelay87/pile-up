@@ -341,7 +341,7 @@ func _rebuild_spatial_hash() -> void:
 
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
-	enemies.move()
+	enemies.move(waves.in_wave_tail())
 
 
 func _fire_towers() -> void:

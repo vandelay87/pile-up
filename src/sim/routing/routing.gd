@@ -42,6 +42,7 @@ var _builds_stale := false
 var _blend_cells := PackedInt32Array([0, 0, 0, 0])
 var _blend_weights := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var _marks := PackedByteArray()
+var _sensible_before: Field = null
 
 
 class Field:
@@ -108,6 +109,7 @@ func rebuild() -> bool:
 	if is_rebuilding():
 		_builds_stale = true
 		return false
+	_keep_sensible_before(false)
 	_rebuild_now()
 	return true
 
@@ -156,11 +158,33 @@ func finish_rebuild() -> bool:
 	if _builds_stale:
 		_start_builds()
 		return false
+	_keep_sensible_before(false)
 	_fields = [_builds[Route.SENSIBLE].field, _builds[Route.DIRECT].field]
 	_factors = [_builds[Route.SENSIBLE].factors, _builds[Route.DIRECT].factors]
 	_solid = _builds[Route.SENSIBLE].solid
 	_builds.clear()
 	return true
+
+
+# The sensible field as it was before its first change since the last call, or null if it
+# has not changed since.
+func take_sensible_before() -> Field:
+	var before := _sensible_before
+	_sensible_before = null
+	return before
+
+
+# Keeps the sensible field about to change; a field repaired in place is copied first.
+func _keep_sensible_before(copy: bool) -> void:
+	if _sensible_before != null:
+		return
+	var field := _fields[Route.SENSIBLE]
+	if copy:
+		var kept := Field.new()
+		kept.values = field.values.duplicate()
+		kept.directions = field.directions.duplicate()
+		field = kept
+	_sensible_before = field
 
 
 func value(route: Route, cell: Vector2i) -> float:
@@ -183,7 +207,10 @@ func direction(route: Route, cell: Vector2i) -> Vector2:
 
 
 func sample_direction(route: Route, pos: Vector2) -> Vector2:
-	var field := _fields[route]
+	return sample_field_direction(_fields[route], pos)
+
+
+func sample_field_direction(field: Field, pos: Vector2) -> Vector2:
 	_blend(field, pos)
 	var blended := Vector2.ZERO
 	for i in 4:
@@ -241,6 +268,8 @@ func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 	var region := _apply_factors(route, factors, cells)
 	if region.is_empty():
 		return false
+	if route == Route.SENSIBLE:
+		_keep_sensible_before(true)
 	var invalid := _invalidate(field, factors, region)
 	var changed := invalid.duplicate()
 	var heap := _Heap.new(64)
