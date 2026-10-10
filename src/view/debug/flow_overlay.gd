@@ -19,12 +19,12 @@ func setup(routing: Routing, map: MapData) -> void:
 	queue_redraw()
 
 
-func show_arrows(route: Routing.Route, shown: bool) -> void:
+func show_arrows(shown: bool, route: Routing.Route) -> void:
 	_arrows[route] = shown
 	queue_redraw()
 
 
-func show_heatmap(route: Routing.Route, shown: bool) -> void:
+func show_heatmap(shown: bool, route: Routing.Route) -> void:
 	_heatmaps[route] = shown
 	queue_redraw()
 
