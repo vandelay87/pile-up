@@ -193,7 +193,7 @@ func move(in_wave_tail := false) -> void:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
 		elif _is_past_obstacle(i, pos):
 			routes[i] = Routing.Route.SENSIBLE
-	var damage_per_tick := _settings.wall_damage_per_tick
+	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
 		if structure_targets[i] != NONE:
 			_structures.damage(_cell_of(structure_targets[i]), damage_per_tick)

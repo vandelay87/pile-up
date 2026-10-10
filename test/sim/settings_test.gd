@@ -78,7 +78,7 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_int(settings.starting_gold).is_equal(200)
 	assert_str(settings.map_path).is_equal("res://data/maps/v2-narrow.json")
 	assert_float(settings.enemy_speed).is_equal_approx(2.0, 1e-6)
-	assert_float(settings.wall_damage).is_equal_approx(2.0, 1e-6)
+	assert_float(settings.structure_damage).is_equal_approx(2.0, 1e-6)
 	assert_float(settings.wall_hp).is_equal_approx(15.0, 1e-6)
 	assert_float(settings.tower_damage).is_equal_approx(5.0, 1e-6)
 	assert_int(settings.tower_cooldown_ticks).is_equal(17)
@@ -100,6 +100,8 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_int(settings.combo_window_ticks).is_equal(120)
 	assert_int(settings.combo_tier_2_kills).is_equal(10)
 	assert_int(settings.combo_tier_3_kills).is_equal(20)
+	assert_int(settings.combo_cap).is_equal(3)
+	assert_int(settings.value("run", "combo_cap")).is_equal(3)
 
 
 func test_converts_the_enemy_and_swarm_spread_settings_to_sim_units() -> void:

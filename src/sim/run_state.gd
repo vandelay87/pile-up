@@ -69,8 +69,9 @@ func _expire_kills(tick: int) -> void:
 
 func _tier() -> int:
 	var in_window := _kill_ticks.size() - _window_start
+	var tier := 1
 	if in_window >= _settings.combo_tier_3_kills:
-		return 3
-	if in_window >= _settings.combo_tier_2_kills:
-		return 2
-	return 1
+		tier = 3
+	elif in_window >= _settings.combo_tier_2_kills:
+		tier = 2
+	return mini(tier, _settings.combo_cap)

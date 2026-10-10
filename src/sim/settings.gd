@@ -71,7 +71,7 @@ const SCHEMA := {
 			"unit": "cells/s",
 			"apply": Apply.LIVE,
 		},
-		"wall_damage":
+		"structure_damage":
 		{
 			"type": TYPE_FLOAT,
 			"min": 0.1,
@@ -360,36 +360,6 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 	},
-	"combo":
-	{
-		"window":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 10.0,
-			"step": 0.5,
-			"unit": "s of kills counted",
-			"apply": Apply.LIVE,
-		},
-		"tier_2_kills":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in the window for x2",
-			"apply": Apply.LIVE,
-		},
-		"tier_3_kills":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in the window for x3",
-			"apply": Apply.LIVE,
-		},
-	},
 	"towers":
 	{
 		"damage":
@@ -563,6 +533,42 @@ const SCHEMA := {
 			"unit": "cells from the base",
 			"apply": Apply.LIVE,
 		},
+		"combo_window":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 10.0,
+			"step": 0.5,
+			"unit": "s of kills counted",
+			"apply": Apply.LIVE,
+		},
+		"combo_tier_2_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in the window for x2",
+			"apply": Apply.LIVE,
+		},
+		"combo_tier_3_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in the window for x3",
+			"apply": Apply.LIVE,
+		},
+		"combo_cap":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 3,
+			"step": 1,
+			"unit": "highest combo tier",
+			"apply": Apply.LIVE,
+		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
 	},
 	"view":
@@ -604,12 +610,12 @@ var enemy_speed: float:
 var enemy_speed_per_tick: float:
 	get:
 		return enemy_speed / Simulation.TICKS_PER_SECOND
-var wall_damage: float:
+var structure_damage: float:
 	get:
-		return value("enemies", "wall_damage")
-var wall_damage_per_tick: float:
+		return value("enemies", "structure_damage")
+var structure_damage_per_tick: float:
 	get:
-		return wall_damage / Simulation.TICKS_PER_SECOND
+		return structure_damage / Simulation.TICKS_PER_SECOND
 var wall_reach: float:
 	get:
 		return value("enemies", "wall_reach")
@@ -700,14 +706,17 @@ var second_edge_chance: float:
 		return percent / 100.0
 var combo_window_ticks: int:
 	get:
-		var seconds: float = value("combo", "window")
+		var seconds: float = value("run", "combo_window")
 		return ticks_from_seconds(seconds)
 var combo_tier_2_kills: int:
 	get:
-		return value("combo", "tier_2_kills")
+		return value("run", "combo_tier_2_kills")
 var combo_tier_3_kills: int:
 	get:
-		return value("combo", "tier_3_kills")
+		return value("run", "combo_tier_3_kills")
+var combo_cap: int:
+	get:
+		return value("run", "combo_cap")
 var tower_damage: float:
 	get:
 		return value("towers", "damage")

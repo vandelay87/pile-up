@@ -82,8 +82,18 @@ func test_a_kill_after_the_fall_pays_the_lower_tier() -> void:
 	assert_int(_sim.combo_tier).is_equal(1)
 
 
+func test_the_combo_cap_holds_the_tier_below_x3() -> void:
+	_sim.queue_command(Commands.SetSetting.new("run", "combo_cap", 2))
+	_kill(25)
+
+	# 9 kills at x1, then the rest at x2: the cap stops the climb to x3 at 20 kills.
+	assert_int(_sim.combo_tier).is_equal(2)
+	assert_int(_sim.run_state.gold).is_equal(200 + 9 + 16 * 2)
+	assert_array(_tiers).contains_exactly([2])
+
+
 func test_damage_to_the_base_does_not_lower_the_tier() -> void:
-	_sim.queue_command(Commands.SetSetting.new("combo", "window", 10.0))
+	_sim.queue_command(Commands.SetSetting.new("run", "combo_window", 10.0))
 	_kill(10)
 
 	for tick in 8 * Simulation.TICKS_PER_SECOND:

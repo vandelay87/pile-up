@@ -242,7 +242,7 @@ func wall_factor(route: Route, hp: float) -> float:
 	var weight := (
 		_settings.sensible_wall_weight if route == Route.SENSIBLE else _settings.direct_wall_weight
 	)
-	var break_time_in_cells := hp / _settings.wall_damage * _settings.enemy_speed
+	var break_time_in_cells := hp / _settings.structure_damage * _settings.enemy_speed
 	return 1.0 + weight * break_time_in_cells
 
 

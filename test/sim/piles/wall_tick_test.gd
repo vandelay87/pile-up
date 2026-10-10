@@ -41,7 +41,7 @@ func test_a_bucket_change_updates_the_fields_next_tick() -> void:
 
 
 func test_changing_what_a_wall_costs_rebuilds_the_fields() -> void:
-	for key: String in ["speed", "wall_damage"]:
+	for key: String in ["speed", "structure_damage"]:
 		var sim := _sim_with_wall()
 
 		sim.queue_command(Commands.SetSetting.new("enemies", key, 3.0))

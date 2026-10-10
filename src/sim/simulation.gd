@@ -128,7 +128,7 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 		return
 	if key.ends_with("power_area"):
 		power_grid.recompute(buildings)
-	var costs_walls := group == "enemies" and key in ["speed", "wall_damage"]
+	var costs_walls := group == "enemies" and key in ["speed", "structure_damage"]
 	if (group in ["routing", "piles"] or costs_walls) and routing.rebuild():
 		_fields_changed = true
 

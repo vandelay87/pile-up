@@ -7,7 +7,7 @@
 		"neighbour_cap": 0,
 		"heading_offset": 10,
 		"speed": 2,
-		"wall_damage": 2,
+		"structure_damage": 2,
 		"wall_reach": 0.1,
 		"jam_seconds": 0.5,
 		"pile_roll_chance": 5,
@@ -45,11 +45,6 @@
 		"wave_tail": 10,
 		"wave_tail_per_wave": 2
 	},
-	"combo": {
-		"window": 2,
-		"tier_2_kills": 10,
-		"tier_3_kills": 20
-	},
 	"towers": {
 		"damage": 5,
 		"fire_rate": 3.5,
@@ -75,6 +70,10 @@
 		"base_hp": 200,
 		"starting_gold": 200,
 		"base_power_area": 10,
+		"combo_window": 2,
+		"combo_tier_2_kills": 10,
+		"combo_tier_3_kills": 20,
+		"combo_cap": 3,
 		"map_path": "res://data/maps/v2-narrow.json"
 	},
 	"view": {
