@@ -94,7 +94,7 @@ func decay() -> void:
 		if levels[index] == 0:
 			continue
 		var is_wall := levels[index] == WALL_LEVEL
-		if _rng.randf() >= (wall_chance if is_wall else pile_chance):
+		if not _rolls_under(wall_chance if is_wall else pile_chance):
 			continue
 		var cell := Vector2i(index % _map.width, index / _map.width)
 		if is_wall:
@@ -102,6 +102,13 @@ func decay() -> void:
 			wall_hps[index] = 0.0
 		levels[index] -= 1
 		_mark_changed(cell)
+
+
+# One roll against a 0..1 chance. randf() can return exactly 1.0, so a chance of 1 always hits;
+# a chance of 0 never does. The roll is always drawn, so the stream does not depend on chances.
+func _rolls_under(chance: float) -> bool:
+	var roll := _rng.randf()
+	return chance >= 1.0 or roll < chance
 
 
 func clear_changes() -> void:

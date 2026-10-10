@@ -1,6 +1,8 @@
 extends GdUnitTestSuite
 
 const WALL := Vector2i(3, 0)
+# A PCG state whose next randf() is 1.0 (found offline by inverting Godot's PCG32 step).
+const TOP_ROLL_STATE := 6792046047914391429
 
 var _settings: Settings
 
@@ -43,6 +45,27 @@ func test_at_0_percent_no_pile_loses_a_level() -> void:
 	assert_int(piles.level(WALL)).is_equal(Piles.WALL_LEVEL)
 	assert_float(piles.wall_hp(WALL)).is_equal(15.0)
 	assert_array(piles.changed).is_empty()
+
+
+func test_at_100_percent_a_pile_decays_even_on_the_highest_roll() -> void:
+	_set_chances(100, 100)
+	var map := TestMaps.open_field()
+	var piles := Piles.new(_settings, map, Occupancy.new(map.width, map.height), _top_roll_rng())
+	_set_level(piles, Vector2i(1, 1), 2)
+
+	piles.decay()
+
+	assert_int(piles.level(Vector2i(1, 1))).is_equal(1)
+
+
+func test_at_0_percent_a_pile_survives_even_the_lowest_roll() -> void:
+	_set_chances(0, 0)
+	var piles := _piles()
+	_set_level(piles, Vector2i(1, 1), 2)
+	for n in 200:
+		piles.decay()
+
+	assert_int(piles.level(Vector2i(1, 1))).is_equal(2)
 
 
 func test_over_many_piles_the_loss_rate_is_near_each_chance() -> void:
@@ -195,6 +218,15 @@ func _piles() -> Piles:
 func _rng(rng_seed: int) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = rng_seed
+	return rng
+
+
+# An RNG whose next randf() is exactly 1.0, the top of its inclusive range.
+func _top_roll_rng() -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.state = TOP_ROLL_STATE
+	assert_float(rng.randf()).is_equal(1.0)
+	rng.state = TOP_ROLL_STATE
 	return rng
 
 
