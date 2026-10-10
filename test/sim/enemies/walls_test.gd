@@ -131,21 +131,12 @@ func _hp_lost() -> float:
 
 
 func _enemies(rows: Array[String], base: Rect2i) -> Enemies:
-	var map := TestMaps.from_rows(rows, base)
-	var occupancy := Occupancy.new(map.width, map.height)
-	_piles = Piles.new(_settings, map, occupancy)
-	_routing = Routing.new(_settings, map, occupancy, _piles)
+	var systems := TestSystems.new(_settings, TestMaps.from_rows(rows, base))
+	_piles = systems.piles
+	_routing = systems.routing()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	return Enemies.new(
-		_settings,
-		map,
-		occupancy,
-		_piles,
-		_routing,
-		Structures.new(map, _piles, RunState.new(_settings)),
-		rng
-	)
+	return systems.enemies(_routing, rng)
 
 
 func _build_walls(cells: Array[Vector2i]) -> void:

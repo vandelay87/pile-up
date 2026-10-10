@@ -96,6 +96,7 @@ func _add_overlays() -> void:
 			"Field heatmap: %s" % route_name, _flow_overlay.show_heatmap.bind(route)
 		)
 	_debug_panel.add_overlay("Pile labels", _pile_overlay.show_labels)
+	_debug_panel.add_overlay("Structure HP", _pile_overlay.show_structure_hp)
 	_debug_panel.add_overlay("Enemy route tint", _enemy_renderer.show_route_tint)
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 

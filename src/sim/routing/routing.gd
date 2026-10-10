@@ -32,6 +32,7 @@ var _settings: Settings
 var _map: MapData
 var _occupancy: Occupancy
 var _piles: Piles
+var _structures: Structures
 var _fields: Array[Field] = []
 var _factors: Array[PackedFloat64Array] = []
 var _solid := PackedByteArray()
@@ -73,12 +74,17 @@ class _FieldBuild:
 
 
 func _init(
-	run_settings: Settings, run_map: MapData, run_occupancy: Occupancy, run_piles: Piles
+	run_settings: Settings,
+	run_map: MapData,
+	run_occupancy: Occupancy,
+	run_piles: Piles,
+	run_structures: Structures,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_occupancy = run_occupancy
 	_piles = run_piles
+	_structures = run_structures
 	_marks.resize(_map.width * _map.height)
 	_rebuild_now()
 
@@ -155,26 +161,6 @@ func finish_rebuild() -> bool:
 	_solid = _builds[Route.SENSIBLE].solid
 	_builds.clear()
 	return true
-
-
-func would_block(cells: Array[Vector2i], enemy_positions: PackedVector2Array) -> bool:
-	var current := _terrain_factors(Route.SENSIBLE)
-	var factors := current.duplicate()
-	for cell in cells:
-		factors[_index(cell)] = INF
-	var reached := _reachable(factors)
-	var must_reach: Array[Vector2i] = []
-	for edge in _map.spawn_edges:
-		must_reach.append_array(_map.spawn_cells(edge))
-	for pos in enemy_positions:
-		var cell := Vector2i(pos.floor())
-		if _map.in_bounds(cell) and value(Route.SENSIBLE, cell) != UNREACHABLE:
-			must_reach.append(cell)
-	for cell in must_reach:
-		var index := _index(cell)
-		if current[index] != INF and reached[index] == 0:
-			return true
-	return false
 
 
 func value(route: Route, cell: Vector2i) -> float:
@@ -398,17 +384,18 @@ func _level_factors(route: Route) -> PackedFloat64Array:
 
 
 func _cell_factor(route: Route, level_factors: PackedFloat64Array, index: int) -> float:
-	if _map.rock[index] == 1 or _occupancy.building_ids[index] != Occupancy.EMPTY:
+	if _map.rock[index] == 1:
 		return INF
 	var level := _piles.levels[index]
-	if level == Piles.WALL_LEVEL:
-		return _wall_cell_factor(route, index)
+	if level == Piles.WALL_LEVEL or _occupancy.building_ids[index] != Occupancy.EMPTY:
+		return _structure_cell_factor(route, index)
 	return level_factors[level]
 
 
-func _wall_cell_factor(route: Route, index: int) -> float:
+# A wall or building costs its break time, from its bucketed HP.
+func _structure_cell_factor(route: Route, index: int) -> float:
 	var cell := Vector2i(index % _map.width, index / _map.width)
-	return wall_factor(route, _piles.bucketed_wall_hp(cell))
+	return wall_factor(route, _structures.bucketed_hp(cell))
 
 
 func _is_solid(index: int) -> bool:
@@ -515,37 +502,6 @@ static func _set_parent(field: Field, cell: int, k: int, width: int) -> void:
 	field.parents[cell] = -1 if k == _NO_OFFSET else cell + _dys[k] * width + _dxs[k]
 
 
-func _reachable(factors: PackedFloat64Array) -> PackedByteArray:
-	var width := _map.width
-	var height := _map.height
-	var reached := PackedByteArray()
-	reached.resize(width * height)
-	var frontier := PackedInt32Array()
-	for cell in _map.base_cells():
-		reached[_index(cell)] = 1
-		frontier.append(_index(cell))
-	var next := 0
-	while next < frontier.size():
-		var cell := frontier[next]
-		next += 1
-		var x := cell % width
-		var y := cell / width
-		for k in 8:
-			var offset := _OFFSETS[k]
-			var nx := x + offset.x
-			var ny := y + offset.y
-			if nx < 0 or ny < 0 or nx >= width or ny >= height:
-				continue
-			var neighbour := ny * width + nx
-			if reached[neighbour] == 1 or factors[neighbour] == INF:
-				continue
-			if k >= 4 and (factors[y * width + nx] == INF or factors[ny * width + x] == INF):
-				continue
-			reached[neighbour] = 1
-			frontier.append(neighbour)
-	return reached
-
-
 func _terrain_factors(route: Route) -> PackedFloat64Array:
 	var level_factors := _level_factors(route)
 	var rock := _map.rock
@@ -554,10 +510,10 @@ func _terrain_factors(route: Route) -> PackedFloat64Array:
 	var factors := PackedFloat64Array()
 	factors.resize(levels.size())
 	for index in levels.size():
-		if rock[index] == 1 or building_ids[index] != Occupancy.EMPTY:
+		if rock[index] == 1:
 			factors[index] = INF
-		elif levels[index] == Piles.WALL_LEVEL:
-			factors[index] = _wall_cell_factor(route, index)
+		elif levels[index] == Piles.WALL_LEVEL or building_ids[index] != Occupancy.EMPTY:
+			factors[index] = _structure_cell_factor(route, index)
 		else:
 			factors[index] = level_factors[levels[index]]
 	return factors

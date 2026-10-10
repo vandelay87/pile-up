@@ -78,87 +78,44 @@ func test_a_placement_without_enough_gold_is_rejected() -> void:
 	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 6))).is_false()
 
 
-func test_a_placement_that_cuts_a_spawn_edge_off_from_the_base_is_rejected() -> void:
+func test_a_placement_that_cuts_every_route_to_the_base_is_accepted() -> void:
 	var rows := _open_rows()
 	rows[2] = "..########"
 	var sim := _sim(rows)
+	sim.enemies.spawn(Vector2(5.5, 0.5), _settings.enemy_hp)
 
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 1)))
 	sim.tick()
 
-	assert_array(_events).contains_exactly(["build tower: blocked"])
-	assert_int(sim.run_state.gold).is_equal(200)
-	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 1))).is_false()
+	assert_array(_events).contains_exactly(["gold 120", "placed (0, 1)"])
+	assert_float(sim.routing.value(Routing.Route.SENSIBLE, Vector2i(5, 0))).is_less(INF)
 
 
-func test_a_placement_that_cuts_a_live_enemy_off_from_the_base_is_rejected() -> void:
-	var rows := _open_rows()
-	rows[7] = "##..######"
-	var sim := _sim(rows)
-	sim.enemies.spawn(Vector2(5.5, 8.5), _settings.enemy_hp)
-
-	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(2, 6)))
-	sim.tick()
-
-	assert_array(_events).contains_exactly(["build tower: blocked"])
-
-
-func test_the_same_placement_is_accepted_with_no_enemy_behind_it() -> void:
-	var rows := _open_rows()
-	rows[7] = "##..######"
-	var sim := _sim(rows)
-
-	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(2, 6)))
-	sim.tick()
-
-	assert_array(_events).contains_exactly(["gold 120", "placed (2, 6)"])
-
-
-func test_a_placement_covering_a_spawn_cell_is_rejected() -> void:
-	var sim := _sim(_open_rows())
-
-	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 0)))
-	sim.tick()
-
-	assert_array(_events).contains_exactly(["build tower: blocked"])
-
-
-func test_a_placement_on_top_of_a_live_enemy_is_rejected() -> void:
+func test_a_placement_on_top_of_a_live_enemy_is_accepted() -> void:
 	var sim := _sim(_open_rows())
 	sim.enemies.spawn(Vector2(1.5, 6.5), _settings.enemy_hp)
 
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 6)))
 	sim.tick()
 
-	assert_array(_events).contains_exactly(["build tower: blocked"])
+	assert_array(_events).contains_exactly(["gold 120", "placed (0, 6)"])
 
 
-func test_a_route_left_only_through_a_cut_corner_counts_as_blocked() -> void:
-	var rows := _open_rows()
-	rows[2] = "#.########"
-	var sim := _sim(rows)
-
-	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 3)))
-	sim.tick()
-
-	assert_array(_events).contains_exactly(["build tower: blocked"])
-
-
-func test_both_fields_route_around_a_new_tower_on_the_tick_it_is_built() -> void:
+func test_both_fields_cost_a_new_tower_on_the_tick_it_is_built() -> void:
 	var sim := _sim(_open_rows())
 	var routing := sim.routing
-	var seen: Array[float] = []
+	var before := routing.value(Routing.Route.DIRECT, Vector2i(0, 6))
+	var matched: Array[bool] = []
 	sim.step_observer = func(step: int) -> void:
 		if step == Simulation.Step.SPAWN_ENEMIES:
-			seen.append(routing.value(Routing.Route.DIRECT, Vector2i(1, 6)))
+			matched.append(FieldChecks.matches_full_rebuild(sim))
 	sim.fields_changed.connect(func() -> void: _events.append("fields changed"))
 
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 5)))
 	sim.tick()
 
-	assert_array(seen).contains_exactly([Routing.UNREACHABLE])
-	for route: Routing.Route in Routing.Route.values():
-		assert_float(sim.routing.value(route, Vector2i(0, 6))).is_equal(Routing.UNREACHABLE)
+	assert_array(matched).contains_exactly([true])
+	assert_float(routing.value(Routing.Route.DIRECT, Vector2i(0, 6))).is_greater(before)
 	assert_array(_events).contains(["fields changed"])
 
 

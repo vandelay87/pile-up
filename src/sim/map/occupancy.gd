@@ -29,3 +29,7 @@ func building_at(cell: Vector2i) -> int:
 func occupy(cells: Array[Vector2i], building_id: int) -> void:
 	for cell in cells:
 		_building_ids[cell.y * _width + cell.x] = building_id
+
+
+func vacate(cells: Array[Vector2i]) -> void:
+	occupy(cells, EMPTY)

@@ -5,18 +5,15 @@ const DIRECT := Routing.Route.DIRECT
 const DIAGONAL := sqrt(2.0)
 
 
-func _routing(
-	rows: Array[String], base: Rect2i, towers: Array[Vector2i] = [], piles: Dictionary = {}
-) -> Routing:
-	var map := TestMaps.from_rows(rows, base)
-	var occupancy := Occupancy.new(map.width, map.height)
-	occupancy.occupy(towers, 0)
-	var run_piles := Piles.new(_settings(), map, occupancy)
+func _routing(rows: Array[String], base: Rect2i, piles: Dictionary = {}) -> Routing:
+	var systems := TestSystems.new(_settings(), TestMaps.from_rows(rows, base))
 	for cell: Vector2i in piles:
-		var index := cell.y * map.width + cell.x
-		run_piles.levels[index] = piles[cell]
-		run_piles.wall_hps[index] = _settings().wall_hp if piles[cell] == Piles.WALL_LEVEL else 0.0
-	return Routing.new(_settings(), map, occupancy, run_piles)
+		var index := cell.y * systems.map.width + cell.x
+		systems.piles.levels[index] = piles[cell]
+		systems.piles.wall_hps[index] = (
+			systems.settings.wall_hp if piles[cell] == Piles.WALL_LEVEL else 0.0
+		)
+	return systems.routing()
 
 
 func _settings() -> Settings:
@@ -43,8 +40,8 @@ func test_no_diagonal_step_cuts_a_rock_corner() -> void:
 		assert_float(routing.value(route, Vector2i(2, 0))).is_equal_approx(4.0, 1e-6)
 
 
-func test_base_cells_are_zero_and_rock_and_tower_cells_are_unreachable() -> void:
-	var routing := _routing(["#....", ".....", "....."], Rect2i(2, 1, 2, 1), [Vector2i(0, 2)])
+func test_base_cells_are_zero_and_rock_cells_are_unreachable() -> void:
+	var routing := _routing(["#....", ".....", "#...."], Rect2i(2, 1, 2, 1))
 
 	for route: Routing.Route in [SENSIBLE, DIRECT]:
 		assert_float(routing.value(route, Vector2i(2, 1))).is_equal(0.0)
@@ -64,8 +61,7 @@ func test_every_reachable_cell_has_a_parent_on_its_shortest_path() -> void:
 		"..#.......",
 		"......##..",
 	]
-	var towers: Array[Vector2i] = [Vector2i(8, 1), Vector2i(9, 1), Vector2i(8, 2), Vector2i(9, 2)]
-	var routing := _routing(rows, Rect2i(4, 3, 2, 1), towers)
+	var routing := _routing(rows, Rect2i(4, 3, 2, 1))
 
 	for route: Routing.Route in [SENSIBLE, DIRECT]:
 		for y in rows.size():
@@ -135,9 +131,9 @@ func test_cost_factors_follow_route_weight_settings() -> void:
 	var settings := _settings()
 	settings.change("routing", "sensible_pile_weight", 2.0)
 	settings.change("routing", "direct_wall_weight", 0.5)
-	var map := TestMaps.from_rows(["..."], Rect2i(0, 0, 1, 1))
-	var occupancy := Occupancy.new(map.width, map.height)
-	var routing := Routing.new(settings, map, occupancy, Piles.new(settings, map, occupancy))
+	var routing := (
+		TestSystems.new(settings, TestMaps.from_rows(["..."], Rect2i(0, 0, 1, 1))).routing()
+	)
 
 	assert_float(routing.pile_factor(SENSIBLE, 4)).is_equal_approx(4.0, 1e-6)
 	assert_float(routing.wall_factor(DIRECT, 30.0)).is_equal_approx(16.0, 1e-6)
@@ -146,12 +142,12 @@ func test_cost_factors_follow_route_weight_settings() -> void:
 func test_a_wall_costs_its_wall_factor_at_its_bucketed_hp_to_enter() -> void:
 	var expected := {30.0: Vector2(33.0, 6.0), 25.0: Vector2(33.0, 6.0), 20.0: Vector2(23.0, 5.0)}
 	for hp: float in expected:
-		var map := TestMaps.from_rows(["....."], Rect2i(0, 0, 1, 1))
-		var occupancy := Occupancy.new(map.width, map.height)
-		var piles := Piles.new(_settings(), map, occupancy)
-		piles.levels[2] = Piles.WALL_LEVEL
-		piles.wall_hps[2] = hp
-		var routing := Routing.new(_settings(), map, occupancy, piles)
+		var systems := TestSystems.new(
+			_settings(), TestMaps.from_rows(["....."], Rect2i(0, 0, 1, 1))
+		)
+		systems.piles.levels[2] = Piles.WALL_LEVEL
+		systems.piles.wall_hps[2] = hp
+		var routing := systems.routing()
 
 		var values: Vector2 = expected[hp]
 		assert_float(routing.value(SENSIBLE, Vector2i(3, 0))).is_equal_approx(values.x, 1e-6)
@@ -160,7 +156,7 @@ func test_a_wall_costs_its_wall_factor_at_its_bucketed_hp_to_enter() -> void:
 
 func test_no_diagonal_step_cuts_a_wall_corner() -> void:
 	var wall := {Vector2i(1, 0): Piles.WALL_LEVEL}
-	var routing := _routing(["....", "....", "...."], Rect2i(0, 0, 1, 1), [], wall)
+	var routing := _routing(["....", "....", "...."], Rect2i(0, 0, 1, 1), wall)
 
 	for route: Routing.Route in [SENSIBLE, DIRECT]:
 		assert_float(routing.value(route, Vector2i(1, 1))).is_equal_approx(2.0, 1e-6)
@@ -204,7 +200,7 @@ func test_value_sampling_blends_the_field_and_skips_impassable_cells() -> void:
 
 
 func test_a_pile_costs_its_pile_factor_to_enter_on_each_route() -> void:
-	var routing := _routing(["....."], Rect2i(0, 0, 1, 1), [], {Vector2i(2, 0): 2})
+	var routing := _routing(["....."], Rect2i(0, 0, 1, 1), {Vector2i(2, 0): 2})
 
 	var sensible := 2.0 + routing.pile_factor(SENSIBLE, 2)
 	assert_float(routing.value(SENSIBLE, Vector2i(3, 0))).is_equal_approx(sensible, 1e-6)
@@ -213,14 +209,13 @@ func test_a_pile_costs_its_pile_factor_to_enter_on_each_route() -> void:
 
 
 func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
-	var map := TestMaps.from_rows(["......", "......", "......"], Rect2i(0, 0, 1, 1))
-	var occupancy := Occupancy.new(map.width, map.height)
-	var piles := Piles.new(_settings(), map, occupancy)
-	var routing := Routing.new(_settings(), map, occupancy, piles)
+	var systems := TestSystems.new(
+		_settings(), TestMaps.from_rows(["......", "......", "......"], Rect2i(0, 0, 1, 1))
+	)
+	var routing := systems.routing()
 	routing.start_rebuild()
 
-	var tower: Array[Vector2i] = [Vector2i(2, 0), Vector2i(2, 1)]
-	occupancy.occupy(tower, 0)
+	var tower := systems.build_tower(Vector2i(2, 0)).footprint
 	var updated_now := routing.update(tower)
 	var swapped_stale := routing.finish_rebuild()
 	var swapped_restart := routing.finish_rebuild()
@@ -229,5 +224,4 @@ func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
 	assert_bool(swapped_stale).is_false()
 	assert_bool(swapped_restart).is_true()
 	assert_bool(routing.is_rebuilding()).is_false()
-	var rebuilt := Routing.new(_settings(), map, occupancy, piles)
-	assert_bool(FieldChecks.routings_match(routing, rebuilt, map)).is_true()
+	assert_bool(FieldChecks.routings_match(routing, systems.routing(), systems.map)).is_true()

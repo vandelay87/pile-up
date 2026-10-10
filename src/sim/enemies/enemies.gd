@@ -200,12 +200,12 @@ func _roll_route(
 	var next := direct_parents[cell]
 	if next < 0 or next == sensible_parents[cell]:
 		return
-	var obstacle := _first_pile_on_chain(next, direct_parents)
+	var obstacle := _first_obstacle_on_chain(next, direct_parents)
 	if obstacle == NONE or obstacle == last_rolled_cells[i]:
 		return
 	last_rolled_cells[i] = obstacle
-	var is_wall := _is_wall(obstacle)
-	var chance := _settings.wall_roll_chance if is_wall else _settings.pile_roll_chance
+	var breakable := _structures.is_breakable(obstacle)
+	var chance := _settings.wall_roll_chance if breakable else _settings.pile_roll_chance
 	if chance > 0.0 and _rng.randf() <= chance:
 		routes[i] = Routing.Route.DIRECT
 
@@ -215,10 +215,12 @@ func _is_past_obstacle(i: int, pos: Vector2) -> bool:
 	return _routing.sample_value(Routing.Route.DIRECT, pos) < obstacle_value
 
 
-func _first_pile_on_chain(cell: int, chain_parents: PackedInt32Array) -> int:
+# The first pile, wall or building on the chain within the roll's reach, or NONE.
+func _first_obstacle_on_chain(cell: int, chain_parents: PackedInt32Array) -> int:
 	var levels := _piles.levels
+	var building_ids := _occupancy.building_ids
 	for _step in _ROLL_STEPS:
-		if levels[cell] > 0:
+		if levels[cell] > 0 or building_ids[cell] != Occupancy.EMPTY:
 			return cell
 		cell = chain_parents[cell]
 		if cell < 0:
@@ -282,10 +284,6 @@ func _nearest_pressed_structure(pos: Vector2, reach: float) -> int:
 				best_distance = distance
 				best = index
 	return best
-
-
-func _is_wall(index: int) -> bool:
-	return _piles.levels[index] == Piles.WALL_LEVEL
 
 
 func _distance_to_cell(pos: Vector2, index: int) -> float:
