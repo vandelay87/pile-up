@@ -26,7 +26,7 @@ def path(points, r0, r1=None):
             t = i / steps
             x, y = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
             f = (done + seg * t) / total
-            disc(x, y, r0 + (r1 - r0) * f + rng.uniform(-0.45, 0.45))
+            disc(x, y, r0 + (r1 - r0) * f + rng.uniform(-0.3, 0.3))
         done += seg
 
 
