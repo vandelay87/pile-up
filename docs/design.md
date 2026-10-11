@@ -51,7 +51,7 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 - **The tumble:** an enemy tumbles straight over the piece of wall or building it is touching, on the side facing most towards the base, to the first free, uncrowded cell beyond it, then goes back to the sensible field. If nothing it touches faces forwards, it follows the direct field over instead. It falls fast, quicker than walking, is drawn raised, ignores collision with the obstacle and the crowd and isn't slowed by piles, and can be shot and killed on the way; its body lands by the normal rule, on whichever side is nearer. There is no limit on how far a tumble crosses: a thick block of buildings still resists, because a long tumble keeps the enemy exposed to every tower in range. If a tumble reaches the base with no free cell, the enemy stops beside the base and attacks it.
 - **What it crosses:** nothing changes. Overflow goes over a defence; attacks still wear it down.
 - Towers target tumbling enemies like any other enemy, and route rolls and wave-tail push-through stay as they are.
-- Thresholds, rates per tier, the tumble speed, the band and how crowded a landing cell may be are set in the v3 numbers.
+- **v3 numbers:** an enemy within the 3-cell band is stalled below 25% of its walking progress. The gauge fills 0.5 per stalled enemy per second and leaks 5 per second, so about 10 stalled enemies only hold it level. A crush starts above 10 and ends below 4. Trickle from 20, stream from 50, surge from 90, and the gauge tops out at 120. The tiers send 0.5, 3 and 15 enemies over per second, and each enemy that tumbles takes 2 off the gauge. A tumble moves at 180% of walking speed, and a landing cell is free while it holds fewer than 6 enemies.
 
 ## Body piles
 
@@ -114,21 +114,21 @@ From v3, a building that hurts enemies by touch, so the player can plan for a cr
 - **Role:** a wall that bites, not a tower. It costs somewhat less than a tower, has more HP than one, and kills a lone enemy slowly. Wrapping buildings in grinders is allowed; its price is the limit.
 - Its kills build its own combo like a tower's, kills on tumbling enemies included.
 - Bodies of enemies it kills land by the normal rule, so piles build up against it, and a wall there keeps enemies off it until that wall breaks or decays.
-- Its cost, HP, damage and touch band are set in the v3 numbers.
+- **v3 numbers:** 60 gold, 100 HP, 3 damage per second to each enemy touching it. Touching means close enough to attack it, so its band is an attacker's reach and needs no number of its own. A lone enemy takes about 3 s to die at wave 1 and about 7 s at wave 15, and an enemy tumbling over one grinder takes 6.
 
 ## Bloater
 
 From v3, a second enemy type that blows up, so a crowd can be broken from inside and a defence from outside. Where it pops decides which.
 
-- **Bloater**: about 3× a normal enemy's HP and 0.8× its speed, so it drifts back into the crowd behind it. Bounty 2 gold. It grows with the waves' HP like any enemy. It is drawn in its own colour, about 1.5× the size of a normal enemy, and pulses faster and faster while its fuse burns.
-- **Fuse:** when a bloater reaches a structure in its way (the moment a normal enemy would start attacking), it lights a short fuse, about 1 s, and blows up when it runs out. It never attacks. Killing it during the fuse still blows it up there.
-- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within about 2 cells dies, every building and the base within it takes a flat damage, and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body.
+- **Bloater**: 3× a normal enemy's HP (30) and 0.8× its speed (1.6 cells/s), so it drifts back into the crowd behind it. Bounty 2 gold. It grows with the waves' HP like any enemy. It is drawn in its own colour, 1.5× the size of a normal enemy, and pulses faster and faster while its fuse burns.
+- **Fuse:** when a bloater reaches a structure in its way (the moment a normal enemy would start attacking), it lights a 1 s fuse and blows up when it runs out. It never attacks. Killing it during the fuse still blows it up there.
+- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within 2 cells of its centre dies, every building and the base within it takes 30 damage once (half a tower's HP), and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body.
 - **Chains:** a blast that kills another bloater sets it off too.
 - **Grinders** hurt a bloater like any enemy, so one that dies against a grinder blows up there and damages it.
 - **Crush:** blasts need no special rule. The enemies they kill leave the crush smaller, and a wall they erase is a hole the crowd walks through, not an overflow.
 - **Overflow:** a bloater with a lit fuse is not attacking, so it can be picked to tumble like any enemy at the front. Tumbling puts its fuse out, and it lights again at the next structure in its way after it lands, so an overflow can carry bloaters into the defence. A bloater killed mid-tumble blows up where it is, on top of the wall or building it is crossing.
 - **Combos and bounty:** a building that kills a bloater gets every kill its blast makes, chained blasts included: each adds to that building's combo and pays its bounty × the building's tier. A bloater that blows itself up pays no bounty of its own, and its blast kills pay ×1.
-- Its HP, speed, fuse, blast radius and blast damage to buildings (about 30, half a tower's HP) are set in the v3 numbers. Which waves have bloaters, and how many, is under Waves.
+- Which waves have bloaters, and how many, is under Waves.
 
 ## Selecting buildings
 
@@ -142,15 +142,15 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - A tower may cut off every path to the base: enemies then break through the cheapest structure.
 - Starting gold: 200.
 - **Bounty:** each kill pays 1 gold before any combo.
-- **Combo:** each building has its own combo; there is none for the whole defence. The building that lands the killing blow gets the kill, and any building that damages enemies can build a combo. Each kill adds 1 to the building's count and restarts its timer; if the timer runs out with no kill, the combo breaks back to ×1. The count sets the building's tier, capped. Each kill pays its bounty times the killing building's tier, at once, the kill that crosses a threshold already paying the new tier, so gold earned mid-burst can be spent during the wave. Kills with no building behind them pay ×1. A destroyed building loses its combo and its rebuild starts at ×1; damage to a building or the base does not break one. A high combo needs a dense crowd in front of one building, so it rewards letting pressure build, at the risk of an overflow. The timer, thresholds and cap are set in the v3 numbers.
+- **Combo:** each building has its own combo; there is none for the whole defence. The building that lands the killing blow gets the kill, and any building that damages enemies can build a combo. Each kill adds 1 to the building's count and restarts its timer; if the timer runs out with no kill, the combo breaks back to ×1. The count sets the building's tier, capped. Each kill pays its bounty times the killing building's tier, at once, the kill that crosses a threshold already paying the new tier, so gold earned mid-burst can be spent during the wave. Kills with no building behind them pay ×1. A destroyed building loses its combo and its rebuild starts at ×1; damage to a building or the base does not break one. A high combo needs a dense crowd in front of one building, so it rewards letting pressure build, at the risk of an overflow. **v3 numbers:** a 2 s timer, ×2 from 10 kills, ×3 from 25, capped at ×3. A busy tower kills often enough to hold its timer while a crowd feeds it, and the cap stays at ×3 so the combo doesn't bring back v2's gold surplus.
 - **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size, followed by its bloater count when it has any (for example, "120 enemies · 3 bloaters"). **Kills** counts the run's kills and is also shown on the game-over screen. A building's combo shows above it as a **ring**, hidden at ×1: its tier in the middle, an outer arc filling towards the next tier, and an inner arc for its timer running down. A kill pulses the ring, a tier-up sends a ring outwards, and a break scatters it. The ring stays the same size on screen at any zoom, in shades of gold so it isn't mistaken for the pressure gauge. The selected building's details show the same ring, larger, with its tier and count, the next tier's threshold, the time left on its timer and its best combo this run. The final art may restyle the ring but keeps what it shows. There is no combo readout for the whole defence. The gold readout flashes on a multiplied payout.
 
 ## Waves
 
 - Endless. The next wave starts when the player presses "next wave".
-- Wave 1 has 20 enemies. Each wave has about 30% more enemies and 5% more enemy HP than the last, so wave 10 is roughly 210 enemies and wave 20 roughly 2,900.
-- Enemies spawn in bursts of 16, each on a random cell along the spawn edge, at an average of 10 per second.
-- **Bloaters** (from v3) appear from wave 5. They take the place of normal enemies, so the wave size is unchanged. Their share of the wave ramps from about 2% at wave 5 to about 5% by about wave 15 and stays there, with at least 1 in every wave from wave 5. Each takes a random place among the wave's bursts, mixed in with normal enemies; there are no bursts of only bloaters. The exact numbers are set in the v3 numbers.
+- Wave 1 has 20 enemies. Each wave has 25% more enemies and 5% more enemy HP than the last, so wave 10 is roughly 150 enemies, wave 15 roughly 455 and wave 20 roughly 1,390. (v2 grew 30% a wave; v3 lowers it to cut the gold surplus and keep wave 20 nearer the on-screen target.)
+- Enemies spawn in bursts of 16, each on a random cell along the spawn edge, at an average of 10 per second. v3 keeps these on the flared map, where the wider mouths already spread the bursts out.
+- **Bloaters** (from v3) appear from wave 5. They take the place of normal enemies, so the wave size is unchanged. Their share of the wave ramps from about 2% at wave 5 to about 5% by about wave 15 and stays there, with at least 1 in every wave from wave 5. Each takes a random place among the wave's bursts, mixed in with normal enemies; there are no bursts of only bloaters. **v3 numbers:** the share is 2% at wave 5, rising 0.3% a wave to 5% at wave 15, and the count is that share of the wave size, rounded, but at least 1. With 25% growth that is 1 bloater at wave 5, 5 at wave 10, 23 at wave 15 and 69 at wave 20.
 
 ## v1 fun test
 
