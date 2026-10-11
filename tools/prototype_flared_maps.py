@@ -134,8 +134,25 @@ STRAIGHT_E = ((89, 0, W - 1, 36), (W - 1, 22), (86, 31), 17, 4.5)
 STRAIGHT_W = ((0, 0, 24, 36), (0, 31), (27, 31), 15, 4.5)
 
 
+def cut(g, start, end, half_width):
+    # A narrow channel through rock; cutting across a spine leaves the rest as an island.
+    (sx, sy), (ex, ey) = start, end
+    length = math.hypot(ex - sx, ey - sy)
+    for i in range(int(length * 2) + 1):
+        t = i / (length * 2)
+        cx, cy = sx + (ex - sx) * t, sy + (ey - sy) * t
+        for y in range(int(cy - half_width) - 1, int(cy + half_width) + 2):
+            for x in range(int(cx - half_width) - 1, int(cx + half_width) + 2):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= half_width ** 2:
+                    g[y][x] = "."
+
+
+# Across the rock spine between the north and east routes, about 4 cells wide.
+NE_CUT = ((70, 11), (92, 16), 2.2)
+
+
 def variant(mouth, length, margin_depth=0, with_bays=False, per_edge=None, rag=0.0,
-            straights=()):
+            straights=(), cuts=()):
     g = scaled()
     per_edge = dict(per_edge or {})
     for fill, start, end, m, t in straights:
@@ -145,6 +162,8 @@ def variant(mouth, length, margin_depth=0, with_bays=False, per_edge=None, rag=0
     g = flare(g, mouth, length, per_edge, rag, along_route=rag > 0)
     if with_bays:
         bays(g, BAYS)
+    for start, end, half_width in cuts:
+        cut(g, start, end, half_width)
     prune(g)
     if margin_depth:
         margin(g, margin_depth)
@@ -165,6 +184,9 @@ VARIANTS = {
     # E: the west route is the straight one instead.
     "e-straight-west": variant(mouth=12, length=30, margin_depth=6, with_bays=True, rag=0.3,
                                straights=[STRAIGHT_W]),
+    # H: E plus a channel cut between the north and east routes, leaving a rock island.
+    "h-west-island": variant(mouth=12, length=30, margin_depth=6, with_bays=True, rag=0.3,
+                             straights=[STRAIGHT_W], cuts=[NE_CUT]),
     # F: both side routes straight: a trident, north the only one that winds into the loop.
     "f-trident": variant(mouth=12, length=30, margin_depth=6, with_bays=True, rag=0.3,
                          straights=[STRAIGHT_E, STRAIGHT_W]),
