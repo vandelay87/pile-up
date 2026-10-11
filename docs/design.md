@@ -10,7 +10,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Built in five prototypes, each adding one system:
   - **v1**: corpse loop
   - **v2**: power, plus a rework of v1 after playtesting
-  - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (being specified)
+  - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (specified in `docs/specs/v3.md`)
   - **v4**: reanimation
   - **v5**: power-ups (to be designed after v4)
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
@@ -122,7 +122,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 
 - **Bloater**: 3× a normal enemy's HP (30) and 0.8× its speed (1.6 cells/s), so it drifts back into the crowd behind it. Bounty 2 gold. It grows with the waves' HP like any enemy. It is drawn in its own colour, 1.5× the size of a normal enemy, and pulses faster and faster while its fuse burns.
 - **Fuse:** when a bloater reaches a structure in its way (the moment a normal enemy would start attacking), it lights a 1 s fuse and blows up when it runs out. It never attacks. Killing it during the fuse still blows it up there.
-- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within 2 cells of its centre dies, every building and the base within it takes 30 damage once (half a tower's HP), and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body.
+- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within 2 cells of its centre dies, leaving no body, every building and the base within it takes 30 damage once (half a tower's HP), and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body either, so a blast leaves a clear crater.
 - **Chains:** a blast that kills another bloater sets it off too.
 - **Grinders** hurt a bloater like any enemy, so one that dies against a grinder blows up there and damages it.
 - **Crush:** blasts need no special rule. The enemies they kill leave the crush smaller, and a wall they erase is a hole the crowd walks through, not an overflow.
