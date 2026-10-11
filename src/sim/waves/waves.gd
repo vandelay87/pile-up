@@ -38,8 +38,8 @@ func size(wave: int) -> int:
 	return roundi(_settings.wave_1_size * pow(_settings.wave_growth, wave - 1))
 
 
-func enemy_hp(wave: int) -> float:
-	return _settings.enemy_hp * pow(_settings.hp_growth, wave - 1)
+func enemy_hp(wave: int, kind := Enemies.Kind.NORMAL) -> float:
+	return _settings.enemy_hp_of(kind) * pow(_settings.hp_growth, wave - 1)
 
 
 func start(wave: int) -> void:

@@ -176,7 +176,9 @@ func test_a_body_beyond_a_new_wall_in_the_same_tick_spills() -> void:
 func test_landing_lists_each_changed_cell_once() -> void:
 	var piles := _piles(_open_rows())
 	piles.queue_bodies(
-		PackedVector2Array([Vector2(2.5, 2.5), Vector2(2.5, 2.5), Vector2(5.5, 1.5)])
+		Deaths.bodies_at(
+			PackedVector2Array([Vector2(2.5, 2.5), Vector2(2.5, 2.5), Vector2(5.5, 1.5)])
+		)
 	)
 
 	piles.land()
@@ -195,7 +197,7 @@ func test_landing_with_nothing_queued_changes_nothing() -> void:
 
 
 func _land(piles: Piles, positions: Array[Vector2]) -> void:
-	piles.queue_bodies(PackedVector2Array(positions))
+	piles.queue_bodies(Deaths.bodies_at(PackedVector2Array(positions)))
 	piles.land()
 	piles.clear_changes()
 

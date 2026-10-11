@@ -1,9 +1,12 @@
 class_name Enemies
 extends RefCounted
 
+enum Kind { NORMAL }
+
 const NONE := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
+const _PILE_LEVELS := Piles.WALL_LEVEL + 1
 const _PROGRESS := 0.02
 const _ROLL_STEPS := 40
 # Single-precision headings put an exact reversal a hair either side of pi, so a turn must
@@ -15,6 +18,9 @@ var count := 0
 var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
+var kinds := PackedByteArray()
+# The building that last damaged each enemy, or NONE: the killer if it dies.
+var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
 var structure_targets := PackedInt32Array()
 var routes := PackedByteArray()
@@ -66,7 +72,7 @@ func _init(
 	_bucket_starts.resize(_map.width * _map.height + 1)
 
 
-func spawn(pos: Vector2, start_hp: float) -> int:
+func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	if count == ids.size():
 		_grow()
 	var id := _next_id
@@ -74,6 +80,8 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	ids[count] = id
 	positions[count] = pos
 	hp[count] = start_hp
+	kinds[count] = kind
+	last_hitters[count] = NONE
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	structure_targets[count] = NONE
 	routes[count] = Routing.Route.SENSIBLE
@@ -96,16 +104,20 @@ func index_of(id: int) -> int:
 	return _index_by_id.get(id, NONE)
 
 
-func damage(id: int, amount: float) -> void:
+# Damage from the building with id [param by], or from NONE.
+func damage(id: int, amount: float, by: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
 		hp[index] -= amount
+		last_hitters[index] = by
 
 
+# A debug kill: no building gets the credit.
 func kill(id: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
 		hp[index] = minf(hp[index], 0.0)
+		last_hitters[index] = NONE
 
 
 func is_alive(index: int) -> bool:
@@ -155,11 +167,14 @@ func move(in_wave_tail := false) -> void:
 	var sensible_before := _routing.take_sensible_before()
 	if count == 0:
 		return
-	var step := _settings.enemy_speed_per_tick
-	var steps := PackedFloat64Array([step])
-	for level in range(1, Piles.WALL_LEVEL):
-		steps.append(step * (1.0 - _settings.pile_slow(level)))
-	steps.append(step)
+	# The step for each kind on each pile level, at kind * _PILE_LEVELS + level.
+	var steps := PackedFloat64Array()
+	for kind: Kind in Kind.values():
+		var kind_step := _settings.enemy_speed_per_tick_of(kind)
+		steps.append(kind_step)
+		for level in range(1, Piles.WALL_LEVEL):
+			steps.append(kind_step * (1.0 - _settings.pile_slow(level)))
+		steps.append(kind_step)
 	var levels := _piles.levels
 	var radius := _settings.separation_radius
 	var push := _settings.separation_push
@@ -192,12 +207,14 @@ func move(in_wave_tail := false) -> void:
 			_moved[i] = pos + separation
 			continue
 		if spreads:
-			separation += _personal_space(i, space_radius, space_push).limit_length(step)
+			var clear_step := steps[kinds[i] * _PILE_LEVELS]
+			separation += _personal_space(i, space_radius, space_push).limit_length(clear_step)
 		var turn := heading_offsets[i]
 		if wander > 0.0:
 			turn += wander * sin(wander_phases[i] + wander_angle)
 		var heading := _routing.sample_direction(routes[i], pos).rotated(turn)
-		var pace_step := steps[levels[_cell_index(pos)]] * (1.0 + pace_rolls[i] * variety)
+		var kind_level := kinds[i] * _PILE_LEVELS + levels[_cell_index(pos)]
+		var pace_step := steps[kind_level] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
 		if hp[i] <= 0.0:
@@ -465,13 +482,13 @@ func _tie_break(i: int, j: int) -> Vector2:
 	return Vector2.RIGHT if ids[i] > ids[j] else Vector2.LEFT
 
 
-# Removes the dead and returns where they died.
-func remove_dead() -> PackedVector2Array:
-	var deaths := PackedVector2Array()
+# Removes the dead and returns their deaths, in removal order.
+func remove_dead() -> Deaths:
+	var deaths := Deaths.new()
 	var i := 0
 	while i < count:
 		if hp[i] <= 0.0:
-			deaths.append(positions[i])
+			deaths.add(positions[i], kinds[i] as Kind, last_hitters[i])
 			_swap_remove(i)
 		else:
 			i += 1
@@ -490,6 +507,8 @@ func _swap_remove(index: int) -> void:
 	ids[index] = ids[count]
 	positions[index] = positions[count]
 	hp[index] = hp[count]
+	kinds[index] = kinds[count]
+	last_hitters[index] = last_hitters[count]
 	heading_offsets[index] = heading_offsets[count]
 	structure_targets[index] = structure_targets[count]
 	routes[index] = routes[count]
@@ -506,6 +525,8 @@ func _grow() -> void:
 	ids.resize(capacity)
 	positions.resize(capacity)
 	hp.resize(capacity)
+	kinds.resize(capacity)
+	last_hitters.resize(capacity)
 	heading_offsets.resize(capacity)
 	structure_targets.resize(capacity)
 	routes.resize(capacity)

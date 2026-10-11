@@ -68,7 +68,7 @@ func test_it_never_repairs_its_own_yard_walls_or_the_base() -> void:
 	var bodies := PackedVector2Array()
 	for n in Piles.WALL_LEVEL:
 		bodies.append(Vector2(wall) + Vector2(0.5, 0.5))
-	_sim.piles.queue_bodies(bodies)
+	_sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 	_start_wave()
 	assert_int(_sim.piles.level(wall)).is_equal(Piles.WALL_LEVEL)
 

@@ -19,7 +19,7 @@ func test_a_run_starts_with_200_base_hp_and_200_gold_at_wave_0() -> void:
 func test_a_kill_adds_the_bounty() -> void:
 	_settings.change("enemies", "bounty", 3)
 
-	_run.record_kills(2, 0)
+	_run.record_kills(Deaths.bodies_at(PackedVector2Array([Vector2.ZERO, Vector2.ZERO])), 0)
 
 	assert_int(_run.gold).is_equal(206)
 
@@ -54,7 +54,7 @@ func test_a_kill_in_a_tick_adds_the_bounty_and_reports_the_gold() -> void:
 	sim.queue_command(Commands.NextWave.new())
 	sim.tick()
 
-	sim.enemies.damage(sim.enemies.ids[0], 100.0)
+	sim.enemies.damage(sim.enemies.ids[0], 100.0, Enemies.NONE)
 	sim.tick()
 
 	assert_int(sim.run_state.gold).is_equal(201)

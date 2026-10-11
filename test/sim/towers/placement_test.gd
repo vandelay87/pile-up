@@ -43,7 +43,7 @@ func test_a_placement_overlapping_rock_base_or_a_tower_is_rejected_as_occupied()
 
 func test_a_placement_overlapping_a_pile_is_rejected_as_occupied() -> void:
 	var sim := _sim(_open_rows())
-	sim.piles.queue_bodies(PackedVector2Array([Vector2(1.5, 6.5)]))
+	sim.piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(1.5, 6.5)])))
 	sim.tick()
 
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 5)))

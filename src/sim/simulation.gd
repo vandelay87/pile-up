@@ -59,6 +59,8 @@ var tick_count := 0
 var paused := false
 var speed := 1
 var tick_cost := TickCost.new()
+## The deaths the last removal step took, read-only.
+var deaths := Deaths.new()
 var combo_tier: int:
 	get:
 		return run_state.combo_tier
@@ -406,9 +408,9 @@ func _repair_buildings() -> void:
 
 func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
-	var deaths := enemies.remove_dead()
+	deaths = enemies.remove_dead()
 	piles.queue_bodies(deaths)
-	run_state.record_kills(deaths.size(), tick_count)
+	run_state.record_kills(deaths, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
 	waves.record_kills(deaths.size())
 

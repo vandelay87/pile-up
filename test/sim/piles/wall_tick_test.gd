@@ -99,7 +99,7 @@ func _corridor_sim(run_seed: int) -> Simulation:
 	for y in 3:
 		for n in Piles.WALL_LEVEL:
 			bodies.append(Vector2(4.5, y + 0.5))
-	sim.piles.queue_bodies(bodies)
+	sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = run_seed
 	for n in 9:
@@ -116,7 +116,7 @@ func _sim_with_wall() -> Simulation:
 	var bodies := PackedVector2Array()
 	for n in Piles.WALL_LEVEL:
 		bodies.append(Vector2(WALL) + Vector2(0.5, 0.5))
-	sim.piles.queue_bodies(bodies)
+	sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 	sim.tick()
 	sim.pile_changed.connect(
 		func(cells: Array[Vector2i]) -> void: _events.append("piles %s" % [cells])

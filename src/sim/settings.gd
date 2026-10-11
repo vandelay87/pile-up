@@ -852,6 +852,19 @@ func pile_slow(level: int) -> float:
 	return percent / 100.0
 
 
+# Kind-specific enemy numbers. Every kind has the normal enemy's numbers for now.
+func enemy_hp_of(_kind: Enemies.Kind) -> float:
+	return enemy_hp
+
+
+func enemy_bounty_of(_kind: Enemies.Kind) -> int:
+	return enemy_bounty
+
+
+func enemy_speed_per_tick_of(_kind: Enemies.Kind) -> float:
+	return enemy_speed_per_tick
+
+
 func value(group: String, key: String) -> Variant:
 	return _values[group][key]
 

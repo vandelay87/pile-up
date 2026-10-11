@@ -28,7 +28,7 @@ func test_ids_stay_valid_across_swap_removes() -> void:
 	var second := enemies.spawn(Vector2(1.5, 1.5), _settings.enemy_hp)
 	var third := enemies.spawn(Vector2(2.5, 2.5), _settings.enemy_hp)
 
-	enemies.damage(first, 100.0)
+	enemies.damage(first, 100.0, Enemies.NONE)
 	enemies.remove_dead()
 
 	assert_int(enemies.count).is_equal(2)
@@ -36,7 +36,7 @@ func test_ids_stay_valid_across_swap_removes() -> void:
 	assert_vector(enemies.positions[enemies.index_of(second)]).is_equal(Vector2(1.5, 1.5))
 	assert_vector(enemies.positions[enemies.index_of(third)]).is_equal(Vector2(2.5, 2.5))
 
-	enemies.damage(third, 100.0)
+	enemies.damage(third, 100.0, Enemies.NONE)
 	enemies.remove_dead()
 
 	assert_int(enemies.index_of(third)).is_equal(Enemies.NONE)
@@ -48,10 +48,10 @@ func test_removal_returns_the_positions_of_the_dead() -> void:
 	var dead := enemies.spawn(Vector2(0.5, 0.5), _settings.enemy_hp)
 	enemies.spawn(Vector2(1.5, 1.5), _settings.enemy_hp)
 
-	enemies.damage(dead, 10.0)
+	enemies.damage(dead, 10.0, Enemies.NONE)
 	var deaths := enemies.remove_dead()
 
-	assert_array(Array(deaths)).contains_exactly([Vector2(0.5, 0.5)])
+	assert_array(Array(deaths.positions)).contains_exactly([Vector2(0.5, 0.5)])
 
 
 func test_an_enemy_on_an_open_grid_reaches_the_base_and_stays_outside_it() -> void:
@@ -148,7 +148,7 @@ func test_nearest_to_base_in_range_breaks_ties_by_lowest_id() -> void:
 	var removed := enemies.spawn(Vector2(0.5, 3.5), _settings.enemy_hp)
 	var lower := enemies.spawn(Vector2(2.5, 2.5), _settings.enemy_hp)
 	enemies.spawn(Vector2(5.5, 2.5), _settings.enemy_hp)
-	enemies.damage(removed, 100.0)
+	enemies.damage(removed, 100.0, Enemies.NONE)
 	enemies.remove_dead()
 	enemies.rebuild_spatial_hash()
 
@@ -159,7 +159,7 @@ func test_nearest_to_base_in_range_skips_enemies_at_zero_hp() -> void:
 	var enemies := _open_field()
 	var farther := enemies.spawn(Vector2(1.5, 1.5), _settings.enemy_hp)
 	var nearer := enemies.spawn(Vector2(5.5, 1.5), _settings.enemy_hp)
-	enemies.damage(nearer, _settings.enemy_hp)
+	enemies.damage(nearer, _settings.enemy_hp, Enemies.NONE)
 	enemies.rebuild_spatial_hash()
 
 	assert_int(enemies.nearest_to_base_in_range(Vector2(3.5, 1.5), 3.0)).is_equal(farther)

@@ -50,7 +50,7 @@ func top_up(target: int) -> void:
 
 
 func drop_body() -> void:
-	_sim.piles.queue_bodies(PackedVector2Array([_free_spot()]))
+	_sim.piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([_free_spot()])))
 
 
 func _free_spot() -> Vector2:

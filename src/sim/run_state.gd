@@ -35,17 +35,17 @@ func spend(cost: int) -> void:
 	gold -= cost
 
 
-# Each kill pays the bounty times the combo tier, the tier counting that kill.
-func record_kills(count: int, tick: int) -> void:
+# Each kill pays its kind's bounty times the combo tier, the tier counting that kill.
+func record_kills(deaths: Deaths, tick: int) -> void:
 	_expire_kills(tick)
 	payout = 0
 	payout_tier = 1
-	for k in count:
+	for kind: Enemies.Kind in deaths.kinds:
 		_kill_ticks.append(tick)
 		combo_tier = _tier()
-		payout += _settings.enemy_bounty * combo_tier
+		payout += _settings.enemy_bounty_of(kind) * combo_tier
 		payout_tier = maxi(payout_tier, combo_tier)
-	kills += count
+	kills += deaths.size()
 	gold += payout
 
 
