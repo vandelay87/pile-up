@@ -10,11 +10,6 @@ const BAR_HEIGHT := 150.0
 const MARGIN := 8.0
 const TOAST_HOLD_SECONDS := 1.5
 const TOAST_FADE_SECONDS := 0.5
-const COMBO_PULSE_SECONDS := 0.25
-const COMBO_TIER_UP_SCALE := 1.4
-const COMBO_BEAT_SECONDS := 0.15
-const COMBO_BEAT_SCALE := 1.12
-const COMBO_IDLE_ALPHA := 0.4
 const GOLD_FLASH_SECONDS := 0.35
 const GOLD_FLASH_COLOUR := Color(1.0, 0.85, 0.2)
 ## Gold is already drawn gold, so a payout flashes it brighter.
@@ -25,6 +20,7 @@ const PANEL_BG := Color(0.08, 0.09, 0.11, 0.92)
 const PANEL_EDGE := Color(0.45, 0.4, 0.3)
 const PORTRAIT_COLOUR := Color(0.2, 0.22, 0.26)
 const UNAFFORDABLE_COLOUR := Color(1.0, 0.6, 0.6)
+const COMBO_RING_SIZE := 96.0
 const COMMAND_SIZE := Vector2(72, 56)
 const COMMAND_COLUMNS := 3
 ## The command card's slots in grid order: a building kind, or an empty slot.
@@ -45,11 +41,9 @@ var _base_hp := Label.new()
 var _wave := Label.new()
 var _enemies_left := Label.new()
 var _kills := Label.new()
-var _combo := Label.new()
-var _combo_tween: Tween
-var _combo_rising := false
 var _gold_tween: Tween
-var _shown_tier := 1
+var _combo_view: ComboView
+var _combo_ring := ComboRing.new()
 var _details_title := Label.new()
 var _details_lines := VFlowContainer.new()
 var _yard_controls := HBoxContainer.new()
@@ -63,9 +57,21 @@ var _reached := Label.new()
 var _run_kills := Label.new()
 
 
-func setup(simulation: Simulation, selection: Selection) -> void:
+## The selected building's combo ring, drawn large in the details.
+class ComboRing:
+	extends Control
+
+	var ring: ComboView.Ring
+
+	func _draw() -> void:
+		if ring != null:
+			ComboView.draw_ring(self, size / 2.0, ring, size.y / 36.0, true)
+
+
+func setup(simulation: Simulation, selection: Selection, combo_view: ComboView) -> void:
 	_simulation = simulation
 	_selection = selection
+	_combo_view = combo_view
 	_simulation.gold_changed.connect(_show_gold)
 	_simulation.base_hp_changed.connect(_show_base_hp)
 	_simulation.phase_changed.connect(_show_phase)
@@ -73,17 +79,12 @@ func setup(simulation: Simulation, selection: Selection) -> void:
 	_simulation.command_rejected.connect(_show_toast)
 	_simulation.enemies_left_changed.connect(_show_enemies_left)
 	_simulation.kills_changed.connect(_show_kills)
-	_simulation.combo_changed.connect(_show_combo)
 	_simulation.payout.connect(_flash_gold)
-	_simulation.payout.connect(_beat_combo)
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_base_hp(run_state.base_hp)
 	_show_enemies_left(_simulation.enemies_left)
 	_show_kills(run_state.kills)
-	_shown_tier = 1
-	_combo.text = "x1"
-	_combo.modulate.a = COMBO_IDLE_ALPHA
 	_show_phase(_simulation.waves.phase)
 	_game_over.visible = false
 
@@ -135,7 +136,7 @@ func _ready() -> void:
 	ui.add_child(_toast)
 
 
-# Gold, Base HP, Wave, Enemies left, Kills and the combo tier as a two-column table.
+# Gold, Base HP, Wave, Enemies left and Kills as a two-column table.
 func _status_panel() -> PanelContainer:
 	var status := _panel()
 	# Wide enough for six-digit values, so the details don't shift as Gold grows.
@@ -150,7 +151,6 @@ func _status_panel() -> PanelContainer:
 		["Wave", _wave, 15, Color.WHITE],
 		["Enemies left", _enemies_left, 15, Color.WHITE],
 		["Kills", _kills, 15, Color.WHITE],
-		["Combo", _combo, 15, GOLD_FLASH_COLOUR],
 	]
 	for entry: Array in rows:
 		var name_label := Label.new()
@@ -170,7 +170,8 @@ func _status_panel() -> PanelContainer:
 	return status
 
 
-# A portrait placeholder, then the selection's title and stats, wrapping into columns.
+# A portrait placeholder, the selection's title and stats wrapping into columns, then its combo
+# ring when it can hold one.
 func _details_panel() -> PanelContainer:
 	var details := _panel()
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -201,6 +202,9 @@ func _details_panel() -> PanelContainer:
 		_yard_controls.add_child(button)
 	text_column.add_child(_yard_controls)
 	details_row.add_child(text_column)
+	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
+	_combo_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	details_row.add_child(_combo_ring)
 	details.add_child(details_row)
 	return details
 
@@ -259,50 +263,6 @@ func _show_kills(kills: int) -> void:
 	_kills.text = str(kills)
 
 
-# Dimmed at x1; pulses on each tier-up, dims again as the tier falls back to x1.
-func _show_combo(tier: int) -> void:
-	var rising := tier > _shown_tier
-	_shown_tier = tier
-	_combo_rising = rising
-	if _combo_tween != null:
-		_combo_tween.kill()
-	_combo.text = "x%d" % tier
-	_combo.scale = Vector2.ONE
-	_combo_tween = create_tween()
-	if tier <= 1:
-		_combo_tween.tween_property(_combo, "modulate:a", COMBO_IDLE_ALPHA, COMBO_PULSE_SECONDS)
-		return
-	_combo.modulate.a = 1.0
-	if rising:
-		_combo.pivot_offset = Vector2(0.0, _combo.size.y / 2.0)
-		_combo.scale = Vector2.ONE * COMBO_TIER_UP_SCALE
-		(
-			_combo_tween
-			. tween_property(_combo, "scale", Vector2.ONE, COMBO_PULSE_SECONDS)
-			. set_trans(Tween.TRANS_BACK)
-			. set_ease(Tween.EASE_OUT)
-		)
-
-
-# A held tier beats on each multiplied payout, so a long combo visibly reacts to new
-# kills. A tier-up's own pulse is left to finish: the simulation reports the tier change
-# before the same tick's payout.
-func _beat_combo(_amount: int, _tier: int) -> void:
-	if _shown_tier <= 1:
-		return
-	if _combo_tween != null:
-		if _combo_rising and _combo_tween.is_running():
-			return
-		_combo_tween.kill()
-	_combo_rising = false
-	_combo.pivot_offset = Vector2(0.0, _combo.size.y / 2.0)
-	_combo.scale = Vector2.ONE * COMBO_BEAT_SCALE
-	_combo_tween = create_tween()
-	_combo_tween.tween_property(_combo, "scale", Vector2.ONE, COMBO_BEAT_SECONDS).set_ease(
-		Tween.EASE_OUT
-	)
-
-
 func _flash_gold(_amount: int, _tier: int) -> void:
 	if _gold_tween != null:
 		_gold_tween.kill()
@@ -342,8 +302,21 @@ func _show_details() -> void:
 		label.visible = true
 	for i in range(stats.size(), _details_lines.get_child_count()):
 		(_details_lines.get_child(i) as Label).visible = false
+	_show_combo_ring()
 	_yard_controls.visible = _selection.is_yard_selected()
 	_assign.set_pressed_no_signal(_selection.is_assigning())
+
+
+# A tower's ring, in pale gold at x1 rather than hidden, so its progress towards x2 shows.
+func _show_combo_ring() -> void:
+	var building := _selection.selected_building()
+	_combo_ring.visible = building != null and building.kind == Buildings.TOWER
+	if not _combo_ring.visible:
+		return
+	_combo_ring.ring = _combo_view.ring_of(building.id)
+	if _combo_ring.ring == null:
+		_combo_ring.ring = ComboView.Ring.new()
+	_combo_ring.queue_redraw()
 
 
 func _show_phase(_phase: Waves.Phase) -> void:

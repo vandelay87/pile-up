@@ -216,6 +216,12 @@ func take_field_changes() -> Array[Vector2i]:
 	return taken
 
 
+## The buildings destroyed since the last take_destroyed() (this tick's, as the tick driver
+## takes them at its end), read-only.
+func pending_destroyed() -> Array[int]:
+	return _destroyed
+
+
 func take_destroyed() -> Array[int]:
 	var taken := _destroyed
 	_destroyed = []
