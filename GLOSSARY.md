@@ -107,8 +107,12 @@ The default route enemies follow, where piles and walls cost what they really co
 The alternative route where piles are cheap and walls are worth breaking; an enemy that rolls into it commits until it is past the obstacle.
 _Avoid_: Reckless, personality
 
+**Barrier**:
+A connected stretch of walls and buildings, touching side to side or corner to corner. Piles below a wall, rock and the base are never part of one.
+_Avoid_: Run (a run is one game), wall line, cluster
+
 **Crush**:
-A dense, stalled crowd of living enemies pressed against a wall or building, one per connected run of them. The base never has one: enemies there have arrived. "Mob" and "swarm" are informal words for enemies, not for a crush.
+A dense, stalled crowd of living enemies pressed against a barrier, one per barrier. The base never has one: enemies there have arrived. "Mob" and "swarm" are informal words for enemies, not for a crush.
 _Avoid_: Pile up, jam, clump (piles are bodies; a crush is alive)
 
 **Pressure**:

@@ -31,6 +31,7 @@ class Row:
 	var _range: Range
 	var _line_edit: LineEdit
 	var _choices: OptionButton
+	var _check: CheckBox
 
 	func _init(row_group: String, row_key: String, entry: Dictionary, initial: Variant) -> void:
 		group = row_group
@@ -49,6 +50,13 @@ class Row:
 			_select(initial)
 			_choices.item_selected.connect(func(_index: int) -> void: edited.emit())
 			editor.add_child(_choices)
+		elif entry.get("toggle", false):
+			_check = CheckBox.new()
+			_check.text = "on"
+			_check.button_pressed = initial == 1
+			_check.toggled.connect(func(_on: bool) -> void: edited.emit())
+			_check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			editor.add_child(_check)
 		elif _type == TYPE_STRING:
 			_line_edit = LineEdit.new()
 			_line_edit.text = initial
@@ -73,6 +81,8 @@ class Row:
 	func value() -> Variant:
 		if _choices != null:
 			return _choices.get_selected_metadata()
+		if _check != null:
+			return 1 if _check.button_pressed else 0
 		if _line_edit != null:
 			return _line_edit.text
 		return type_convert(_range.value, _type)
@@ -81,6 +91,8 @@ class Row:
 		if _choices != null:
 			_select(file_value)
 			edited.emit()
+		elif _check != null:
+			_check.button_pressed = file_value == 1
 		elif _line_edit != null:
 			_line_edit.text = file_value
 			edited.emit()

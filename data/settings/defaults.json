@@ -28,6 +28,19 @@
 		"decay_chance": 50,
 		"wall_decay_chance": 25
 	},
+	"overflow": {
+		"enabled": 1,
+		"band": 3,
+		"stall_progress": 25,
+		"fill_per_stalled": 0.5,
+		"leak": 5,
+		"crush_start": 10,
+		"crush_end": 4,
+		"trickle_at": 20,
+		"stream_at": 50,
+		"surge_at": 90,
+		"gauge_max": 120
+	},
 	"routing": {
 		"sensible_pile_weight": 1,
 		"sensible_wall_weight": 1,
