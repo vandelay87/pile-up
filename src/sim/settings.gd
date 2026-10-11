@@ -671,6 +671,7 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 		"knock_wall": _TOGGLE,
+		"climb_straight": _TOGGLE,
 	},
 	"view":
 	{

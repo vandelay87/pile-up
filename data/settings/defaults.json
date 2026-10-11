@@ -98,7 +98,8 @@
 		"climb_speed": 50,
 		"climb_cap": 0,
 		"landing_crowd": 2,
-		"knock_wall": 0
+		"knock_wall": 0,
+		"climb_straight": 1
 	},
 	"view": {
 		"tracer_speed": 60

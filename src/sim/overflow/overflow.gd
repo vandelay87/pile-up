@@ -42,6 +42,7 @@ var _near_labels := PackedInt32Array()
 var _near_steps := PackedByteArray()
 var _ticks := 0
 var _next_label := 0
+var _rng := RandomNumberGenerator.new()
 
 
 class Crush:
@@ -187,10 +188,14 @@ func _launch_one(crush: Crush) -> bool:
 	var pool := crush.front_free
 	if pool.is_empty():
 		pool = crush.front_attacking
+	var straight := is_on("climb_straight")
 	while not pool.is_empty():
 		var best := 0
 		var best_value := INF
-		for k in pool.size():
+		if straight:
+			best_value = 0.0
+			best = _rng.randi_range(0, pool.size() - 1)
+		for k in pool.size() if not straight else 0:
 			var value := _routing.sample_value(Routing.Route.DIRECT, _enemies.positions[pool[k]])
 			if value < best_value:
 				best_value = value
@@ -210,6 +215,10 @@ func _launch_one(crush: Crush) -> bool:
 # fewer enemies than the landing crowd. Null when the chain doesn't cross an obstacle at once,
 # exceeds the climb cap, or dead-ends.
 func _plan(i: int) -> Climb:
+	if is_on("climb_straight"):
+		var straight := _plan_straight(i)
+		if straight != null:
+			return straight
 	var parents := _routing.parents(Routing.Route.DIRECT)
 	var cell := _cell_index(_enemies.positions[i])
 	var cap := int(num("climb_cap"))
@@ -242,6 +251,53 @@ func _plan(i: int) -> Climb:
 			if _enemies.count_in_cell(next) < crowd:
 				return climb
 		cell = next
+	return null
+
+
+# Straight over the obstacle cell touching the enemy that faces most nearly towards the base
+# (by the direct field), in one of 8 directions, to the first free, uncrowded cell on that line.
+# Null when no touching obstacle faces forwards or the line hits rock or the map's edge.
+func _plan_straight(i: int) -> Climb:
+	var pos := _enemies.positions[i]
+	var cell := Vector2i(pos.floor())
+	var heading := _routing.sample_direction(Routing.Route.DIRECT, pos)
+	var best := Vector2i.ZERO
+	var best_dot := 0.0
+	for offset in _NEIGHBOURS:
+		var touching := cell + offset
+		if not _map.in_bounds(touching) or not _structures.is_breakable(_map.index_of(touching)):
+			continue
+		var dot := Vector2(offset).normalized().dot(heading)
+		if dot > best_dot:
+			best_dot = dot
+			best = offset
+	if best == Vector2i.ZERO:
+		return null
+	var cap := int(num("climb_cap"))
+	var crowd := int(num("landing_crowd"))
+	var climb := Climb.new()
+	var crossed := 0
+	var previous := _map.index_of(cell)
+	var at := cell + best
+	while _map.in_bounds(at):
+		var index := _map.index_of(at)
+		if _map.rock[index] == 1:
+			return null
+		if _structures.is_base(index):
+			var beside := _beside_base(previous, index)
+			if beside == NONE:
+				return null
+			_append(climb, beside)
+			return climb
+		_append(climb, index)
+		if _structures.is_breakable(index):
+			crossed += 1
+			if cap > 0 and crossed > cap:
+				return null
+		elif _enemies.count_in_cell(index) < crowd:
+			return climb
+		previous = index
+		at += best
 	return null
 
 
