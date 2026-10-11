@@ -3,7 +3,7 @@ extends Node2D
 
 ## The pressure gauge above each active crush's stalled enemies, from Overflow.crushes() each
 ## frame: segments for the three tiers in yellow, orange and red, with the tier's name. The
-## Overflow overlay also tints each run's band, shows inactive gauges faded, and puts each
+## Overflow overlay also tints each barrier's band, shows inactive gauges faded, and puts each
 ## crush's gauge reading, stalled count and tier on it as numbers.
 
 const WIDTH := 72.0

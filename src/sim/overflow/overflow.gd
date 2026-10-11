@@ -1,9 +1,10 @@
 class_name Overflow
 extends RefCounted
 
-## Crushes. Every connected run (8-way) of wall and building cells has a label, and the clear
-## and pile cells within the band of it belong to it. Enemies stalled in a run's band fill its
-## gauge, which leaks; above the start reading the crush is active, with a tier.
+## Crushes. Every barrier, a connected stretch (8-way) of wall and building cells, has a label,
+## and the clear and pile cells within the band of it belong to it. Enemies stalled in a
+## barrier's band fill its gauge, which leaks; above the start reading the crush is active, with
+## a tier.
 
 enum Tier { NONE, TRICKLE, STREAM, SURGE }
 
@@ -27,16 +28,16 @@ var _settings: Settings
 var _map: MapData
 var _structures: Structures
 var _enemies: Enemies
-# Run label per cell, or NONE.
+# Barrier label per cell, or NONE.
 var _labels := PackedInt32Array()
-# The label of the run whose band each cell is in, or NONE, and its steps from that run.
+# The label of the barrier whose band each cell is in, or NONE, and its steps from that barrier.
 var _band_labels := PackedInt32Array()
 var _band_steps := PackedByteArray()
 var _next_label := 0
 var _crushes: Dictionary[int, Crush] = {}
 
 
-## One run's gauge, and the stalled enemies filling it this tick.
+## One barrier's gauge, and the stalled enemies filling it this tick.
 class Crush:
 	extends RefCounted
 
@@ -49,8 +50,8 @@ class Crush:
 	var centre := Vector2.ZERO
 	var _centre_sum := Vector2.ZERO
 
-	func _init(run_label: int) -> void:
-		label = run_label
+	func _init(crush_label: int) -> void:
+		label = crush_label
 
 	func clear_stalled() -> void:
 		stalled = 0
@@ -78,8 +79,8 @@ func _init(
 	band_mask.resize(size)
 
 
-## Relabels the runs when a changed cell became, or stopped being, a wall or building. Other
-## changes, such as a wall's HP bucket, leave the runs as they are.
+## Relabels the barriers when a changed cell became, or stopped being, a wall or building. Other
+## changes, such as a wall's HP bucket, leave the barriers as they are.
 func update(cells: Array[Vector2i]) -> void:
 	for cell in cells:
 		var index := _map.index_of(cell)
@@ -88,25 +89,26 @@ func update(cells: Array[Vector2i]) -> void:
 			return
 
 
-## Labels every run afresh. Each new run keeps the label, and so the gauge, of the old run it
-## overlaps most, ties to the lower old label; an old run passes its gauge to one new run.
+## Labels every barrier afresh. Each new barrier keeps the label, and so the gauge, of the old
+## barrier it overlaps most, ties to the lower old label; an old barrier passes its gauge to one
+## new barrier.
 func relabel() -> void:
 	var old_labels := _labels
 	_labels = PackedInt32Array()
 	_labels.resize(old_labels.size())
 	_labels.fill(NONE)
-	var runs: Array[PackedInt32Array] = []
+	var barriers: Array[PackedInt32Array] = []
 	var stack := PackedInt32Array()
 	for index in _labels.size():
 		if _labels[index] != NONE or not _structures.is_breakable(index):
 			continue
-		var run := PackedInt32Array()
-		_labels[index] = runs.size()
+		var barrier := PackedInt32Array()
+		_labels[index] = barriers.size()
 		stack.append(index)
 		while not stack.is_empty():
 			var cell := stack[stack.size() - 1]
 			stack.remove_at(stack.size() - 1)
-			run.append(cell)
+			barrier.append(cell)
 			var at := _map.cell_of(cell)
 			for offset in _NEIGHBOURS:
 				var other := at + offset
@@ -114,15 +116,15 @@ func relabel() -> void:
 					continue
 				var other_index := _map.index_of(other)
 				if _labels[other_index] == NONE and _structures.is_breakable(other_index):
-					_labels[other_index] = runs.size()
+					_labels[other_index] = barriers.size()
 					stack.append(other_index)
-		runs.append(run)
-	var run_labels := _inherit(runs, old_labels)
-	for k in runs.size():
-		for cell in runs[k]:
-			_labels[cell] = run_labels[k]
+		barriers.append(barrier)
+	var barrier_labels := _inherit(barriers, old_labels)
+	for k in barriers.size():
+		for cell in barriers[k]:
+			_labels[cell] = barrier_labels[k]
 	var kept := {}
-	for label in run_labels:
+	for label in barrier_labels:
 		kept[label] = true
 	for label: int in _crushes.keys():
 		if not kept.has(label):
@@ -140,12 +142,12 @@ func crushes() -> Array[Crush]:
 	return listed
 
 
-## The label of the run on [param cell], or NONE.
-func run_label(cell: Vector2i) -> int:
+## The label of the barrier on [param cell], or NONE.
+func barrier_label(cell: Vector2i) -> int:
 	return _labels[_map.index_of(cell)]
 
 
-## The label of the run whose band holds [param cell], or NONE.
+## The label of the barrier whose band holds [param cell], or NONE.
 func band_label(cell: Vector2i) -> int:
 	return _band_labels[_map.index_of(cell)]
 
@@ -204,14 +206,14 @@ func _gather() -> void:
 		crush.add_stalled(pos)
 
 
-# Each new run (by index into [param runs]) gets the old label it overlaps most. Pairs are
-# settled from the largest overlap down, ties to the lower old label then the earlier run, so
-# each old label goes to one run; a run left without one gets a fresh label.
-func _inherit(runs: Array[PackedInt32Array], old_labels: PackedInt32Array) -> PackedInt32Array:
+# Each new barrier (by index into [param barriers]) gets the old label it overlaps most. Pairs are
+# settled from the largest overlap down, ties to the lower old label then the earlier barrier, so
+# each old label goes to one barrier; a barrier left without one gets a fresh label.
+func _inherit(barriers: Array[PackedInt32Array], old_labels: PackedInt32Array) -> PackedInt32Array:
 	var pairs: Array[Vector3i] = []
-	for k in runs.size():
+	for k in barriers.size():
 		var overlaps: Dictionary[int, int] = {}
-		for cell in runs[k]:
+		for cell in barriers[k]:
 			var old := old_labels[cell]
 			if old != NONE:
 				overlaps[old] = overlaps.get(old, 0) + 1
@@ -225,24 +227,24 @@ func _inherit(runs: Array[PackedInt32Array], old_labels: PackedInt32Array) -> Pa
 				return a.y < b.y
 			return a.z < b.z
 	)
-	var run_labels := PackedInt32Array()
-	run_labels.resize(runs.size())
-	run_labels.fill(NONE)
+	var barrier_labels := PackedInt32Array()
+	barrier_labels.resize(barriers.size())
+	barrier_labels.fill(NONE)
 	var taken := {}
 	for pair in pairs:
-		if run_labels[pair.z] == NONE and not taken.has(pair.y):
-			run_labels[pair.z] = pair.y
+		if barrier_labels[pair.z] == NONE and not taken.has(pair.y):
+			barrier_labels[pair.z] = pair.y
 			taken[pair.y] = true
-	for k in runs.size():
-		if run_labels[k] == NONE:
-			run_labels[k] = _next_label
+	for k in barriers.size():
+		if barrier_labels[k] == NONE:
+			barrier_labels[k] = _next_label
 			_next_label += 1
-		_next_label = maxi(_next_label, run_labels[k] + 1)
-	return run_labels
+		_next_label = maxi(_next_label, barrier_labels[k] + 1)
+	return barrier_labels
 
 
-# Spreads out from every run a step at a time (8-way, through cells that aren't rock or
-# structure) up to the band. A cell reached from two runs at once goes to the lower label.
+# Spreads out from every barrier a step at a time (8-way, through cells that aren't rock or
+# structure) up to the band. A cell reached from two barriers at once goes to the lower label.
 func _mark_band() -> void:
 	var band := _settings.overflow_band
 	_band_labels.fill(NONE)

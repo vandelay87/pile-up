@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 
-## Crushes: a crowd stalled against a run of walls and buildings fills that run's gauge.
+## Crushes: a crowd stalled against a barrier (walls and buildings) fills that barrier's gauge.
 ##
 ## A 20×17 open field with a 2×3 base at (18, 7). Walls have 1000 HP so the crowd never breaks
 ## through, and the base has 10000. Enemies spawned west of a wall line walk east into it and
@@ -134,10 +134,10 @@ func test_piles_below_a_wall_and_the_base_never_make_a_crush() -> void:
 		assert_array(_sim.overflow.crushes()).is_empty()
 	# The crowd reached the base and is attacking it.
 	assert_float(_sim.run_state.base_hp).is_less(10000.0)
-	assert_int(_sim.overflow.run_label(Vector2i(17, 8))).is_equal(Overflow.NONE)
+	assert_int(_sim.overflow.barrier_label(Vector2i(17, 8))).is_equal(Overflow.NONE)
 
 
-func test_a_gauge_survives_a_wall_forming_beside_its_run() -> void:
+func test_a_gauge_survives_a_wall_forming_beside_its_barrier() -> void:
 	_hold_a_crowd()
 	var crush := _only_crush()
 	var gauge := crush.gauge
@@ -145,7 +145,7 @@ func test_a_gauge_survives_a_wall_forming_beside_its_run() -> void:
 	_walls([Vector2i(11, 0)])
 
 	assert_object(_only_crush()).is_same(crush)
-	assert_int(_sim.overflow.run_label(Vector2i(11, 0))).is_equal(crush.label)
+	assert_int(_sim.overflow.barrier_label(Vector2i(11, 0))).is_equal(crush.label)
 	assert_float(crush.gauge).is_greater(gauge)
 
 

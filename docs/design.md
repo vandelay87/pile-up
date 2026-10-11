@@ -44,7 +44,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 From v3, a crowd that stalls against a defence builds up until it tumbles over, so a big enough wave always threatens to spill.
 
-- **Crush:** the stalled crowd against one connected run of walls and buildings. Enemies within 3 cells of it count. Piles at levels 1–4 don't stop enemies, so a crowd can't crush against them, and the base never has a crush. A crowd at each end of one long wall shares the same crush.
+- **Crush:** the stalled crowd against one barrier: a connected stretch of walls and buildings. Enemies within 3 cells of it count. Piles at levels 1–4 don't stop enemies, so a crowd can't crush against them, and the base never has a crush. A crowd at each end of one long wall shares the same crush.
 - **Pressure:** each crush has a gauge, drawn above the middle of its stalled enemies. It fills while enemies near the obstacle want to move but make no progress, faster the more of them there are, and leaks at a steady rate, so a passing clump drains away and early waves rarely fill it. A crush starts above one reading and ends below a lower one, so the gauge doesn't flicker.
 - **Overflow tiers:** the gauge has three segments: a **trickle** (one enemy now and then), a **stream** (a steady line) and a **surge** (the front ranks pouring over together). Each enemy that tumbles over takes something off the gauge, so a trickle can settle and a surge lasts only while the wave keeps feeding the crush.
 - **Who tumbles:** stalled enemies right against the obstacle that aren't attacking it, taken from anywhere along the front, so overflow comes over as a broad front rather than one line. Attackers keep attacking; they tumble only when every enemy at the front is attacking.
@@ -108,7 +108,7 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 
 From v3, a building that hurts enemies by touch, so the player can plan for a crush and its overflow.
 
-- **Grinder**: 2×2, power area 2 cells. It follows every building rule: it must be built on the power grid and stops hurting while unpowered, it blocks routes, enemies attack it, repair yards repair it, it joins a crush's connected run, and a destroyed grinder leaves nothing behind.
+- **Grinder**: 2×2, power area 2 cells. It follows every building rule: it must be built on the power grid and stops hurting while unpowered, it blocks routes, enemies attack it, repair yards repair it, it joins a barrier, and a destroyed grinder leaves nothing behind.
 - **Contact damage:** every enemy touching it, within a small band of its footprint, takes a flat damage per second: walkers brushing past, the crush pressed against it and enemies attacking it alike. Its total damage grows with how many enemies touch it, so it barely troubles a thin stream and grinds a crush down. An enemy touching two grinders takes damage from both.
 - **Overflow:** enemies tumble over a grinder like any other building, and take one second's worth of its damage for each of its cells they cross, so a thick block of grinders is a gauntlet.
 - **Role:** a wall that bites, not a tower. It costs somewhat less than a tower, has more HP than one, and kills a lone enemy slowly. Wrapping buildings in grinders is allowed; its price is the limit.
