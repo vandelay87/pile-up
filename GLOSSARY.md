@@ -130,5 +130,5 @@ _Avoid_: Endgame, stragglers
 The gold one kill pays before any combo.
 
 **Combo**:
-The multiplier on bounty, set by how many kills happened recently. It rises with bursts of killing and falls as they stop.
-_Avoid_: Streak, chain
+A building's own multiplier on the bounty of its kills, set by how many kills that building made in an unbroken run. It breaks back to nothing when the building goes too long without a kill. Each building has its own; there is no combo for the whole defence.
+_Avoid_: Streak, chain, global combo
