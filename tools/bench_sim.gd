@@ -1,7 +1,7 @@
 # Times the tick driver headless with a dense crowd near the base, and checks that two runs
 # with the same seed end in the same state. A body drops into the crowd every BODY_INTERVAL ticks,
 # about the kill rate of a v1 wave, and every DECAY_INTERVAL ticks the piles decay and the fields
-# rebuild on the worker. A branch of pylons runs up the north-west corridor to a tower, and every
+# rebuild on the worker. A branch of pylons runs up the west way to a tower, and every
 # PYLON_INTERVAL ticks its first pylon is destroyed (cutting the branch off) or rebuilt, so power is
 # recomputed. A wave runs throughout, so two repair yards beside the base send their drones to the
 # crowd's ring of towers, which the crowd attacks; every REBUILD_INTERVAL ticks any broken tower or
@@ -21,10 +21,10 @@ const REBUILD_INTERVAL := 60
 # A late wave: its size keeps it out of the wave tail for the whole run, with a trickle of spawns.
 const WAVE := 20
 # Two yards beside the base, with the crowd's towers in their repair areas.
-const YARDS: Array[Vector2i] = [Vector2i(51, 43), Vector2i(43, 51)]
+const YARDS: Array[Vector2i] = [Vector2i(58, 51), Vector2i(50, 59)]
 # A pylon on the base grid's edge, one on that pylon's edge, and a tower beyond it.
-const BRANCH_PYLONS: Array[Vector2i] = [Vector2i(40, 36), Vector2i(40, 26)]
-const BRANCH_TOWER := Vector2i(31, 18)
+const BRANCH_PYLONS: Array[Vector2i] = [Vector2i(48, 44), Vector2i(47, 34)]
+const BRANCH_TOWER := Vector2i(38, 25)
 # 3x the 13.09 ms CI mean in https://github.com/vandelay87/pile-up/actions/runs/37919291329
 const BUDGET_MSEC := 39.3
 

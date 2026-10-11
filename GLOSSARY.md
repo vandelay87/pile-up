@@ -21,6 +21,10 @@ _Avoid_: Obstacle, blocked cell, wall
 **Spawn edge**:
 A map edge that enemies enter from during the current wave.
 
+**No-build cell**:
+Clear ground that enemies walk on but nothing can be built on. The map marks a margin of them along each spawn edge.
+_Avoid_: Buffer zone, safe zone
+
 ### Structures
 
 **Structure**:

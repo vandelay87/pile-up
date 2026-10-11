@@ -44,6 +44,21 @@ func test_loads_size_and_rock() -> void:
 	assert_bool(map.is_rock(Vector2i(1, 1))).is_false()
 
 
+func test_a_colon_is_clear_ground_that_cannot_be_built_on() -> void:
+	var data := _valid()
+	data["rows"] = ["::...", "..#..", ".....", "#...."]
+	var result := _load(data)
+
+	assert_str(result.error).is_empty()
+	var map := result.map
+	assert_bool(map.is_rock(Vector2i(0, 0))).is_false()
+	assert_bool(map.is_no_build(Vector2i(0, 0))).is_true()
+	assert_bool(map.is_no_build(Vector2i(1, 0))).is_true()
+	assert_bool(map.is_no_build(Vector2i(2, 0))).is_false()
+	assert_bool(map.is_no_build(Vector2i(2, 1))).is_false()
+	assert_array(map.spawn_cells("N")).contains([Vector2i(0, 0), Vector2i(1, 0)])
+
+
 func test_derives_the_base_cells_from_origin_and_size() -> void:
 	var map := _map()
 
@@ -160,9 +175,24 @@ func test_the_committed_v1_map_loads() -> void:
 	assert_array(map.spawn_edges).contains_exactly_in_any_order(["N", "E", "S", "W"])
 
 
-func test_the_default_map_path_loads_the_narrow_map() -> void:
+func test_the_default_map_path_loads_the_flared_map() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 	var result := MapData.load_file(settings.map_path)
+
+	assert_str(result.error).is_empty()
+	var map := result.map
+	assert_int(map.width).is_equal(112)
+	assert_int(map.height).is_equal(76)
+	assert_that(map.base).is_equal(Rect2i(53, 54, 4, 4))
+	assert_array(map.spawn_edges).contains_exactly_in_any_order(["N", "E", "W"])
+	for edge in map.spawn_edges:
+		for cell in map.spawn_cells(edge):
+			assert_bool(map.is_no_build(cell)).is_true()
+	assert_bool(map.is_no_build(map.base.position)).is_false()
+
+
+func test_the_narrow_v2_map_still_loads() -> void:
+	var result := MapData.load_file("res://data/maps/v2-narrow.json")
 
 	assert_str(result.error).is_empty()
 	var map := result.map

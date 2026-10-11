@@ -30,7 +30,7 @@ func test_enemies_left_starts_at_the_wave_size_with_unspawned_enemies_included()
 	_sim.tick()
 
 	assert_int(_sim.enemies.count).is_equal(16)
-	assert_int(_sim.enemies_left).is_equal(34)
+	assert_int(_sim.enemies_left).is_equal(31)
 
 
 func test_enemies_left_falls_by_one_per_kill_and_is_reported() -> void:
@@ -54,8 +54,8 @@ func test_enemies_left_reaches_0_as_the_wave_ends_then_shows_the_next_wave_size(
 	_kill_the_wave()
 
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.BUILD)
-	assert_array(_enemies_left.slice(-2)).contains_exactly([0, 26])
-	assert_int(_sim.enemies_left).is_equal(26)
+	assert_array(_enemies_left.slice(-2)).contains_exactly([0, 25])
+	assert_int(_sim.enemies_left).is_equal(25)
 
 
 func test_kills_count_across_waves() -> void:
@@ -71,7 +71,7 @@ func test_kills_count_across_waves() -> void:
 
 	assert_int(_sim.run_state.wave).is_equal(2)
 	assert_int(_sim.run_state.kills).is_equal(25)
-	assert_int(_sim.enemies_left).is_equal(21)
+	assert_int(_sim.enemies_left).is_equal(20)
 
 
 # Kills the first n enemies on the field in the next tick, as towers would.

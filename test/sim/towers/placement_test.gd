@@ -64,6 +64,22 @@ func test_a_placement_off_the_map_is_rejected() -> void:
 	assert_int(sim.run_state.gold).is_equal(200)
 
 
+func test_a_placement_touching_a_no_build_cell_is_rejected_and_costs_nothing() -> void:
+	var rows := _open_rows()
+	rows[0] = "::::::::::"
+	var sim := _sim(rows)
+
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 0)))
+	sim.queue_command(Commands.Build.new(Buildings.PYLON, Vector2i(7, 0)))
+	sim.tick()
+
+	var tower := "build tower: too close to a spawn edge"
+	var pylon := "build pylon: too close to a spawn edge"
+	assert_array(_events).contains_exactly([tower, pylon])
+	assert_int(sim.run_state.gold).is_equal(200)
+	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 1))).is_false()
+
+
 func test_a_placement_without_enough_gold_is_rejected() -> void:
 	_settings.change("towers", "cost", 90)
 	var sim := _sim(_open_rows())
