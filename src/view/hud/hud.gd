@@ -8,6 +8,9 @@ const TOAST_HOLD_SECONDS := 1.5
 const TOAST_FADE_SECONDS := 0.5
 const COMBO_PULSE_SECONDS := 0.25
 const COMBO_FADE_SECONDS := 0.6
+const COMBO_TIER_UP_SCALE := 1.4
+const COMBO_BEAT_SECONDS := 0.15
+const COMBO_BEAT_SCALE := 1.12
 const GOLD_FLASH_SECONDS := 0.35
 const GOLD_FLASH_COLOUR := Color(1.0, 0.85, 0.2)
 
@@ -19,6 +22,7 @@ var _enemies_left := Label.new()
 var _kills := Label.new()
 var _combo := Label.new()
 var _combo_tween: Tween
+var _combo_rising := false
 var _gold_tween: Tween
 var _shown_tier := 1
 var _next_wave := Button.new()
@@ -43,6 +47,7 @@ func setup(simulation: Simulation) -> void:
 	_simulation.kills_changed.connect(_show_kills)
 	_simulation.combo_changed.connect(_show_combo)
 	_simulation.payout.connect(_flash_gold)
+	_simulation.payout.connect(_beat_combo)
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_base_hp(run_state.base_hp)
@@ -149,6 +154,7 @@ func _show_kills(kills: int) -> void:
 func _show_combo(tier: int) -> void:
 	var rising := tier > _shown_tier
 	_shown_tier = tier
+	_combo_rising = rising
 	if _combo_tween != null:
 		_combo_tween.kill()
 	_combo_tween = create_tween()
@@ -157,10 +163,10 @@ func _show_combo(tier: int) -> void:
 		return
 	_combo.text = "Combo x%d" % tier
 	_combo.pivot_offset = _combo.get_combined_minimum_size() / 2.0
-	var grown := 1.0 + 0.25 * (tier - 1)
+	var grown := _combo_scale(tier)
 	if rising:
 		_combo.modulate.a = 1.0
-		_combo.scale = Vector2.ONE * grown * 1.4
+		_combo.scale = Vector2.ONE * grown * COMBO_TIER_UP_SCALE
 		(
 			_combo_tween
 			. tween_property(_combo, "scale", Vector2.ONE * grown, COMBO_PULSE_SECONDS)
@@ -171,6 +177,30 @@ func _show_combo(tier: int) -> void:
 		_combo_tween.set_parallel()
 		_combo_tween.tween_property(_combo, "modulate:a", 0.6, COMBO_FADE_SECONDS)
 		_combo_tween.tween_property(_combo, "scale", Vector2.ONE * grown, COMBO_FADE_SECONDS)
+
+
+# A held tier beats on each multiplied payout, so a long combo visibly reacts to new
+# kills. A tier-up's own pulse is left to finish: the simulation reports the tier change
+# before the same tick's payout.
+func _beat_combo(_amount: int, _tier: int) -> void:
+	if _shown_tier <= 1:
+		return
+	if _combo_tween != null:
+		if _combo_rising and _combo_tween.is_running():
+			return
+		_combo_tween.kill()
+	_combo_rising = false
+	var grown := _combo_scale(_shown_tier)
+	_combo.modulate.a = 1.0
+	_combo.scale = Vector2.ONE * grown * COMBO_BEAT_SCALE
+	_combo_tween = create_tween()
+	_combo_tween.tween_property(_combo, "scale", Vector2.ONE * grown, COMBO_BEAT_SECONDS).set_ease(
+		Tween.EASE_OUT
+	)
+
+
+func _combo_scale(tier: int) -> float:
+	return 1.0 + 0.25 * (tier - 1)
 
 
 func _flash_gold(_amount: int, _tier: int) -> void:

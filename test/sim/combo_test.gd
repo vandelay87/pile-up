@@ -53,6 +53,20 @@ func test_the_tier_reaches_x3_at_20_kills_and_caps_there() -> void:
 	assert_array(_payouts).contains_exactly([Vector2i(21, 2), Vector2i(71, 3)])
 
 
+func test_each_tick_with_a_kill_at_a_held_tier_pays_out_again() -> void:
+	_kill(12)
+	for _i in 3:
+		_wait(5)
+		_kill(1)
+
+	# The tier holds at x2, so every later kill is multiplied and reported; the
+	# ticks between kills report nothing.
+	assert_array(_tiers).contains_exactly([2])
+	assert_array(_payouts).contains_exactly(
+		[Vector2i(15, 2), Vector2i(2, 2), Vector2i(2, 2), Vector2i(2, 2)]
+	)
+
+
 func test_the_tier_falls_as_old_kills_leave_the_2_second_window() -> void:
 	# A kill counts for WINDOW_TICKS ticks, its own tick included.
 	_kill(12)
