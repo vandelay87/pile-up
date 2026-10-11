@@ -91,6 +91,18 @@ The default route enemies follow, where piles and walls cost what they really co
 The alternative route where piles are cheap and walls are worth breaking; an enemy that rolls into it commits until it is past the obstacle.
 _Avoid_: Reckless, personality
 
+**Crush**:
+A dense, stalled crowd of living enemies pressed against a pile, wall or structure. "Mob" and "swarm" are informal words for enemies, not for a crush.
+_Avoid_: Pile up, jam, clump (piles are bodies; a crush is alive)
+
+**Pressure**:
+How close a crush is to overflowing, shown as a gauge above it. It rises as the crush gets denser.
+_Avoid_: Density meter, stress
+
+**Overflow**:
+Enemies from a crush at breaking point spilling over the pile, wall or structure in their way, into the nearest free cell towards their destination.
+_Avoid_: Spill-over, climb, breach
+
 ### Flow of play
 
 **Run**:
