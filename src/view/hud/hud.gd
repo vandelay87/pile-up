@@ -56,21 +56,30 @@ func setup(simulation: Simulation) -> void:
 
 func _ready() -> void:
 	var ui := UiRoot.add_to(self)
-	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 24)
+	# Readouts and buttons sit on separate rows so large numbers don't push the bar
+	# past the window's edges.
+	var readouts := HBoxContainer.new()
+	readouts.add_theme_constant_override("separation", 24)
+	readouts.alignment = BoxContainer.ALIGNMENT_CENTER
 	for label: Label in [_gold, _base_hp, _wave, _enemies_left, _kills]:
 		label.add_theme_constant_override("outline_size", 4)
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
-		bar.add_child(label)
+		readouts.add_child(label)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 12)
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	_next_wave.text = "Next wave"
 	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
-	bar.add_child(_next_wave)
+	actions.add_child(_next_wave)
 	_tower.pressed.connect(build_requested.emit.bind(Buildings.TOWER))
 	_pylon.pressed.connect(build_requested.emit.bind(Buildings.PYLON))
 	_repair_yard.pressed.connect(build_requested.emit.bind(Buildings.REPAIR_YARD))
 	for button: Button in [_tower, _pylon, _repair_yard]:
 		button.focus_mode = Control.FOCUS_NONE
-		bar.add_child(button)
+		actions.add_child(button)
+	var bar := VBoxContainer.new()
+	bar.add_child(readouts)
+	bar.add_child(actions)
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.position.y += MARGIN
@@ -83,7 +92,7 @@ func _ready() -> void:
 	_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_combo.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	_combo.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_combo.position.y += MARGIN * 6
+	_combo.position.y += bar.get_combined_minimum_size().y + MARGIN * 2
 	_combo.modulate.a = 0.0
 	ui.add_child(_combo)
 
