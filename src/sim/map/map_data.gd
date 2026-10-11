@@ -5,6 +5,8 @@ const VERSION := 1
 const MAX_SIZE := 150
 const CLEAR := "."
 const ROCK := "#"
+## PROTOTYPE (flared map): clear ground you can't build on.
+const NO_BUILD := ":"
 const EDGES: Array[String] = ["N", "E", "S", "W"]
 
 var width: int:
@@ -19,6 +21,8 @@ var base: Rect2i:
 var spawn_edges: PackedStringArray:
 	get:
 		return _spawn_edges
+## PROTOTYPE (flared map): 1 where building is banned.
+var no_build := PackedByteArray()
 var rock: PackedByteArray:
 	get:
 		return _rock
@@ -104,12 +108,21 @@ static func from_json(text: String) -> LoadResult:
 		return _failure(errors)
 
 	var map := MapData.new(map_width, map_height, rock, base_rect, edges)
+	map.no_build.resize(map_width * map_height)
+	for y in map_height:
+		for x in map_width:
+			if rows[y][x] == NO_BUILD:
+				map.no_build[y * map_width + x] = 1
 	for edge in edges:
 		if map.spawn_cells(edge).is_empty():
 			errors.append("spawn_edges: %s has no passable cell that reaches the base" % edge)
 	if not errors.is_empty():
 		return _failure(errors)
 	return LoadResult.new(map, "")
+
+
+func is_no_build(cell: Vector2i) -> bool:
+	return not no_build.is_empty() and no_build[index_of(cell)] == 1
 
 
 func is_rock(cell: Vector2i) -> bool:
@@ -212,7 +225,7 @@ static func _parse_rock(
 			match row[x]:
 				ROCK:
 					rock[y * map_width + x] = 1
-				CLEAR:
+				CLEAR, NO_BUILD:
 					pass
 				_:
 					errors.append("rows[%d]: unknown character '%s' at x %d" % [y, row[x], x])
