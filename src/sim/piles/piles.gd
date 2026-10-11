@@ -45,8 +45,8 @@ func wall_hp(cell: Vector2i) -> float:
 	return wall_hps[_map.index_of(cell)]
 
 
-func queue_bodies(positions: PackedVector2Array) -> void:
-	_queued.append_array(positions)
+func queue_bodies(deaths: Deaths) -> void:
+	_queued.append_array(deaths.positions)
 
 
 func land() -> void:

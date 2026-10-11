@@ -233,7 +233,7 @@ func fire(enemies: Enemies) -> Array[Shot]:
 		var target := enemies.nearest_to_base_in_range(tower.centre, _settings.tower_range)
 		if target == Enemies.NONE:
 			continue
-		enemies.damage(target, _settings.tower_damage)
+		enemies.damage(target, _settings.tower_damage, tower.id)
 		var index := enemies.index_of(target)
 		if not enemies.is_alive(index):
 			tower.kills += 1

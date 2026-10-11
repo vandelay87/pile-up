@@ -16,7 +16,7 @@ func before_test() -> void:
 	var bodies := PackedVector2Array()
 	for n in Piles.WALL_LEVEL:
 		bodies.append(Vector2(WALL) + Vector2(0.5, 0.5))
-	_piles.queue_bodies(bodies)
+	_piles.queue_bodies(Deaths.bodies_at(bodies))
 	_piles.land()
 	_piles.take_changes()
 	_piles.take_field_changes()
@@ -71,8 +71,8 @@ func test_walls_nearby_counts_the_walls_in_each_cells_3x3_block() -> void:
 	_piles.damage_wall(WALL, _settings.wall_hp)
 	assert_int(_nearby(Vector2i(1, 1))).is_equal(0)
 
-	_piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
-	_piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
+	_piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)])))
+	_piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)])))
 	_piles.land()
 	assert_int(_nearby(Vector2i(2, 2))).is_equal(1)
 	_piles.decay()

@@ -82,7 +82,7 @@ func test_a_base_sealed_by_a_tower_and_a_wall_is_breached_through_the_cheaper_wa
 	var bodies := PackedVector2Array()
 	for n in Piles.WALL_LEVEL:
 		bodies.append(Vector2(wall) + Vector2(0.5, 0.5))
-	sim.piles.queue_bodies(bodies)
+	sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 	sim.tick()
 	var id := sim.enemies.spawn(Vector2(1.5, 1.5), TOUGH)
 

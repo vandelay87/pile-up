@@ -113,7 +113,7 @@ func test_a_wall_rebuilt_from_level_4_has_full_hp() -> void:
 	piles.damage_wall(WALL, 10.0)
 	piles.decay()
 
-	piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
+	piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)])))
 	piles.land()
 
 	assert_int(piles.level(WALL)).is_equal(Piles.WALL_LEVEL)
@@ -200,7 +200,7 @@ func _set_chances(pile_percent: int, wall_percent: int) -> void:
 # Raises the cell to level 4, then lands the body that makes it a wall at full HP.
 func _build_wall(piles: Piles, cell: Vector2i) -> void:
 	_set_level(piles, cell, Piles.WALL_LEVEL - 1)
-	piles.queue_bodies(PackedVector2Array([Vector2(cell) + Vector2(0.5, 0.5)]))
+	piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(cell) + Vector2(0.5, 0.5)])))
 	piles.land()
 	piles.take_changes()
 	piles.take_field_changes()

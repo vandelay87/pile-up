@@ -178,7 +178,7 @@ func _land_pile(sim: Simulation, cell: Vector2i) -> void:
 	var bodies := PackedVector2Array()
 	for n in PILE_BODIES:
 		bodies.append(Vector2(cell) + Vector2(0.5, 0.5))
-	sim.piles.queue_bodies(bodies)
+	sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 
 
 func _kill(sim: Simulation, count: int) -> void:

@@ -21,7 +21,9 @@ func before_test() -> void:
 		func(cells: Array[Vector2i]) -> void: _events.append("piles %s" % [cells])
 	)
 	_sim.fields_changed.connect(func() -> void: _events.append("fields changed"))
-	_sim.piles.queue_bodies(PackedVector2Array([Vector2(1.5, 6.5), Vector2(1.5, 6.5)]))
+	_sim.piles.queue_bodies(
+		Deaths.bodies_at(PackedVector2Array([Vector2(1.5, 6.5), Vector2(1.5, 6.5)]))
+	)
 	_sim.tick()
 
 
@@ -38,7 +40,7 @@ func test_wave_end_decays_the_piles_at_step_1_of_the_next_tick_and_starts_a_rebu
 
 func test_a_body_from_the_last_kill_lands_before_the_wave_decay() -> void:
 	_play_wave()
-	_sim.piles.queue_bodies(PackedVector2Array([Vector2(6.5, 6.5)]))
+	_sim.piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(6.5, 6.5)])))
 
 	_sim.tick()
 

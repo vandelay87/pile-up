@@ -144,7 +144,7 @@ func _build_walls(cells: Array[Vector2i]) -> void:
 	for cell in cells:
 		for n in Piles.WALL_LEVEL:
 			bodies.append(Vector2(cell) + Vector2(0.5, 0.5))
-	_piles.queue_bodies(bodies)
+	_piles.queue_bodies(Deaths.bodies_at(bodies))
 	_piles.land()
 	_routing.update(_piles.take_field_changes())
 
