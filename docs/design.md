@@ -128,7 +128,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Crush:** blasts need no special rule. The enemies they kill leave the crush smaller, and a wall they erase is a hole the crowd walks through, not an overflow.
 - **Overflow:** a bloater with a lit fuse is not attacking, so it can be picked to tumble like any enemy at the front. Tumbling puts its fuse out, and it lights again at the next structure in its way after it lands, so an overflow can carry bloaters into the defence. A bloater killed mid-tumble blows up where it is, on top of the wall or building it is crossing.
 - **Combos and bounty:** a building that kills a bloater gets every kill its blast makes, chained blasts included: each adds to that building's combo and pays its bounty × the building's tier. A bloater that blows itself up pays no bounty of its own, and its blast kills pay ×1.
-- Its HP, speed, fuse, blast radius and blast damage to buildings (about 30, half a tower's HP) are set in the v3 numbers, as are which waves have bloaters and how many.
+- Its HP, speed, fuse, blast radius and blast damage to buildings (about 30, half a tower's HP) are set in the v3 numbers. Which waves have bloaters, and how many, is under Waves.
 
 ## Selecting buildings
 
@@ -143,13 +143,14 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - Starting gold: 200.
 - **Bounty:** each kill pays 1 gold before any combo.
 - **Combo:** each building has its own combo; there is none for the whole defence. The building that lands the killing blow gets the kill, and any building that damages enemies can build a combo. Each kill adds 1 to the building's count and restarts its timer; if the timer runs out with no kill, the combo breaks back to ×1. The count sets the building's tier, capped. Each kill pays its bounty times the killing building's tier, at once, the kill that crosses a threshold already paying the new tier, so gold earned mid-burst can be spent during the wave. Kills with no building behind them pay ×1. A destroyed building loses its combo and its rebuild starts at ×1; damage to a building or the base does not break one. A high combo needs a dense crowd in front of one building, so it rewards letting pressure build, at the risk of an overflow. The timer, thresholds and cap are set in the v3 numbers.
-- **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size. **Kills** counts the run's kills and is also shown on the game-over screen. A building's combo shows above it as a **ring**, hidden at ×1: its tier in the middle, an outer arc filling towards the next tier, and an inner arc for its timer running down. A kill pulses the ring, a tier-up sends a ring outwards, and a break scatters it. The ring stays the same size on screen at any zoom, in shades of gold so it isn't mistaken for the pressure gauge. The selected building's details show the same ring, larger, with its tier and count, the next tier's threshold, the time left on its timer and its best combo this run. The final art may restyle the ring but keeps what it shows. There is no combo readout for the whole defence. The gold readout flashes on a multiplied payout.
+- **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size, followed by its bloater count when it has any (for example, "120 enemies · 3 bloaters"). **Kills** counts the run's kills and is also shown on the game-over screen. A building's combo shows above it as a **ring**, hidden at ×1: its tier in the middle, an outer arc filling towards the next tier, and an inner arc for its timer running down. A kill pulses the ring, a tier-up sends a ring outwards, and a break scatters it. The ring stays the same size on screen at any zoom, in shades of gold so it isn't mistaken for the pressure gauge. The selected building's details show the same ring, larger, with its tier and count, the next tier's threshold, the time left on its timer and its best combo this run. The final art may restyle the ring but keeps what it shows. There is no combo readout for the whole defence. The gold readout flashes on a multiplied payout.
 
 ## Waves
 
 - Endless. The next wave starts when the player presses "next wave".
 - Wave 1 has 20 enemies. Each wave has about 30% more enemies and 5% more enemy HP than the last, so wave 10 is roughly 210 enemies and wave 20 roughly 2,900.
 - Enemies spawn in bursts of 16, each on a random cell along the spawn edge, at an average of 10 per second.
+- **Bloaters** (from v3) appear from wave 5. They take the place of normal enemies, so the wave size is unchanged. Their share of the wave ramps from about 2% at wave 5 to about 5% by about wave 15 and stays there, with at least 1 in every wave from wave 5. Each takes a random place among the wave's bursts, mixed in with normal enemies; there are no bursts of only bloaters. The exact numbers are set in the v3 numbers.
 
 ## v1 fun test
 
@@ -203,3 +204,4 @@ Not built in the prototypes, but decisions should leave room for it.
 - Larger piles producing a single brute minion.
 - A landing animation for bodies, with the final art.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
+- Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters. Further on, waves that mutate into a random mix of enemy types.
