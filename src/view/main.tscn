@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://src/view/selection.gd" id="16"]
 [ext_resource type="Script" path="res://src/view/drone_view.gd" id="17"]
 [ext_resource type="Script" path="res://src/view/combo_view.gd" id="18"]
+[ext_resource type="Script" path="res://src/view/overflow_view.gd" id="19"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -60,6 +61,9 @@ script = ExtResource("17")
 
 [node name="ComboView" type="Node2D" parent="."]
 script = ExtResource("18")
+
+[node name="OverflowView" type="Node2D" parent="."]
+script = ExtResource("19")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2")

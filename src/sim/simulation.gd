@@ -55,6 +55,7 @@ var combos: Combos
 var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
+var overflow: Overflow
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -115,6 +116,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
+	overflow = Overflow.new(settings, map, structures, enemies)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -138,6 +140,8 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	var costs_walls := group == "enemies" and key in ["speed", "structure_damage"]
 	if (group in ["routing", "piles"] or costs_walls) and routing.rebuild():
 		_fields_changed = true
+	if [group, key] == ["overflow", "band"]:
+		overflow.relabel()
 
 
 func next_wave() -> void:
@@ -371,6 +375,7 @@ func _land_bodies_and_update_fields() -> void:
 		_decay_due = false
 		_changed_cells.clear()
 		piles.decay()
+		overflow.relabel()
 		routing.start_rebuild()
 		_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
 	elif routing.is_rebuilding() and tick_count >= _rebuild_swap_tick:
@@ -383,6 +388,7 @@ func _land_bodies_and_update_fields() -> void:
 		_changed_cells = []
 		if routing.update(cells):
 			_fields_changed = true
+		overflow.update(cells)
 
 
 func _spawn_enemies() -> void:
@@ -397,7 +403,8 @@ func _rebuild_spatial_hash() -> void:
 
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
-	enemies.move(waves.in_wave_tail())
+	enemies.move(waves.in_wave_tail(), overflow.band_mask)
+	overflow.step()
 
 
 func _fire_towers() -> void:

@@ -8,6 +8,8 @@ const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
 const _PILE_LEVELS := Piles.WALL_LEVEL + 1
 const _PROGRESS := 0.02
+# The weight of this tick's progress in its exponential average.
+const _PROGRESS_SMOOTHING := 0.05
 const _ROLL_STEPS := 40
 # Single-precision headings put an exact reversal a hair either side of pi, so a turn must
 # beat the turn-back angle by this much to count.
@@ -27,6 +29,9 @@ var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
 var pace_rolls := PackedFloat32Array()
 var wander_phases := PackedFloat32Array()
+# Each enemy's progress inside a crush band: the smoothed share of a full step at its pace
+# that its route field's value dropped by each tick. 1 outside a band.
+var progress := PackedFloat32Array()
 
 var _settings: Settings
 var _map: MapData
@@ -43,6 +48,7 @@ var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
+var _last_values := PackedFloat64Array()
 var _ticks := 0
 
 
@@ -90,6 +96,8 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	wander_phases[count] = _swarm_rng.randf_range(0.0, TAU)
 	_best_values[count] = INF
 	_stuck_ticks[count] = 0
+	progress[count] = 1.0
+	_last_values[count] = INF
 	_index_by_id[id] = count
 	count += 1
 	return id
@@ -162,8 +170,9 @@ func rebuild_spatial_hash() -> void:
 
 
 # In the wave tail, sensible-route enemies that a sensible field change turns back push
-# through on the direct route instead.
-func move(in_wave_tail := false) -> void:
+# through on the direct route instead. Progress is tracked for enemies on cells marked 1 in
+# [param band_mask].
+func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	var sensible_before := _routing.take_sensible_before()
 	if count == 0:
 		return
@@ -230,10 +239,26 @@ func move(in_wave_tail := false) -> void:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
 		elif _is_past_obstacle(i, pos):
 			routes[i] = Routing.Route.SENSIBLE
+		_track_progress(
+			i, pos, band_mask, steps[kinds[i] * _PILE_LEVELS] * (1.0 + pace_rolls[i] * variety)
+		)
 	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
 		if structure_targets[i] != NONE:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+
+
+func _track_progress(i: int, pos: Vector2, band_mask: PackedByteArray, full_step: float) -> void:
+	if band_mask.is_empty() or band_mask[_cell_index(pos)] == 0:
+		progress[i] = 1.0
+		_last_values[i] = INF
+		return
+	var field_value := _routing.sample_value(routes[i] as Routing.Route, pos)
+	var gained := 1.0
+	if _last_values[i] != INF and field_value != INF:
+		gained = clampf((_last_values[i] - field_value) / full_step, -1.0, 2.0)
+	_last_values[i] = field_value
+	progress[i] = lerpf(progress[i], gained, _PROGRESS_SMOOTHING)
 
 
 func _roll_route(
@@ -517,6 +542,8 @@ func _swap_remove(index: int) -> void:
 	wander_phases[index] = wander_phases[count]
 	_best_values[index] = _best_values[count]
 	_stuck_ticks[index] = _stuck_ticks[count]
+	progress[index] = progress[count]
+	_last_values[index] = _last_values[count]
 	_index_by_id[ids[index]] = index
 
 
@@ -535,3 +562,5 @@ func _grow() -> void:
 	wander_phases.resize(capacity)
 	_best_values.resize(capacity)
 	_stuck_ticks.resize(capacity)
+	progress.resize(capacity)
+	_last_values.resize(capacity)

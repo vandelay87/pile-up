@@ -28,6 +28,7 @@ var _map: MapData
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
 @onready var _combo_view: ComboView = $ComboView
+@onready var _overflow_view: OverflowView = $OverflowView
 
 
 func _ready() -> void:
@@ -72,6 +73,7 @@ func _start_run(simulation: Simulation) -> void:
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
 	_combo_view.setup(_simulation)
+	_overflow_view.setup(_simulation)
 	_hud.setup(_simulation, _selection, _combo_view)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
@@ -114,6 +116,7 @@ func _add_overlays() -> void:
 	_debug_panel.add_overlay("Enemy route tint", _enemy_renderer.show_route_tint)
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 	_debug_panel.add_overlay("Power grid", _power_overlay.show_grid)
+	_debug_panel.add_overlay("Overflow", _overflow_view.show_debug)
 
 
 func _draw_map(map: MapData) -> void:
