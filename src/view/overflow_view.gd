@@ -47,7 +47,7 @@ func _draw() -> void:
 	if _debug:
 		_draw_band()
 		var total := (
-			"climbing %d   climbed %d" % [overflow.climbing_count(), overflow.total_climbers]
+			"tumbling %d   tumbled %d" % [overflow.climbing_count(), overflow.total_climbers]
 		)
 		var corner := GridTransform.cell_to_world(Vector2i(_simulation.map.base.position))
 		draw_string(font, corner + Vector2(-60, -90), total, HORIZONTAL_ALIGNMENT_LEFT, -1, 14)

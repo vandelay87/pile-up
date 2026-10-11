@@ -95,11 +95,11 @@
 		"surge_rate": 15,
 		"relieves": 1,
 		"relief": 2,
-		"climb_speed": 180,
-		"climb_cap": 0,
+		"tumble_speed": 180,
+		"tumble_cap": 0,
 		"landing_crowd": 6,
 		"knock_wall": 0,
-		"climb_straight": 1
+		"tumble_straight": 1
 	},
 	"view": {
 		"tracer_speed": 60

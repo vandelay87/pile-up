@@ -188,7 +188,7 @@ func _launch_one(crush: Crush) -> bool:
 	var pool := crush.front_free
 	if pool.is_empty():
 		pool = crush.front_attacking
-	var straight := is_on("climb_straight")
+	var straight := is_on("tumble_straight")
 	while not pool.is_empty():
 		var best := 0
 		var best_value := INF
@@ -215,13 +215,13 @@ func _launch_one(crush: Crush) -> bool:
 # fewer enemies than the landing crowd. Null when the chain doesn't cross an obstacle at once,
 # exceeds the climb cap, or dead-ends.
 func _plan(i: int) -> Climb:
-	if is_on("climb_straight"):
+	if is_on("tumble_straight"):
 		var straight := _plan_straight(i)
 		if straight != null:
 			return straight
 	var parents := _routing.parents(Routing.Route.DIRECT)
 	var cell := _cell_index(_enemies.positions[i])
-	var cap := int(num("climb_cap"))
+	var cap := int(num("tumble_cap"))
 	var crowd := int(num("landing_crowd"))
 	var climb := Climb.new()
 	var crossed := 0
@@ -273,7 +273,7 @@ func _plan_straight(i: int) -> Climb:
 			best = offset
 	if best == Vector2i.ZERO:
 		return null
-	var cap := int(num("climb_cap"))
+	var cap := int(num("tumble_cap"))
 	var crowd := int(num("landing_crowd"))
 	var climb := Climb.new()
 	var crossed := 0
@@ -327,7 +327,7 @@ func _beside_base(from_cell: int, base_cell: int) -> int:
 
 
 func _move_climbers() -> void:
-	var speed := _settings.enemy_speed_per_tick * num("climb_speed") / 100.0
+	var speed := _settings.enemy_speed_per_tick * num("tumble_speed") / 100.0
 	var knock := is_on("knock_wall")
 	for id: int in climbs.keys():
 		var i := _enemies.index_of(id)

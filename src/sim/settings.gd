@@ -44,7 +44,7 @@ const _PROTO_CLIMB_RATE := {
 	"min": 0.0,
 	"max": 60.0,
 	"step": 0.1,
-	"unit": "climbers/s",
+	"unit": "enemies tumbling over per second",
 	"apply": Apply.LIVE,
 }
 
@@ -643,7 +643,7 @@ const SCHEMA := {
 		"surge_rate": _PROTO_CLIMB_RATE,
 		"relieves": _TOGGLE,
 		"relief": _PROTO_PRESSURE,
-		"climb_speed":
+		"tumble_speed":
 		{
 			"type": TYPE_INT,
 			"min": 5,
@@ -652,13 +652,13 @@ const SCHEMA := {
 			"unit": "percent of walking speed",
 			"apply": Apply.LIVE,
 		},
-		"climb_cap":
+		"tumble_cap":
 		{
 			"type": TYPE_INT,
 			"min": 0,
 			"max": 40,
 			"step": 1,
-			"unit": "obstacle cells a climb may cross (0 = no cap)",
+			"unit": "obstacle cells a tumble may cross (0 = no cap)",
 			"apply": Apply.LIVE,
 		},
 		"landing_crowd":
@@ -671,7 +671,7 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 		"knock_wall": _TOGGLE,
-		"climb_straight": _TOGGLE,
+		"tumble_straight": _TOGGLE,
 	},
 	"view":
 	{
