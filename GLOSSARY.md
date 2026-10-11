@@ -50,6 +50,14 @@ A repair yard's unit that flies out to one damaged building, repairs it to full 
 A building the player has chosen for a repair yard's drone to repair first whenever it is damaged. Without one, the drone picks for itself.
 _Avoid_: Target, priority
 
+**Repair threshold**:
+A repair yard's setting: its drone only picks a building whose HP has fallen below this share of its max HP, then repairs it to full. It applies to the yard's assignment too.
+_Avoid_: Heal threshold, trigger
+
+**Under repair**:
+A building with a drone repairing it. It stops working until the drone lifts off, as if unpowered, except a pylon, which keeps powering.
+_Avoid_: Offline, disabled
+
 ### Power
 
 **Power grid**:

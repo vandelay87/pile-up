@@ -96,10 +96,12 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 - Its **repair area** is a square reaching 8 cells from its edge. A building is inside when any of its cells is.
 - It repairs buildings only (towers, pylons, grinders and other repair yards), never itself, walls or the base, and only during waves.
 - Each repair yard has one **drone**. A repair is a round trip: the drone flies straight to the building over any terrain at 8 cells/s, repairs it at 5 HP/s until it is full, then flies back to the yard before taking its next job. The travel is the cost of far-off repairs. Enemies cannot attack the drone.
-- **Auto:** the drone picks the damaged building nearest the yard, lowest HP first on a tie. It prefers a building no other drone is repairing, but doubles up when every damaged building is taken. Drones on the same building add their repair rates.
-- **Assignment:** the player can assign one building in the yard's area. Whenever that building is damaged it comes first, once the drone is home from its current trip. Otherwise the drone works on auto. The assignment lasts until the player clears it or the building is destroyed.
+- **Repair threshold:** each yard has a setting of 25, 50, 75 or 100% of max HP, 50% for a new yard and changed from its details. Its drone only picks a building whose HP is below that share, its assignment included, and then repairs it to full. At 100% any damage counts.
+- **Auto:** the drone picks the building below the threshold nearest the yard, lowest HP first on a tie. It prefers a building no other drone is repairing, but doubles up when every damaged building is taken. Drones on the same building add their repair rates.
+- **Assignment:** the player can assign one building in the yard's area. Whenever that building is below the threshold it comes first, once the drone is home from its current trip. Otherwise the drone works on auto. The assignment lasts until the player clears it or the building is destroyed.
 - If the building being repaired is destroyed, the drone picks again. If the yard loses power, or the wave's last enemy dies, the drone flies home and stops. If the yard is destroyed, its drone goes with it.
-- A building being repaired shows a small steady repair effect. The repair area is tinted while the yard is being placed or selected.
+- **Under repair:** while a drone is repairing a building (not while it flies there), the building stops working as if unpowered: a tower holds fire and keeps its cooldown, ready the moment the drone lifts off; a grinder stops hurting; a repair yard's own drone flies home and stops. A pylon is the exception and keeps powering, so a repair never cuts power. A building under repair still blocks, is attacked and is climbed. Repair is a trade-off: the building is pulled out of the fight to save it.
+- A building under repair shows a small steady repair effect. It is not greyed out, which stays the mark of an unpowered building. The repair area is tinted while the yard is being placed or selected.
 
 ## Grinder
 
@@ -130,7 +132,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 ## Selecting buildings
 
 - Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
-- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and whether it is powered. A tower adds damage, shots/s, range, its kills this run and its targeting toggle. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
+- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and a **status**. The status is one word: Unpowered, else Under repair, else what it is doing (a tower Firing or Idle, a grinder Grinding or Idle, a repair yard Repairing or Idle, a pylon Powering). The base has no status. A tower adds damage, shots/s, range, its kills this run and its targeting toggle. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it), its repair threshold (with a control to change it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
 
 ## Towers and economy
 
