@@ -205,3 +205,4 @@ Not built in the prototypes, but decisions should leave room for it.
 - A landing animation for bodies, with the final art.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
 - Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters. Further on, waves that mutate into a random mix of enemy types.
+- Wildcards: rule changes for the rest of a run, such as towers firing twice as fast or buildings with more HP, and rarer, wilder ones, such as every enemy having a small chance to blow up like a bloater. How the player gets one is open: perhaps by building a special building, perhaps at random. They sit close to power-ups (v5), so they may end up as one system.
