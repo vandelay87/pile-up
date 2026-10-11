@@ -5,6 +5,8 @@ extends CanvasLayer
 ## with `-- --hud=B`. Everything is read from the simulation each frame; nothing here is
 ## tested or meant to merge. The old top bar and the floating details panel are hidden
 ## while this layer runs. The combo gauge sits at the top right in every variant.
+## Combo prototype (#104): locked to the chosen layout A; Left and Right now cycle the combo
+## looks in PrototypeComboView, K fakes kills, G adds gold, and the details show the combo.
 
 signal build_requested(kind: StringName)
 
@@ -42,6 +44,24 @@ var _next_wave: Button
 var _cost_labels: Dictionary[StringName, Button] = {}
 var _orbs: Array[Orb] = []
 var _wave_peak := 1
+var _combo_card: ComboCard
+var _combo_text: Label
+
+
+## PROTOTYPE (#104): the selected tower's combo, drawn large in the current look.
+class ComboCard:
+	extends Control
+
+	var fx: PrototypeComboView.Fx
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.13, 0.16))
+		if fx == null:
+			return
+		if PrototypeComboView.variant == "D":
+			PrototypeComboView.draw_combo(self, Vector2(size.x / 2.0, size.y - 30), fx, 1.6, 62, 0.45)
+		else:
+			PrototypeComboView.draw_combo(self, size / 2.0 + Vector2(0, 30), fx, 2.2, 30)
 
 
 ## A circle filled from the bottom by `fraction`, with text in the middle.
@@ -94,7 +114,7 @@ func _ready() -> void:
 		if arg.begins_with("--hud="):
 			var picked := arg.trim_prefix("--hud=").to_upper()
 			if picked in VARIANTS:
-				_variant = picked
+				pass  # Combo prototype: the HUD stays on the chosen layout A.
 	_build_combo()
 	_build_pill()
 	_build_variant()
@@ -112,12 +132,26 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif key.keycode == KEY_LEFT:
 		_cycle(-1)
 		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_K and PrototypeComboView.instance != null:
+		PrototypeComboView.instance.fake_kills = not PrototypeComboView.instance.fake_kills
+		_update_pill()
+		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_G and _simulation != null:
+		_simulation.run_state.add_gold(1000)
+		get_viewport().set_input_as_handled()
 
 
 func _cycle(step: int) -> void:
-	var i := VARIANTS.find(_variant)
-	_variant = VARIANTS[wrapi(i + step, 0, VARIANTS.size())]
-	_build_variant()
+	PrototypeComboView.cycle(step)
+	_update_pill()
+
+
+func _update_pill() -> void:
+	var fake := PrototypeComboView.instance != null and PrototypeComboView.instance.fake_kills
+	_pill_label.text = (
+		"PROTOTYPE combo   %s   (Left / Right)   K fake kills: %s   G +1000 gold"
+		% [PrototypeComboView.label(), "on" if fake else "off"]
+	)
 
 
 # --- Shared pieces ---------------------------------------------------------------
@@ -261,7 +295,7 @@ func _build_variant() -> void:
 			_variant_b()
 		"C":
 			_variant_c()
-	_pill_label.text = "PROTOTYPE bottom HUD   %s  %s   (Left / Right)" % [_variant, NAMES[_variant]]
+	_update_pill()
 
 
 # --- A: StarCraft console --------------------------------------------------------
@@ -312,7 +346,17 @@ func _variant_a() -> void:
 	var text_col := VBoxContainer.new()
 	text_col.add_child(_details_label())
 	text_col.add_child(_yard_buttons())
+	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	details_row.add_child(text_col)
+	_combo_text = Label.new()
+	_combo_text.add_theme_font_size_override("font_size", 14)
+	_combo_text.add_theme_color_override("font_color", Color(1, 0.88, 0.5))
+	_combo_text.custom_minimum_size.x = 170
+	details_row.add_child(_combo_text)
+	_combo_card = ComboCard.new()
+	_combo_card.custom_minimum_size = Vector2(150, 120)
+	_combo_card.clip_contents = true
+	details_row.add_child(_combo_card)
 	details.add_child(details_row)
 	row.add_child(details)
 
@@ -535,6 +579,34 @@ func _process(_delta: float) -> void:
 	_yard_controls.visible = _selection.is_yard_selected()
 	_assign.set_pressed_no_signal(_selection.is_assigning())
 
-	var tier := _simulation.combo_tier
-	_combo.text = "Combo x%d" % tier
-	_combo.modulate.a = 1.0 if tier > 1 else 0.35
+	_combo.visible = false  # No top-right combo in v3 (#97).
+	_update_pill()
+	_show_combo_details()
+
+
+func _show_combo_details() -> void:
+	var building := _simulation.buildings.building(_selection._building_id)
+	var tower := building != null and building.kind == Buildings.TOWER and not _selection._base
+	_combo_card.visible = tower
+	_combo_text.visible = tower
+	if not tower:
+		return
+	var view := PrototypeComboView.instance
+	_combo_card.fx = view.fx_of(building.id) if view != null else null
+	_combo_card.queue_redraw()
+	var tier := PrototypeCombo.tier(building.combo_count)
+	var lines: Array[String] = []
+	if tier < 2:
+		lines.append("Combo x1, %d in the chain" % building.combo_count)
+	else:
+		lines.append("Combo x%d, %d kills" % [tier, building.combo_count])
+	var next := PrototypeCombo.next_of(tier)
+	if next >= 0:
+		lines.append("Next x%d at %d kills" % [tier + 1, next])
+	else:
+		lines.append("At the cap")
+	if building.combo_ticks > 0:
+		lines.append("Chain %.1f s" % (building.combo_ticks / float(Simulation.TICKS_PER_SECOND)))
+	var best := building.combo_best
+	lines.append("Best x%d, %d kills" % [PrototypeCombo.tier(best), best])
+	_combo_text.text = "\n".join(lines)

@@ -49,6 +49,10 @@ class Building:
 	var target_id := Enemies.NONE
 	## Enemies this tower has killed this run (its shot took them to 0 HP).
 	var kills := 0
+	# PROTOTYPE (#104): this building's combo; see PrototypeCombo.
+	var combo_count := 0
+	var combo_ticks := 0
+	var combo_best := 0
 
 	func _init(building_id: int, building_kind: StringName, building_origin: Vector2i) -> void:
 		id = building_id
@@ -225,7 +229,10 @@ func take_destroyed() -> Array[int]:
 func fire(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for tower in built:
-		if tower.kind != TOWER or not tower.powered:
+		if tower.kind != TOWER:
+			continue
+		PrototypeCombo.tick(tower)
+		if not tower.powered:
 			continue
 		if tower.cooldown > 0:
 			tower.cooldown -= 1
@@ -238,6 +245,7 @@ func fire(enemies: Enemies) -> Array[Shot]:
 		var index := enemies.index_of(target)
 		if not enemies.is_alive(index):
 			tower.kills += 1
+			PrototypeCombo.on_kill(tower)
 		tower.target_id = target
 		tower.cooldown = _settings.tower_cooldown_ticks
 		shots.append(Shot.new(tower.id, target, enemies.positions[index]))

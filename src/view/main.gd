@@ -29,6 +29,7 @@ var _map: MapData
 @onready var _selection: Selection = $Selection
 @onready var _overflow_view: OverflowView = $OverflowView
 var _bottom_hud := PrototypeBottomHud.new()  # PROTOTYPE (#96)
+var _combo_view := PrototypeComboView.new()  # PROTOTYPE (#104)
 
 
 func _ready() -> void:
@@ -48,6 +49,7 @@ func _ready() -> void:
 	_add_overlays()
 	_hud.build_requested.connect(_placement.enter)
 	add_child(_bottom_hud)
+	add_child(_combo_view)
 	_bottom_hud.build_requested.connect(_placement.enter)
 	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
@@ -85,6 +87,7 @@ func _start_run(simulation: Simulation) -> void:
 	_selection.setup(_simulation)
 	_overflow_view.setup(_simulation)
 	_bottom_hud.setup(_simulation, _selection)
+	_combo_view.setup(_simulation)
 
 
 func _restart() -> void:
