@@ -78,6 +78,20 @@ func test_the_next_run_is_a_fresh_simulation_with_pending_restart_settings() -> 
 	assert_int(next.enemies.count).is_equal(0)
 
 
+func test_the_next_run_loads_a_changed_map_path() -> void:
+	var sim := _sim(_settings)
+	sim.queue_command(Commands.SetSetting.new("run", "map_path", "res://data/maps/v1.json"))
+	sim.tick()
+
+	var next := sim.next_run(2)
+
+	var v1 := MapData.load_file("res://data/maps/v1.json").map
+	assert_object(next.map).is_not_same(sim.map)
+	assert_int(next.map.width).is_equal(v1.width)
+	assert_int(next.map.height).is_equal(v1.height)
+	assert_object(next.map.base).is_equal(v1.base)
+
+
 func test_restart_is_accepted_while_paused() -> void:
 	var sim := _sim(_settings)
 	var restarts: Array[bool] = []

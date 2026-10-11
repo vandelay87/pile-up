@@ -82,7 +82,13 @@ func _start_run(simulation: Simulation) -> void:
 
 
 func _restart() -> void:
-	_start_run(_simulation.next_run(_new_seed()))
+	var next := _simulation.next_run(_new_seed())
+	if next.map != _map:
+		_map = next.map
+		_draw_map(_map)
+		_camera.frame(_map)
+		_edge_highlight.setup(_map)
+	_start_run(next)
 
 
 func _new_seed() -> int:
@@ -113,6 +119,8 @@ func _draw_map(map: MapData) -> void:
 	_terrain.tile_set = tile_set
 	_base.tile_set = tile_set
 	_pile_layer.tile_set = tile_set
+	_terrain.clear()
+	_base.clear()
 	for y in map.height:
 		for x in map.width:
 			var cell := Vector2i(x, y)
