@@ -116,7 +116,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
-	overflow = Overflow.new(settings, map, structures, enemies)
+	overflow = Overflow.new(settings, map, structures, enemies, routing, _system_rng("overflow"))
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left

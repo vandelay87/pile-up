@@ -32,14 +32,20 @@
 		"enabled": 1,
 		"band": 3,
 		"stall_progress": 25,
-		"fill_per_stalled": 0.5,
-		"leak": 5,
+		"fill_per_stalled": 1.5,
+		"leak": 40,
 		"crush_start": 10,
 		"crush_end": 4,
 		"trickle_at": 20,
 		"stream_at": 50,
 		"surge_at": 90,
-		"gauge_max": 120
+		"gauge_max": 120,
+		"trickle_rate": 0.5,
+		"stream_rate": 3,
+		"surge_rate": 15,
+		"relief": 2,
+		"tumble_speed": 180,
+		"landing_crowd": 6
 	},
 	"routing": {
 		"sensible_pile_weight": 1,

@@ -19,6 +19,9 @@ func before_test() -> void:
 	settings.change("run", "base_hp", 10000)
 	_settings = settings.for_next_run()
 	_settings.change("piles", "wall_hp", TOUGH_WALL)
+	# The gauge's own numbers, as these tests were written for, apart from tuning.
+	_settings.change("overflow", "fill_per_stalled", 0.5)
+	_settings.change("overflow", "leak", 5.0)
 	var rows: Array[String] = []
 	for y in HEIGHT:
 		rows.append(".".repeat(20))
@@ -89,6 +92,9 @@ func test_a_crush_starts_above_10_and_ends_below_4() -> void:
 
 func test_an_active_crush_is_a_trickle_from_20_a_stream_from_50_and_a_surge_from_90() -> void:
 	_settings.change("overflow", "fill_per_stalled", 2.0)
+	# Nobody tumbles, so the crowd stays to fill the gauge to its cap.
+	for rate: String in ["trickle_rate", "stream_rate", "surge_rate"]:
+		_settings.change("overflow", rate, 0.0)
 	_walls(_column(10, 0, HEIGHT - 1))
 	_crowd(20, Rect2(3, 5, 5, 7))
 	var seen := {}

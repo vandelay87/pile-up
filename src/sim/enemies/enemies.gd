@@ -32,6 +32,9 @@ var wander_phases := PackedFloat32Array()
 # Each enemy's progress inside a crush band: the smoothed share of a full step at its pace
 # that its route field's value dropped by each tick. 1 outside a band.
 var progress := PackedFloat32Array()
+# 1 while the enemy tumbles over a barrier: Overflow moves it, and it doesn't walk, collide,
+# separate, attack or roll, and others don't separate from it.
+var tumbling := PackedByteArray()
 
 var _settings: Settings
 var _map: MapData
@@ -98,6 +101,7 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	_stuck_ticks[count] = 0
 	progress[count] = 1.0
 	_last_values[count] = INF
+	tumbling[count] = 0
 	_index_by_id[id] = count
 	count += 1
 	return id
@@ -155,6 +159,29 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 	return best_id
 
 
+## The enemies in the cell at [param cell_index], from this tick's spatial hash.
+func count_in_cell(cell_index: int) -> int:
+	return _bucket_starts[cell_index + 1] - _bucket_starts[cell_index]
+
+
+## The enemy at [param index] starts a tumble: it stops attacking and counts towards no crush.
+func start_tumble(index: int) -> void:
+	tumbling[index] = 1
+	structure_targets[index] = NONE
+	progress[index] = 1.0
+	_last_values[index] = INF
+
+
+## The enemy at [param index] has landed: it walks the sensible field again, its route-roll and
+## jam state reset.
+func land(index: int) -> void:
+	tumbling[index] = 0
+	routes[index] = Routing.Route.SENSIBLE
+	last_rolled_cells[index] = NONE
+	_best_values[index] = INF
+	_stuck_ticks[index] = 0
+
+
 func rebuild_spatial_hash() -> void:
 	_bucket_starts.fill(0)
 	_bucket_enemies.resize(count)
@@ -202,13 +229,14 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
 	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
-	# still and attacks nothing, as if it had died before moving.
+	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
 	for i in count:
-		structure_targets[i] = NONE if hp[i] <= 0.0 else _structure_target(i, reach, jam_ticks)
+		var idle := hp[i] <= 0.0 or tumbling[i] == 1
+		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
-		if hp[i] <= 0.0:
+		if hp[i] <= 0.0 or tumbling[i] == 1:
 			_moved[i] = pos
 			continue
 		var separation := _separation(i, radius, push, cap).limit_length(radius)
@@ -226,7 +254,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		var pace_step := steps[kind_level] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
-		if hp[i] <= 0.0:
+		if hp[i] <= 0.0 or tumbling[i] == 1:
 			continue
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:
@@ -286,7 +314,7 @@ func _push_through_turned_back(
 	var turn_back := _settings.turn_back_radians
 	var whole_chain := _map.width * _map.height
 	for i in count:
-		if routes[i] != Routing.Route.SENSIBLE:
+		if routes[i] != Routing.Route.SENSIBLE or tumbling[i] == 1:
 			continue
 		var pos := positions[i]
 		var before := _routing.sample_field_direction(sensible_before, pos)
@@ -404,7 +432,7 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i:
+				if j == i or tumbling[j] == 1:
 					continue
 				if cap > 0 and checked == cap:
 					return _separation_total(from_peers, peers, from_attackers)
@@ -444,7 +472,7 @@ func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i or structure_targets[j] != NONE:
+				if j == i or structure_targets[j] != NONE or tumbling[j] == 1:
 					continue
 				var away := pos - positions[j]
 				if away.length_squared() >= radius_squared:
@@ -544,6 +572,7 @@ func _swap_remove(index: int) -> void:
 	_stuck_ticks[index] = _stuck_ticks[count]
 	progress[index] = progress[count]
 	_last_values[index] = _last_values[count]
+	tumbling[index] = tumbling[count]
 	_index_by_id[ids[index]] = index
 
 
@@ -564,3 +593,4 @@ func _grow() -> void:
 	_stuck_ticks.resize(capacity)
 	progress.resize(capacity)
 	_last_values.resize(capacity)
+	tumbling.resize(capacity)
