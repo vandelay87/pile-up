@@ -70,7 +70,7 @@ func _start_run(simulation: Simulation) -> void:
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
-	_hud.setup(_simulation)
+	_hud.setup(_simulation, _selection)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
 	_drone_view.setup(_simulation)
