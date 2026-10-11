@@ -97,6 +97,22 @@ def straight(g, fill, start, end, mouth, throat):
                     g[y][x] = "."
 
 
+def despur(g):
+    # Rock open on three sides is a spur or hook left by the carving; clear it until none remain.
+    changed = True
+    while changed:
+        changed = False
+        for y in range(1, H - 1):
+            for x in range(1, W - 1):
+                if g[y][x] != "#":
+                    continue
+                open_sides = sum(g[ny][nx] != "#" for nx, ny in
+                                 ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+                if open_sides >= 3:
+                    g[y][x] = "."
+                    changed = True
+
+
 def prune(g):
     # Clear ground no route reaches (cut off by a straightening) goes back to rock.
     bx, by = base()
@@ -166,6 +182,8 @@ def variant(mouth, length, margin_depth=0, with_bays=False, per_edge=None, rag=0
         bays(g, BAYS)
     for start, end, half_width in cuts:
         cut(g, start, end, half_width)
+    if rag:
+        despur(g)
     prune(g)
     if margin_depth:
         margin(g, margin_depth)
