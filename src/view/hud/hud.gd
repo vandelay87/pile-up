@@ -88,6 +88,7 @@ func _ready() -> void:
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.position.y += MARGIN
+	bar.visible = false  # PROTOTYPE (#96): replaced by PrototypeBottomHud.
 	ui.add_child(bar)
 
 	_combo.add_theme_constant_override("outline_size", 6)
@@ -99,6 +100,7 @@ func _ready() -> void:
 	_combo.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_combo.position.y += bar.get_combined_minimum_size().y + MARGIN * 2
 	_combo.modulate.a = 0.0
+	_combo.visible = false  # PROTOTYPE (#96): the prototype draws its own at the top right.
 	ui.add_child(_combo)
 
 	var box := VBoxContainer.new()
@@ -130,7 +132,7 @@ func _ready() -> void:
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE)
 	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_toast.position.y -= MARGIN * 6
+	_toast.position.y -= 190  # PROTOTYPE (#96): clear of the bottom HUD.
 	_toast.modulate.a = 0.0
 	ui.add_child(_toast)
 

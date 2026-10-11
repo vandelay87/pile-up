@@ -27,6 +27,7 @@ var _map: MapData
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
+var _bottom_hud := PrototypeBottomHud.new()  # PROTOTYPE (#96)
 
 
 func _ready() -> void:
@@ -45,6 +46,8 @@ func _ready() -> void:
 	_edge_highlight.setup(_map)
 	_add_overlays()
 	_hud.build_requested.connect(_placement.enter)
+	add_child(_bottom_hud)
+	_bottom_hud.build_requested.connect(_placement.enter)
 	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
 		(
@@ -79,6 +82,7 @@ func _start_run(simulation: Simulation) -> void:
 	_pile_overlay.setup(_simulation)
 	_power_overlay.setup(_simulation)
 	_selection.setup(_simulation)
+	_bottom_hud.setup(_simulation, _selection)
 
 
 func _restart() -> void:

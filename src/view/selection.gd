@@ -46,6 +46,33 @@ func clear() -> void:
 	queue_redraw()
 
 
+# PROTOTYPE (#96): the bottom HUD prototype shows these details instead of the panel.
+func details_text() -> String:
+	if _simulation == null or not has_selection():
+		return ""
+	var building := _selected_building()
+	if not _base and building == null:
+		return ""
+	return _base_stats() if _base else _building_stats(building)
+
+
+func is_yard_selected() -> bool:
+	var building := _selected_building()
+	return building != null and building.kind == Buildings.REPAIR_YARD
+
+
+func is_assigning() -> bool:
+	return _assigning
+
+
+func set_assigning(on: bool) -> void:
+	_assign.button_pressed = on
+
+
+func clear_assignment() -> void:
+	_clear_assignment()
+
+
 func has_selection() -> bool:
 	return _base or _building_id != Occupancy.EMPTY
 
@@ -128,7 +155,7 @@ func _select_at(cell: Vector2i) -> void:
 		_base = true
 	else:
 		_building_id = _simulation.occupancy.building_at(cell)
-	_panel.visible = has_selection()
+	_panel.visible = false  # PROTOTYPE (#96): details live in the bottom HUD prototype.
 	# Fill the panel now so it never shows a frame of stale text.
 	_process(0.0)
 
