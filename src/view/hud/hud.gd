@@ -48,6 +48,7 @@ var _details_title := Label.new()
 var _details_lines := VFlowContainer.new()
 var _yard_controls := HBoxContainer.new()
 var _assign := Button.new()
+var _threshold_buttons: Dictionary[int, Button] = {}
 var _next_wave := Button.new()
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _toast := Label.new()
@@ -200,6 +201,21 @@ func _details_panel() -> PanelContainer:
 	for button: Button in [_assign, clear]:
 		button.focus_mode = Control.FOCUS_NONE
 		_yard_controls.add_child(button)
+	var threshold_label := Label.new()
+	threshold_label.text = "  Threshold"
+	threshold_label.add_theme_font_size_override("font_size", 14)
+	threshold_label.add_theme_color_override("font_color", NAME_COLOUR)
+	_yard_controls.add_child(threshold_label)
+	var thresholds := ButtonGroup.new()
+	for percent in RepairYards.THRESHOLDS:
+		var button := Button.new()
+		button.text = "%d%%" % percent
+		button.toggle_mode = true
+		button.button_group = thresholds
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(func() -> void: _selection.set_yard_threshold(percent))
+		_threshold_buttons[percent] = button
+		_yard_controls.add_child(button)
 	text_column.add_child(_yard_controls)
 	details_row.add_child(text_column)
 	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
@@ -305,6 +321,9 @@ func _show_details() -> void:
 	_show_combo_ring()
 	_yard_controls.visible = _selection.is_yard_selected()
 	_assign.set_pressed_no_signal(_selection.is_assigning())
+	var threshold := _selection.yard_threshold()
+	for percent in _threshold_buttons:
+		_threshold_buttons[percent].set_pressed_no_signal(percent == threshold)
 
 
 # A tower's ring, in pale gold at x1 rather than hidden, so its progress towards x2 shows.

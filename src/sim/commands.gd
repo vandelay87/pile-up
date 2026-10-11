@@ -88,6 +88,25 @@ class ClearAssignment:
 		sim.clear_assignment(_yard_id)
 
 
+class SetRepairThreshold:
+	extends Commands.Play
+
+	const LABEL := "repair threshold"
+
+	var _yard_id: int
+	var _percent: int
+
+	func _init(yard_id: int, percent: int) -> void:
+		_yard_id = yard_id
+		_percent = percent
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.set_repair_threshold(_yard_id, _percent)
+
+
 class Restart:
 	extends Commands.Command
 

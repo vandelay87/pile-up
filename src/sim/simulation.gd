@@ -198,6 +198,12 @@ func clear_assignment(yard_id: int) -> void:
 		reject_command("%s: %s" % [Commands.ClearAssignment.LABEL, error])
 
 
+func set_repair_threshold(yard_id: int, percent: int) -> void:
+	var error := repair_yards.set_threshold(yard_id, percent)
+	if not error.is_empty():
+		reject_command("%s: %s" % [Commands.SetRepairThreshold.LABEL, error])
+
+
 func add_gold(amount: int) -> void:
 	run_state.add_gold(amount)
 
@@ -402,6 +408,7 @@ func _fire_towers() -> void:
 func _repair_buildings() -> void:
 	_observe(Step.REPAIR_BUILDINGS)
 	repair_yards.step(waves.phase == Waves.Phase.WAVE)
+	buildings.under_repair = repair_yards.under_repair()
 
 
 func _remove_dead() -> void:

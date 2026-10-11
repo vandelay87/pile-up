@@ -1,7 +1,7 @@
 class_name RepairYards
 extends RefCounted
 
-## One drone per repair yard. During a wave, while its yard is powered, a drone flies in a straight
+## One drone per repair yard. During a wave, while its yard is working, a drone flies in a straight
 ## line from the yard's centre to a damaged building in the yard's repair area, repairs it to full
 ## and flies home. Drones are never attacked and ignore terrain; they step in their yards' build
 ## order, so ties are deterministic.
@@ -13,6 +13,10 @@ const NOT_A_YARD := "not a repair yard"
 const NO_SUCH_BUILDING := "no such building"
 const ITSELF := "a yard cannot repair itself"
 const OUTSIDE_AREA := "outside the repair area"
+const BAD_THRESHOLD := "the threshold must be 25, 50, 75 or 100%"
+## The repair thresholds a yard can take, in percent of max HP.
+const THRESHOLDS: Array[int] = [25, 50, 75, 100]
+const DEFAULT_THRESHOLD := 50
 # Float slack for arriving (Vector2 is single precision), so 60 steps of 8/60 cover 8 cells in
 # exactly 60 ticks.
 const _ARRIVE_SLACK := 1e-4
@@ -36,6 +40,8 @@ class Drone:
 	var target_id := NONE
 	## The building the player assigned, or NONE for auto.
 	var assignment := NONE
+	## The share of max HP, in percent, a building's HP must fall below for this drone to go.
+	var threshold := DEFAULT_THRESHOLD
 	## HP this yard's drone has repaired this run.
 	var repaired := 0.0
 
@@ -105,8 +111,36 @@ func clear(yard_id: int) -> String:
 	return ""
 
 
-## Flies every drone one tick and repairs. Outside a wave, or while its yard is unpowered, a drone
-## flies home and stops. A destroyed yard's drone is gone.
+## Sets a yard's repair threshold, or returns the reason it was rejected.
+func set_threshold(yard_id: int, percent: int) -> String:
+	var yard_drone := drone(yard_id)
+	if yard_drone == null:
+		return NOT_A_YARD
+	if percent not in THRESHOLDS:
+		return BAD_THRESHOLD
+	yard_drone.threshold = percent
+	return ""
+
+
+## Whether a drone is repairing the building now; the flight there doesn't count.
+func is_under_repair(building_id: int) -> bool:
+	for other in drones:
+		if other.state == State.REPAIRING and other.target_id == building_id:
+			return true
+	return false
+
+
+## The ids of every building under repair now.
+func under_repair() -> Dictionary[int, bool]:
+	var ids: Dictionary[int, bool] = {}
+	for other in drones:
+		if other.state == State.REPAIRING:
+			ids[other.target_id] = true
+	return ids
+
+
+## Flies every drone one tick and repairs. Outside a wave, or while its yard isn't working
+## (unpowered or under repair), a drone flies home and stops. A destroyed yard's drone is gone.
 func step(in_wave: bool) -> void:
 	var gone := false
 	for drone in drones:
@@ -117,7 +151,7 @@ func step(in_wave: bool) -> void:
 			continue
 		if drone.assignment != NONE and _buildings.building(drone.assignment) == null:
 			drone.assignment = NONE
-		if not (in_wave and yard.powered):
+		if not (in_wave and _buildings.is_working(yard.id)):
 			_send_home(drone)
 		elif drone.state == State.HOME:
 			_pick(drone, yard)
@@ -164,11 +198,12 @@ func _send_home(drone: Drone) -> void:
 		drone.state = State.RETURNING
 
 
-## Picks a job: the assignment when it is damaged, otherwise the nearest candidate (then lowest HP,
-## then lowest id), preferring one no other drone is on. False when there is nothing to repair.
+## Picks a job: the assignment when it is below the threshold, otherwise the nearest candidate
+## (then lowest HP, then lowest id), preferring one no other drone is on. A candidate is in the
+## repair area, not the yard, and below the threshold. False when there is nothing to repair.
 func _pick(drone: Drone, yard: Buildings.Building) -> bool:
 	var assigned := _buildings.building(drone.assignment)
-	if assigned != null and _buildings.is_damaged(assigned):
+	if assigned != null and _is_below_threshold(drone, assigned):
 		_start_job(drone, assigned.id)
 		return true
 	var taken := {}
@@ -178,7 +213,7 @@ func _pick(drone: Drone, yard: Buildings.Building) -> bool:
 	var best: Buildings.Building = null
 	var best_taken := true
 	for candidate in _buildings.built:
-		if candidate.id == yard.id or not _buildings.is_damaged(candidate):
+		if candidate.id == yard.id or not _is_below_threshold(drone, candidate):
 			continue
 		if not is_in_area(yard, candidate):
 			continue
@@ -190,6 +225,12 @@ func _pick(drone: Drone, yard: Buildings.Building) -> bool:
 		return false
 	_start_job(drone, best.id)
 	return true
+
+
+## Whether a building's HP is below the drone's threshold share of its max HP (at 100%, any
+## damage).
+func _is_below_threshold(drone: Drone, other: Buildings.Building) -> bool:
+	return other.hp < _buildings.max_hp(other.kind) * drone.threshold / 100.0
 
 
 func _is_better(
