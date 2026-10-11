@@ -7,11 +7,12 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Goal: a local prototype to test whether the core loop is fun. A Steam release is considered only if it is.
 - Platforms: desktop, macOS and Windows.
 - Engine: Godot 4 (standard build), GDScript.
-- Built in four prototypes, each adding one system:
+- Built in five prototypes, each adding one system:
   - **v1**: corpse loop
-  - **v2**: power, plus a rework of v1 after playtesting (being specified)
-  - **v3**: reanimation
-  - **v4**: power-ups (to be designed after v3)
+  - **v2**: power, plus a rework of v1 after playtesting
+  - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (being specified)
+  - **v4**: reanimation
+  - **v5**: power-ups (to be designed after v4)
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
 ## World and camera
@@ -161,7 +162,7 @@ After about 10 runs:
 
 If 1 and 2 fail, the pile rules get reworked before starting reanimation. Playtesting led to that rework, which is v2.
 
-## v3: reanimation
+## v4: reanimation
 
 - Unlocked by building an **altar** (100 gold) in one of a few build slots touching the base. Each altar raises one pile at a time.
 - Raising costs 1.5 s and 10 gold per body, during waves only, and produces one minion per body. The pile is used up.
@@ -193,11 +194,11 @@ Not built in the prototypes, but decisions should leave room for it.
 
 - Enemy types: brutes that always break walls, enemies that seek out buildings even when they are not in the way, enemies that chase.
 - A splash/area tower.
-- Power-ups (v4), including interactions with piles (for example, flame setting piles alight).
+- Power-ups (v5), including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
 - A generator that powers an area cut off from the base's power grid.
 - Selling or demolishing buildings.
-- Building upgrades, such as more drones per repair yard (with power-ups in v4).
+- Building upgrades, such as more drones per repair yard (with power-ups in v5).
 - A ranked queue of assignments for a repair yard.
 - Larger piles producing a single brute minion.
 - A landing animation for bodies, with the final art.
