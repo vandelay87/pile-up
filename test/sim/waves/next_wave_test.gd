@@ -9,8 +9,6 @@ var _events: Array[String]
 
 func before_test() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
-	settings.change("run", "starting_lives", 100)
-	settings = settings.for_next_run()
 	var rows: Array[String] = []
 	for y in 8:
 		rows.append("........")
@@ -37,7 +35,7 @@ func test_next_wave_starts_the_next_wave_and_announces_its_edges() -> void:
 
 	assert_int(_sim.run_state.wave).is_equal(1)
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.WAVE)
-	assert_int(_sim.enemies.count).is_equal(1)
+	assert_int(_sim.enemies.count).is_equal(16)
 	assert_array(_events).contains_exactly(["phase WAVE", "wave %s" % ",".join(_sim.waves.edges)])
 
 
@@ -98,7 +96,7 @@ func test_add_gold_adds_to_the_run_gold() -> void:
 
 	_sim.tick()
 
-	assert_int(_sim.run_state.gold).is_equal(250)
+	assert_int(_sim.run_state.gold).is_equal(300)
 
 
 func _run_until_build_phase() -> void:
@@ -106,4 +104,12 @@ func _run_until_build_phase() -> void:
 		_sim.tick()
 		if _sim.waves.phase == Waves.Phase.BUILD:
 			return
+		_clear_enemies()
 	fail("the wave did not end within %d ticks" % WAVE_TICKS)
+
+
+# Enemies no longer leave by reaching the base, so the wave is ended by killing them all on
+# the next tick.
+func _clear_enemies() -> void:
+	if _sim.enemies.count > 0:
+		_sim.queue_command(Commands.KillEnemies.new(_sim.enemies.count))

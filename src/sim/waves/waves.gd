@@ -7,6 +7,11 @@ const SPAWN_JITTER := 0.25
 
 var phase := Phase.BUILD
 var edges := PackedStringArray()
+# Wave size minus kills this wave, unspawned enemies included; the next wave's size between
+# waves.
+var enemies_left: int:
+	get:
+		return _size - _kills if phase == Phase.WAVE else size(_wave + 1)
 
 var _settings: Settings
 var _map: MapData
@@ -16,6 +21,8 @@ var _hp := 0.0
 var _spawned := 0
 var _size := 0
 var _spawn_budget := 0.0
+var _wave := 0
+var _kills := 0
 
 
 func _init(
@@ -37,27 +44,45 @@ func enemy_hp(wave: int) -> float:
 
 func start(wave: int) -> void:
 	phase = Phase.WAVE
+	_wave = wave
+	_kills = 0
 	edges = _pick_edges()
 	_size = size(wave)
 	_hp = enemy_hp(wave)
 	_spawned = 0
-	_spawn_budget = Simulation.TICKS_PER_SECOND
+	_spawn_budget = Simulation.TICKS_PER_SECOND * _settings.clump_size
 
 
+# Enemies arrive in bursts of clump_size, each on a random cell of the burst's edge.
+# A burst costs clump_size seconds of spawn rate, so the average rate holds.
 func spawn() -> void:
 	if phase != Phase.WAVE:
 		return
-	while _spawned < _size and _spawn_budget >= Simulation.TICKS_PER_SECOND:
-		_spawn_budget -= Simulation.TICKS_PER_SECOND
-		var cells := _map.spawn_cells(edges[_spawned % edges.size()])
-		var cell := cells[_rng.randi_range(0, cells.size() - 1)]
-		var jitter := Vector2(
-			_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER),
-			_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
-		)
-		_enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter, _hp)
-		_spawned += 1
+	var clump := _settings.clump_size
+	var burst_cost := Simulation.TICKS_PER_SECOND * clump
+	while _spawned < _size and _spawn_budget >= burst_cost:
+		_spawn_budget -= burst_cost
+		var cells := _map.spawn_cells(edges[(_spawned / clump) % edges.size()])
+		for _k in mini(clump, _size - _spawned):
+			var cell := cells[_rng.randi_range(0, cells.size() - 1)]
+			var jitter := Vector2(
+				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER),
+				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
+			)
+			_enemies.spawn(Vector2(cell) + Vector2(0.5, 0.5) + jitter, _hp)
+			_spawned += 1
 	_spawn_budget += _settings.spawn_rate
+
+
+# The last stretch of a wave, when the stragglers push through rather than go the long way.
+func in_wave_tail() -> bool:
+	var tail := _settings.wave_tail + _settings.wave_tail_per_wave * _wave
+	return phase == Phase.WAVE and enemies_left <= tail
+
+
+func record_kills(kills: int) -> void:
+	if phase == Phase.WAVE:
+		_kills += kills
 
 
 func check_end() -> bool:

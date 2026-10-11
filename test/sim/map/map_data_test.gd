@@ -160,5 +160,17 @@ func test_the_committed_v1_map_loads() -> void:
 	assert_array(map.spawn_edges).contains_exactly_in_any_order(["N", "E", "S", "W"])
 
 
+func test_the_default_map_path_loads_the_narrow_map() -> void:
+	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	var result := MapData.load_file(settings.map_path)
+
+	assert_str(result.error).is_empty()
+	var map := result.map
+	assert_int(map.width).is_equal(96)
+	assert_int(map.height).is_equal(64)
+	assert_that(map.base).is_equal(Rect2i(46, 46, 4, 4))
+	assert_array(map.spawn_edges).contains_exactly_in_any_order(["N", "E", "W"])
+
+
 func test_reports_a_missing_file() -> void:
 	_assert_rejected(MapData.load_file("res://data/maps/missing.json"), "file not found")

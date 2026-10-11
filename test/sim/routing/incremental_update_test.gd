@@ -30,24 +30,28 @@ const BASE := Rect2i(11, 11, 2, 2)
 const STEPS := 300
 
 var _settings: Settings
+var _systems: TestSystems
 var _map: MapData
 var _occupancy: Occupancy
 var _piles: Piles
+var _buildings: Buildings
 var _routing: Routing
 var _rng: RandomNumberGenerator
 
 
 func before_test() -> void:
 	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
-	_map = TestMaps.from_rows(ROWS, BASE)
-	_occupancy = Occupancy.new(_map.width, _map.height)
-	_piles = Piles.new(_settings, _map, _occupancy)
-	_routing = Routing.new(_settings, _map, _occupancy, _piles)
+	_systems = TestSystems.new(_settings, TestMaps.from_rows(ROWS, BASE))
+	_map = _systems.map
+	_occupancy = _systems.occupancy
+	_piles = _systems.piles
+	_buildings = _systems.buildings
+	_routing = _systems.routing()
 	_rng = RandomNumberGenerator.new()
 	_rng.seed = 29
 
 
-func test_both_fields_equal_a_full_rebuild_after_each_random_rise_fall_and_wall_hit() -> void:
+func test_both_fields_equal_a_full_rebuild_after_each_random_change() -> void:
 	var mismatches: Array[String] = []
 	for n in STEPS:
 		var cells := _random_change()
@@ -59,18 +63,35 @@ func test_both_fields_equal_a_full_rebuild_after_each_random_rise_fall_and_wall_
 
 
 func test_a_tower_built_beside_the_base_equals_a_full_rebuild() -> void:
-	_raise_piles_around(BASE.grow(2))
-	var cells := Towers.footprint(BASE.position + Vector2i(-2, 0))
-	_occupancy.occupy(cells)
+	var origin := BASE.position + Vector2i(-2, 0)
+	_raise_piles_around(BASE.grow(2), Rect2i(origin, Buildings.footprint_size(Buildings.TOWER)))
+	var cells := _systems.build_tower(origin).footprint
 
 	_routing.update(cells)
 
 	assert_bool(_matches_full_rebuild()).is_true()
 
 
+func test_a_tower_losing_hp_bucket_by_bucket_then_destroyed_equals_a_full_rebuild() -> void:
+	_raise_piles_around(BASE.grow(3), Rect2i(6, 6, 2, 2))
+	var tower := _systems.build_tower(Vector2i(6, 6))
+	_routing.update(tower.footprint)
+	var changes := 0
+
+	while tower.hp > 0.0:
+		_buildings.damage(tower.id, 3.0)
+		var cells := _buildings.take_field_changes()
+		if not cells.is_empty():
+			changes += 1
+			_routing.update(cells)
+			assert_bool(_matches_full_rebuild()).is_true()
+
+	assert_int(changes).is_equal(6)
+	assert_bool(_occupancy.is_occupied(Vector2i(6, 6))).is_false()
+
+
 func test_a_pile_rising_to_a_wall_and_falling_at_a_tower_corner_equals_a_full_rebuild() -> void:
-	var tower := Towers.footprint(Vector2i(6, 6))
-	_occupancy.occupy(tower)
+	var tower := _systems.build_tower(Vector2i(6, 6)).footprint
 	_routing.update(tower)
 	var beside := Vector2i(8, 8)
 
@@ -85,23 +106,21 @@ func test_a_pile_rising_to_a_wall_and_falling_at_a_tower_corner_equals_a_full_re
 
 
 func test_a_tower_cutting_a_diagonal_parent_edge_equals_a_full_rebuild() -> void:
-	var map := TestMaps.from_rows(["....", "....", "...."], Rect2i(0, 0, 1, 1))
-	var occupancy := Occupancy.new(map.width, map.height)
-	var piles := Piles.new(_settings, map, occupancy)
-	var routing := Routing.new(_settings, map, occupancy, piles)
-	var corner: Array[Vector2i] = [Vector2i(1, 0)]
-	assert_vector(routing.parent(Routing.Route.SENSIBLE, Vector2i(1, 1))).is_equal(Vector2i.ZERO)
+	var systems := TestSystems.new(
+		_settings, TestMaps.from_rows(["....", "....", "....", "...."], Rect2i(0, 0, 1, 1))
+	)
+	var routing := systems.routing()
+	var cell := Vector2i(2, 2)
+	assert_vector(routing.parent(Routing.Route.SENSIBLE, cell)).is_equal(Vector2i(1, 1))
 
-	occupancy.occupy(corner)
-	routing.update(corner)
+	routing.update(systems.build_tower(Vector2i(2, 0)).footprint)
 
-	var rebuilt := Routing.new(_settings, map, occupancy, piles)
-	assert_vector(routing.parent(Routing.Route.SENSIBLE, Vector2i(1, 1))).is_equal(Vector2i(0, 1))
-	assert_bool(FieldChecks.routings_match(routing, rebuilt, map)).is_true()
+	assert_vector(routing.parent(Routing.Route.SENSIBLE, cell)).is_equal(Vector2i(1, 2))
+	assert_bool(FieldChecks.routings_match(routing, systems.routing(), systems.map)).is_true()
 
 
 func test_changes_batched_in_one_update_equal_applying_them_one_by_one() -> void:
-	var one_by_one := Routing.new(_settings, _map, _occupancy, _piles)
+	var one_by_one := _systems.routing()
 	for batch_round in 20:
 		var batch: Array[Vector2i] = []
 		for n in 8:
@@ -132,7 +151,7 @@ func test_an_update_after_a_worker_rebuild_swaps_in_equals_a_full_rebuild() -> v
 
 func test_an_unchanged_cell_in_the_batch_changes_nothing() -> void:
 	_raise_piles_around(Rect2i(3, 3, 4, 4))
-	var before := Routing.new(_settings, _map, _occupancy, _piles)
+	var before := _systems.routing()
 
 	_routing.update([Vector2i(4, 4), Vector2i(4, 4), Vector2i(0, 0)] as Array[Vector2i])
 
@@ -142,13 +161,15 @@ func test_an_unchanged_cell_in_the_batch_changes_nothing() -> void:
 func _random_change() -> Array[Vector2i]:
 	while true:
 		var cell := _random_cell()
-		if _map.is_rock(cell) or _map.is_base(cell) or _occupancy.is_occupied(cell):
+		if _map.is_rock(cell) or _map.is_base(cell):
 			continue
+		if _occupancy.is_occupied(cell):
+			_buildings.damage(_occupancy.building_at(cell), _rng.randf_range(1.0, 25.0))
+			return _buildings.take_field_changes()
 		if _rng.randf() < 0.03:
-			var footprint := Towers.footprint(cell)
-			if _can_build(footprint):
-				_occupancy.occupy(footprint)
-				return footprint
+			var tower := _systems.build_tower(cell)
+			if tower != null:
+				return tower.footprint
 			continue
 		var level := _piles.level(cell)
 		if level == Piles.WALL_LEVEL:
@@ -189,21 +210,12 @@ func _random_tower_ring() -> Rect2i:
 	return Rect2i(towers[_rng.randi_range(0, towers.size() - 1)], Vector2i.ONE).grow(1)
 
 
-func _can_build(footprint: Array[Vector2i]) -> bool:
-	for cell in footprint:
-		if not _map.in_bounds(cell) or _map.is_rock(cell) or _map.is_base(cell):
-			return false
-		if _occupancy.is_occupied(cell):
-			return false
-	return true
-
-
-func _raise_piles_around(area: Rect2i) -> void:
+func _raise_piles_around(area: Rect2i, keep_clear := Rect2i()) -> void:
 	var cells: Array[Vector2i] = []
 	for y in range(area.position.y, area.end.y):
 		for x in range(area.position.x, area.end.x):
 			var cell := Vector2i(x, y)
-			if not _map.is_rock(cell) and not _map.is_base(cell):
+			if not _map.is_rock(cell) and not _map.is_base(cell) and not keep_clear.has_point(cell):
 				_set_level(cell, 1 + (x + y) % (Piles.WALL_LEVEL - 1))
 				cells.append(cell)
 	_routing.update(cells)
@@ -216,5 +228,4 @@ func _set_level(cell: Vector2i, level: int) -> void:
 
 
 func _matches_full_rebuild() -> bool:
-	var rebuilt := Routing.new(_settings, _map, _occupancy, _piles)
-	return FieldChecks.routings_match(_routing, rebuilt, _map)
+	return FieldChecks.routings_match(_routing, _systems.routing(), _map)

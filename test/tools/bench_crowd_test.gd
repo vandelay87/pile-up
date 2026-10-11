@@ -4,7 +4,7 @@ const SIZE := 40
 const BASE := Rect2i(18, 18, 4, 4)
 const ROCK := Rect2i(30, 10, 2, 20)
 const CROWD := 200
-const TICKS_TO_LEAK := 600
+const TICKS_TO_KILL := 600
 
 var _settings: Settings
 
@@ -56,11 +56,11 @@ func test_top_up_spawns_on_clear_cells_in_a_ring_around_the_base() -> void:
 		assert_float(distance).is_between(BenchCrowd.INNER_RADIUS, BenchCrowd.OUTER_RADIUS)
 
 
-func test_top_up_replaces_enemies_that_leaked() -> void:
+func test_top_up_replaces_enemies_that_died() -> void:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, 1)
 	crowd.top_up(CROWD)
-	for t in TICKS_TO_LEAK:
+	for t in TICKS_TO_KILL:
 		sim.tick()
 	assert_int(sim.enemies.count).is_less(CROWD)
 

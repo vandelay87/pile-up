@@ -3,7 +3,7 @@ extends RefCounted
 
 
 static func matches_full_rebuild(sim: Simulation) -> bool:
-	var rebuilt := Routing.new(sim.settings, sim.map, sim.occupancy, sim.piles)
+	var rebuilt := Routing.new(sim.settings, sim.map, sim.occupancy, sim.piles, sim.structures)
 	return routings_match(sim.routing, rebuilt, sim.map)
 
 

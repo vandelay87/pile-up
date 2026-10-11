@@ -12,6 +12,7 @@ func setup(simulation: Simulation) -> void:
 
 
 func _ready() -> void:
+	var ui := UiRoot.add_to(self)
 	visible = false
 	_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE)
 	_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -20,7 +21,7 @@ func _ready() -> void:
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_label.add_theme_constant_override("outline_size", 4)
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	add_child(_label)
+	ui.add_child(_label)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

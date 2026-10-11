@@ -58,7 +58,7 @@ func _init(
 	for edge in edges:
 		var cells: Array[Vector2i] = []
 		for cell in _edge_cells(edge):
-			if reaches_base[_index(cell)] == 1:
+			if reaches_base[index_of(cell)] == 1:
 				cells.append(cell)
 		_spawn_cells[edge] = cells
 
@@ -113,7 +113,7 @@ static func from_json(text: String) -> LoadResult:
 
 
 func is_rock(cell: Vector2i) -> bool:
-	return _rock[_index(cell)] == 1
+	return _rock[index_of(cell)] == 1
 
 
 func is_base(cell: Vector2i) -> bool:
@@ -137,8 +137,18 @@ func in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < _width and cell.y < _height
 
 
-func _index(cell: Vector2i) -> int:
+## A cell's index in the map's row-major arrays.
+func index_of(cell: Vector2i) -> int:
 	return cell.y * _width + cell.x
+
+
+func cell_of(index: int) -> Vector2i:
+	return Vector2i(index % _width, index / _width)
+
+
+## The cell and its 8 neighbours, clipped to the map.
+func neighbourhood(cell: Vector2i) -> Rect2i:
+	return Rect2i(cell - Vector2i.ONE, Vector2i(3, 3)).intersection(Rect2i(0, 0, _width, _height))
 
 
 func _edge_cells(edge: String) -> Array[Vector2i]:
@@ -164,15 +174,19 @@ func _cells_reaching_base() -> PackedByteArray:
 	reached.resize(_width * _height)
 	var frontier := base_cells()
 	for cell in frontier:
-		reached[_index(cell)] = 1
+		reached[index_of(cell)] = 1
 	var next := 0
 	while next < frontier.size():
 		var cell := frontier[next]
 		next += 1
 		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var neighbour := cell + offset
-			if in_bounds(neighbour) and not is_rock(neighbour) and reached[_index(neighbour)] == 0:
-				reached[_index(neighbour)] = 1
+			if (
+				in_bounds(neighbour)
+				and not is_rock(neighbour)
+				and reached[index_of(neighbour)] == 0
+			):
+				reached[index_of(neighbour)] = 1
 				frontier.append(neighbour)
 	return reached
 

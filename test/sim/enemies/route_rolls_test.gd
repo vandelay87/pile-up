@@ -10,12 +10,13 @@ const SAMPLE_ENEMIES := 4000
 const RATE_TOLERANCE := 0.01
 
 var _settings: Settings
+var _systems: TestSystems
 var _piles: Piles
 var _routing: Routing
 
 
 func before_test() -> void:
-	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
+	_settings = TestSettings.without_swarm_spread()
 	_settings.change("enemies", "heading_offset", 0.0)
 
 
@@ -139,6 +140,7 @@ func test_a_direct_route_enemy_returns_to_sensible_after_its_wall_breaks() -> vo
 
 func test_a_direct_route_enemy_returns_to_sensible_after_its_pile_decays() -> void:
 	_settings.change("enemies", "pile_roll_chance", 100)
+	_settings.change("piles", "decay_chance", 100)
 	var enemies := _enemies(CORRIDOR, CORRIDOR_BASE)
 	_add_bodies(PILE, 4)
 	var id := enemies.spawn(BESIDE_OBSTACLE, _settings.enemy_hp)
@@ -186,6 +188,29 @@ func test_at_the_default_wall_chance_about_3_percent_of_enemies_switch() -> void
 	assert_float(_direct_share(enemies)).is_equal_approx(0.03, RATE_TOLERANCE)
 
 
+func test_a_tower_in_the_way_rolls_at_the_building_chance_not_the_pile_chance() -> void:
+	_settings.change("enemies", "pile_roll_chance", 100)
+	_settings.change("enemies", "wall_roll_chance", 0)
+	var enemies := _towered_field()
+	var id := enemies.spawn(BESIDE_OBSTACLE, _settings.enemy_hp)
+	_tick(enemies)
+	assert_int(_route(enemies, id)).is_equal(Routing.Route.SENSIBLE)
+
+	_settings.change("enemies", "wall_roll_chance", 100)
+	var other := enemies.spawn(BESIDE_OBSTACLE, _settings.enemy_hp)
+	_tick(enemies)
+
+	assert_int(_route(enemies, other)).is_equal(Routing.Route.DIRECT)
+
+
+func test_at_the_default_building_chance_about_3_percent_of_enemies_switch_at_a_tower() -> void:
+	var enemies := _crowd_beside(_towered_field())
+
+	_tick(enemies)
+
+	assert_float(_direct_share(enemies)).is_equal_approx(0.03, RATE_TOLERANCE)
+
+
 func test_rolls_are_identical_for_the_same_seed() -> void:
 	var runs: Array[PackedByteArray] = []
 	for run in 2:
@@ -225,6 +250,19 @@ func _walled_field() -> Enemies:
 	return enemies
 
 
+# The walled field with a column of towers in place of the wall line. The towers are as
+# tough as a wall, so the direct route still goes through them.
+func _towered_field() -> Enemies:
+	_settings.change("towers", "hp", _settings.wall_hp)
+	var enemies := _enemies(_rows(9, 9), WALL_BASE)
+	for y in range(0, WALL_BASE.size.y - 1, 2):
+		var tower := _systems.build_tower(Vector2i(WALL.x, y))
+		assert_object(tower).is_not_null()
+		_routing.update(tower.footprint)
+	_assert_next_cells_differ(Vector2i(BESIDE_OBSTACLE.floor()))
+	return enemies
+
+
 func _rows(width: int, height: int) -> Array[String]:
 	var rows: Array[String] = []
 	for y in height:
@@ -258,13 +296,12 @@ func _assert_next_cells_differ(cell: Vector2i) -> void:
 
 
 func _enemies(rows: Array[String], base: Rect2i, rng_seed: int = 1) -> Enemies:
-	var map := TestMaps.from_rows(rows, base)
-	var occupancy := Occupancy.new(map.width, map.height)
-	_piles = Piles.new(_settings, map, occupancy)
-	_routing = Routing.new(_settings, map, occupancy, _piles)
+	_systems = TestSystems.new(_settings, TestMaps.from_rows(rows, base))
+	_piles = _systems.piles
+	_routing = _systems.routing()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = rng_seed
-	return Enemies.new(_settings, map, occupancy, _piles, _routing, rng)
+	return _systems.enemies(_routing, rng)
 
 
 func _add_bodies(cell: Vector2i, bodies: int) -> void:

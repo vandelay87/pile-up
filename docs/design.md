@@ -99,7 +99,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Starting gold: 200.
 - **Bounty:** each kill pays 1 gold before any combo.
 - **Combo:** the number of kills in the last 2 seconds sets a combo tier: ×2 at 10 kills, ×3 at 20, capped at ×3. Each kill pays its bounty times the current tier, at once, so gold earned mid-burst can be spent during the wave. The combo rises with bursts of killing and falls on its own as they stop; nothing else breaks it. The capped tier keeps late-wave income bounded.
-- **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size. **Kills** counts the run's kills and is also shown on the game-over screen. The combo readout shows the tier and is hidden at ×1; it pulses and grows on each tier-up and fades as the combo falls, and the gold readout flashes on a multiplied payout.
+- **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size. **Kills** counts the run's kills and is also shown on the game-over screen. The combo readout shows the tier and is hidden at ×1; it pulses and grows on each tier-up, beats on each multiplied payout while the tier holds, and fades as the combo falls, and the gold readout flashes on a multiplied payout.
 
 ## Waves
 

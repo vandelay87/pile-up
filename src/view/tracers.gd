@@ -33,11 +33,11 @@ func setup(simulation: Simulation, enemy_renderer: EnemyRenderer) -> void:
 	_simulation.shots_fired.connect(_launch)
 
 
-func _launch(shots: Array[Towers.Shot]) -> void:
+func _launch(shots: Array[Buildings.Shot]) -> void:
 	var now := Time.get_ticks_msec()
 	var speed := _simulation.settings.tracer_speed
 	for shot in shots:
-		var muzzle := _simulation.towers.built[shot.tower_id].centre
+		var muzzle := _simulation.buildings.building(shot.tower_id).centre
 		var flight := Flight.new()
 		flight.item = _take()
 		flight.target_id = shot.target_id

@@ -14,10 +14,8 @@ func before_test() -> void:
 	for y in 16:
 		rows.append("................")
 	_map = TestMaps.from_rows(rows, Rect2i(7, 7, 2, 2), EDGES)
-	var occupancy := Occupancy.new(_map.width, _map.height)
-	var piles := Piles.new(_settings, _map, occupancy)
-	var routing := Routing.new(_settings, _map, occupancy, piles)
-	_enemies = Enemies.new(_settings, _map, occupancy, piles, routing, _rng(1))
+	var systems := TestSystems.new(_settings, _map)
+	_enemies = systems.enemies(systems.routing(), _rng(1))
 
 
 func _waves(run_seed: int = 1) -> Waves:
@@ -34,8 +32,8 @@ func test_wave_size_and_hp_follow_the_growth_formulas() -> void:
 	var waves := _waves()
 
 	assert_int(waves.size(1)).is_equal(20)
-	assert_int(waves.size(2)).is_equal(24)
-	assert_int(waves.size(20)).is_equal(639)
+	assert_int(waves.size(2)).is_equal(26)
+	assert_int(waves.size(20)).is_equal(2924)
 	assert_float(waves.enemy_hp(1)).is_equal_approx(10.0, 1e-6)
 	assert_float(waves.enemy_hp(20)).is_equal_approx(10.0 * pow(1.05, 19), 1e-4)
 
@@ -71,7 +69,8 @@ func test_second_edge_chance_sets_how_often_a_wave_uses_2_edges() -> void:
 			assert_int(waves.edges.size()).is_equal(1 if chance == 0 else 2)
 
 
-func test_enemies_spawn_at_the_spawn_rate_spread_over_the_edges() -> void:
+func test_a_clump_size_of_1_spawns_a_trickle_at_the_spawn_rate_over_the_edges() -> void:
+	_settings.change("waves", "clump_size", 1)
 	_settings.change("waves", "second_edge_chance", 100)
 	var waves := _waves()
 	waves.start(1)
@@ -136,4 +135,4 @@ func _edge_picks(run_seed: int) -> Array[PackedStringArray]:
 func _remove_all_enemies() -> void:
 	for k in _enemies.count:
 		_enemies.hp[k] = 0.0
-	_enemies.remove_dead_and_leaked()
+	_enemies.remove_dead()

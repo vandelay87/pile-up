@@ -9,6 +9,15 @@ const PILE := Color(0.66, 0.53, 0.42)
 const WHITE := Color(1, 1, 1)
 const BASE_HEIGHT := 48
 const TOWER_HEIGHT := 56
+const PYLON_HEIGHT := 64
+const PYLON_HEAD_HEIGHT := 8
+const UNPOWERED := Color(0.8, 0.2, 0.15)
+const YARD := Color(0.95, 0.85, 0.55)
+const YARD_HEIGHT := 14
+const PAD := Color(0.45, 0.42, 0.38)
+const DRONE := Color(0.95, 0.95, 0.95)
+const ROTOR := Color(0.25, 0.25, 0.28)
+const REPAIR := Color(0.35, 0.95, 0.45)
 
 
 func _init() -> void:
@@ -24,6 +33,11 @@ func _init() -> void:
 		_draw_pile(image, level)
 	_draw_box_tile(image, Atlas.region(Atlas.BASE, Atlas.BASE_SIZE), BASE_HEIGHT, BASE)
 	_draw_box_tile(image, Atlas.region(Atlas.TOWER, Atlas.TOWER_SIZE), TOWER_HEIGHT, WHITE)
+	_draw_pylon(image)
+	_draw_repair_yard(image)
+	_draw_drone(image)
+	_draw_repair_effect(image)
+	_draw_unpowered_icon(image)
 	_draw_enemy(image)
 	_draw_tracer(image)
 	var error := image.save_png(Atlas.PATH)
@@ -54,6 +68,67 @@ func _draw_box_tile(image: Image, area: Rect2i, height: int, color: Color) -> vo
 	var footprint := Vector2(area.size.x, area.size.x / 2.0)
 	var foot := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0)
 	_draw_box(image, foot, footprint / 2.0, height, color)
+
+
+# A slim mast with a wider head, standing on one cell.
+func _draw_pylon(image: Image) -> void:
+	var area := Atlas.region(Atlas.PYLON, Atlas.PYLON_SIZE)
+	var foot := Vector2(area.get_center().x, area.end.y - Atlas.UNIT.y / 2.0)
+	_draw_box(image, foot, Vector2(8, 4), PYLON_HEIGHT, WHITE)
+	var head := foot - Vector2(0, PYLON_HEIGHT - PYLON_HEAD_HEIGHT)
+	_draw_box(image, head, Vector2(16, 8), PYLON_HEAD_HEIGHT, WHITE)
+
+
+# A low platform with a dark landing pad on top.
+func _draw_repair_yard(image: Image) -> void:
+	var area := Atlas.region(Atlas.REPAIR_YARD, Atlas.REPAIR_YARD_SIZE)
+	_draw_box_tile(image, area, YARD_HEIGHT, YARD)
+	var footprint := Vector2(area.size.x, area.size.x / 2.0)
+	var top := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0 - YARD_HEIGHT)
+	_fill_diamond(image, top, footprint / 2.0 * 0.5, PAD)
+	_outline_diamond(image, top, footprint / 2.0 * 0.5, YARD)
+
+
+# A small body between two rotors, seen from the side.
+func _draw_drone(image: Image) -> void:
+	var area := Atlas.DRONE_REGION
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var local := Vector2i(x, y) - area.position
+			var rotor := local.y < 2 and (local.x < 7 or local.x >= area.size.x - 7)
+			var arm := local.y == 3 and local.x >= 3 and local.x < area.size.x - 3
+			var body := local.y >= 4 and local.x >= 6 and local.x < area.size.x - 6 and local.y < 10
+			if rotor or arm:
+				image.set_pixel(x, y, ROTOR)
+			elif body:
+				image.set_pixel(x, y, DRONE.darkened(0.2) if local.y >= 8 else DRONE)
+
+
+# A green cross, drawn over a building while a drone repairs it.
+func _draw_repair_effect(image: Image) -> void:
+	var area := Atlas.REPAIR_EFFECT_REGION
+	var centre := Vector2(area.get_center())
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var offset := (Vector2(x, y) + Vector2(0.5, 0.5) - centre).abs()
+			if minf(offset.x, offset.y) < 2.5 and maxf(offset.x, offset.y) < 7.5:
+				image.set_pixel(x, y, REPAIR)
+			elif minf(offset.x, offset.y) < 3.5 and maxf(offset.x, offset.y) < 8.0:
+				image.set_pixel(x, y, REPAIR.darkened(0.5))
+
+
+# A red disc crossed by a white slash.
+func _draw_unpowered_icon(image: Image) -> void:
+	var area := Atlas.UNPOWERED_REGION
+	var centre := Vector2(area.get_center())
+	var radius := area.size.x / 2.0
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var offset := Vector2(x, y) + Vector2(0.5, 0.5) - centre
+			if offset.length() > radius:
+				continue
+			var on_slash := absf(offset.x - offset.y) < 2.0 and offset.length() < radius - 2.0
+			image.set_pixel(x, y, WHITE if on_slash else UNPOWERED)
 
 
 func _draw_enemy(image: Image) -> void:
