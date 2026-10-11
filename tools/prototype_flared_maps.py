@@ -147,8 +147,10 @@ def cut(g, start, end, half_width):
                     g[y][x] = "."
 
 
-# Across the rock spine between the north and east routes, about 4 cells wide.
+# Across the rock spine between the north and east routes, about 6 cells wide: a 4-wide
+# channel plus a second pass 2 cells lower that shaves the island's top.
 NE_CUT = ((70, 11), (92, 16), 2.2)
+NE_CUT_SHAVE = ((70, 13), (92, 18), 2.2)
 
 
 def variant(mouth, length, margin_depth=0, with_bays=False, per_edge=None, rag=0.0,
@@ -186,7 +188,7 @@ VARIANTS = {
                                straights=[STRAIGHT_W]),
     # H: E plus a channel cut between the north and east routes, leaving a rock island.
     "h-west-island": variant(mouth=12, length=30, margin_depth=6, with_bays=True, rag=0.3,
-                             straights=[STRAIGHT_W], cuts=[NE_CUT]),
+                             straights=[STRAIGHT_W], cuts=[NE_CUT, NE_CUT_SHAVE]),
     # F: both side routes straight: a trident, north the only one that winds into the loop.
     "f-trident": variant(mouth=12, length=30, margin_depth=6, with_bays=True, rag=0.3,
                          straights=[STRAIGHT_E, STRAIGHT_W]),
