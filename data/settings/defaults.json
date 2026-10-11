@@ -76,6 +76,30 @@
 		"combo_cap": 3,
 		"map_path": "res://data/maps/v2-narrow.json"
 	},
+	"overflow": {
+		"enabled": 1,
+		"fill_by_contact": 0,
+		"band": 3,
+		"stall_progress": 25,
+		"fill_per_stalled": 0.5,
+		"fill_per_contact": 5,
+		"leak": 5,
+		"crush_start": 10,
+		"crush_end": 4,
+		"trickle_at": 20,
+		"stream_at": 50,
+		"surge_at": 90,
+		"gauge_max": 120,
+		"trickle_rate": 0.5,
+		"stream_rate": 3,
+		"surge_rate": 15,
+		"relieves": 1,
+		"relief": 2,
+		"climb_speed": 50,
+		"climb_cap": 0,
+		"landing_crowd": 2,
+		"knock_wall": 0
+	},
 	"view": {
 		"tracer_speed": 60
 	}

@@ -27,6 +27,7 @@ var _map: MapData
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
+@onready var _overflow_view: OverflowView = $OverflowView
 
 
 func _ready() -> void:
@@ -79,6 +80,7 @@ func _start_run(simulation: Simulation) -> void:
 	_pile_overlay.setup(_simulation)
 	_power_overlay.setup(_simulation)
 	_selection.setup(_simulation)
+	_overflow_view.setup(_simulation)
 
 
 func _restart() -> void:
@@ -116,6 +118,7 @@ func _add_overlays() -> void:
 	_debug_panel.add_overlay("Enemy route tint", _enemy_renderer.show_route_tint)
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 	_debug_panel.add_overlay("Power grid", _power_overlay.show_grid)
+	_debug_panel.add_overlay("Overflow: gauges, numbers, band", _overflow_view.show_debug)
 
 
 func _draw_map(map: MapData) -> void:

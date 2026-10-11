@@ -5,6 +5,49 @@ enum Apply { LIVE, RESTART }
 
 const DEFAULTS_PATH := "res://data/settings/defaults.json"
 
+# PROTOTYPE (overflow, #94): shared entries for the overflow group.
+const _TOGGLE := {
+	"type": TYPE_INT,
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"unit": "on/off",
+	"toggle": true,
+	"apply": Apply.LIVE,
+}
+const _PROTO_FLOAT_CELLS := {
+	"type": TYPE_FLOAT,
+	"min": 0.5,
+	"max": 8.0,
+	"step": 0.5,
+	"unit": "cells",
+	"apply": Apply.LIVE,
+}
+const _PROTO_RATE := {
+	"type": TYPE_FLOAT,
+	"min": 0.0,
+	"max": 100.0,
+	"step": 0.1,
+	"unit": "pressure/s",
+	"apply": Apply.LIVE,
+}
+const _PROTO_PRESSURE := {
+	"type": TYPE_FLOAT,
+	"min": 0.0,
+	"max": 500.0,
+	"step": 1.0,
+	"unit": "pressure",
+	"apply": Apply.LIVE,
+}
+const _PROTO_CLIMB_RATE := {
+	"type": TYPE_FLOAT,
+	"min": 0.0,
+	"max": 60.0,
+	"step": 0.1,
+	"unit": "climbers/s",
+	"apply": Apply.LIVE,
+}
+
 const SCHEMA := {
 	"enemies":
 	{
@@ -570,6 +613,64 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
+	},
+	# PROTOTYPE (overflow, #94): pressure and overflow tuning, all live.
+	"overflow":
+	{
+		"enabled": _TOGGLE,
+		"fill_by_contact": _TOGGLE,
+		"band": _PROTO_FLOAT_CELLS,
+		"stall_progress":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 1,
+			"unit": "percent of walking progress below which a nearby enemy counts as stalled",
+			"apply": Apply.LIVE,
+		},
+		"fill_per_stalled": _PROTO_RATE,
+		"fill_per_contact": _PROTO_RATE,
+		"leak": _PROTO_RATE,
+		"crush_start": _PROTO_PRESSURE,
+		"crush_end": _PROTO_PRESSURE,
+		"trickle_at": _PROTO_PRESSURE,
+		"stream_at": _PROTO_PRESSURE,
+		"surge_at": _PROTO_PRESSURE,
+		"gauge_max": _PROTO_PRESSURE,
+		"trickle_rate": _PROTO_CLIMB_RATE,
+		"stream_rate": _PROTO_CLIMB_RATE,
+		"surge_rate": _PROTO_CLIMB_RATE,
+		"relieves": _TOGGLE,
+		"relief": _PROTO_PRESSURE,
+		"climb_speed":
+		{
+			"type": TYPE_INT,
+			"min": 5,
+			"max": 200,
+			"step": 5,
+			"unit": "percent of walking speed",
+			"apply": Apply.LIVE,
+		},
+		"climb_cap":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 40,
+			"step": 1,
+			"unit": "obstacle cells a climb may cross (0 = no cap)",
+			"apply": Apply.LIVE,
+		},
+		"landing_crowd":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 10,
+			"step": 1,
+			"unit": "a landing cell is free with fewer enemies than this",
+			"apply": Apply.LIVE,
+		},
+		"knock_wall": _TOGGLE,
 	},
 	"view":
 	{

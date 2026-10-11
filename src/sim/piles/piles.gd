@@ -80,6 +80,18 @@ func damage_wall(cell: Vector2i, amount: float) -> void:
 	_field_changes.append(cell)
 
 
+# PROTOTYPE (overflow, #94): a climber knocks a wall down a level, to a level-4 pile.
+func knock_wall(cell: Vector2i) -> void:
+	var index := _map.index_of(cell)
+	if levels[index] != WALL_LEVEL:
+		return
+	wall_hps[index] = 0.0
+	levels[index] = WALL_LEVEL - 1
+	_count_wall(cell, -1)
+	_mark_changed(cell)
+	_field_changes.append(cell)
+
+
 func bucketed_wall_hp(cell: Vector2i) -> float:
 	return _bucket(wall_hp(cell)) * _settings.wall_hp_bucket
 

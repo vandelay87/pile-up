@@ -54,6 +54,7 @@ var run_state: RunState
 var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
+var overflow: Overflow
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -115,6 +116,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
+	overflow = Overflow.new(settings, map, piles, routing, structures, enemies)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -382,6 +384,7 @@ func _rebuild_spatial_hash() -> void:
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
 	enemies.move(waves.in_wave_tail())
+	overflow.step()
 
 
 func _fire_towers() -> void:

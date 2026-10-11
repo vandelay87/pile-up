@@ -21,6 +21,13 @@ var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
 var pace_rolls := PackedFloat32Array()
 var wander_phases := PackedFloat32Array()
+# PROTOTYPE (overflow, #94): climbers skip walking, collision and separation; Overflow moves
+# them. Progress is a smoothed share of walking pace, kept only inside the crush band.
+var climbing := PackedByteArray()
+var progress := PackedFloat32Array()
+var contact := PackedFloat32Array()
+var progress_mask := PackedByteArray()
+var _last_values := PackedFloat64Array()
 
 var _settings: Settings
 var _map: MapData
@@ -82,6 +89,10 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	wander_phases[count] = _swarm_rng.randf_range(0.0, TAU)
 	_best_values[count] = INF
 	_stuck_ticks[count] = 0
+	climbing[count] = 0
+	progress[count] = 1.0
+	contact[count] = 0.0
+	_last_values[count] = INF
 	_index_by_id[id] = count
 	count += 1
 	return id
@@ -135,6 +146,11 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 	return best_id
 
 
+# PROTOTYPE (overflow, #94)
+func count_in_cell(index: int) -> int:
+	return _bucket_starts[index + 1] - _bucket_starts[index]
+
+
 func rebuild_spatial_hash() -> void:
 	_bucket_starts.fill(0)
 	_bucket_enemies.resize(count)
@@ -180,14 +196,17 @@ func move(in_wave_tail := false) -> void:
 	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
 	# still and attacks nothing, as if it had died before moving.
 	for i in count:
-		structure_targets[i] = NONE if hp[i] <= 0.0 else _structure_target(i, reach, jam_ticks)
+		var idle := hp[i] <= 0.0 or climbing[i] == 1
+		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
-		if hp[i] <= 0.0:
+		if hp[i] <= 0.0 or climbing[i] == 1:
 			_moved[i] = pos
 			continue
-		var separation := _separation(i, radius, push, cap).limit_length(radius)
+		var separation := _separation(i, radius, push, cap)
+		contact[i] = separation.length()
+		separation = separation.limit_length(radius)
 		if structure_targets[i] != NONE:
 			_moved[i] = pos + separation
 			continue
@@ -200,7 +219,7 @@ func move(in_wave_tail := false) -> void:
 		var pace_step := steps[levels[_cell_index(pos)]] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
-		if hp[i] <= 0.0:
+		if hp[i] <= 0.0 or climbing[i] == 1:
 			continue
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:
@@ -213,10 +232,36 @@ func move(in_wave_tail := false) -> void:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
 		elif _is_past_obstacle(i, pos):
 			routes[i] = Routing.Route.SENSIBLE
+		_track_progress(i, pos, step)
 	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
 		if structure_targets[i] != NONE:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+
+
+# PROTOTYPE (overflow, #94)
+func _track_progress(i: int, pos: Vector2, step: float) -> void:
+	if progress_mask.is_empty() or progress_mask[_cell_index(pos)] == 0:
+		progress[i] = 1.0
+		_last_values[i] = INF
+		return
+	var field_value := _routing.sample_value(routes[i] as Routing.Route, pos)
+	var gained := 1.0
+	if _last_values[i] != INF and field_value != INF:
+		gained = clampf((_last_values[i] - field_value) / step, -1.0, 2.0)
+	_last_values[i] = field_value
+	progress[i] = lerpf(progress[i], gained, 0.05)
+
+
+# PROTOTYPE (overflow, #94): a climber has finished; it walks the sensible field from here.
+func land_climber(i: int) -> void:
+	climbing[i] = 0
+	routes[i] = Routing.Route.SENSIBLE
+	last_rolled_cells[i] = NONE
+	_best_values[i] = INF
+	_stuck_ticks[i] = 0
+	_last_values[i] = INF
+	progress[i] = 1.0
 
 
 func _roll_route(
@@ -362,7 +407,7 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i:
+				if j == i or climbing[j] == 1:
 					continue
 				if cap > 0 and checked == cap:
 					return _separation_total(from_peers, peers, from_attackers)
@@ -402,7 +447,7 @@ func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i or structure_targets[j] != NONE:
+				if j == i or structure_targets[j] != NONE or climbing[j] == 1:
 					continue
 				var away := pos - positions[j]
 				if away.length_squared() >= radius_squared:
@@ -498,6 +543,10 @@ func _swap_remove(index: int) -> void:
 	wander_phases[index] = wander_phases[count]
 	_best_values[index] = _best_values[count]
 	_stuck_ticks[index] = _stuck_ticks[count]
+	climbing[index] = climbing[count]
+	progress[index] = progress[count]
+	contact[index] = contact[count]
+	_last_values[index] = _last_values[count]
 	_index_by_id[ids[index]] = index
 
 
@@ -514,3 +563,7 @@ func _grow() -> void:
 	wander_phases.resize(capacity)
 	_best_values.resize(capacity)
 	_stuck_ticks.resize(capacity)
+	climbing.resize(capacity)
+	progress.resize(capacity)
+	contact.resize(capacity)
+	_last_values.resize(capacity)

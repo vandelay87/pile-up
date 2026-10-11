@@ -5,6 +5,9 @@ const TINT := Color(0.85, 0.3, 0.3)
 const DIRECT_TINT := Color(0.95, 0.8, 0.2)
 const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
+# PROTOTYPE (overflow, #94): climbers are drawn raised above a wall's top and tinted.
+const CLIMB_TINT := Color(1.0, 0.55, 0.15)
+const CLIMB_LIFT_LEVELS := 6.0
 
 var _enemies: Enemies
 var _piles: Piles
@@ -18,6 +21,7 @@ var _shown := 0
 var _flash_ends := {}
 var _flashed_items: Array[RID] = []
 var _route_tint := false
+var _climb_tinted: Array[RID] = []
 
 
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
@@ -57,6 +61,8 @@ func _process(_delta: float) -> void:
 		var foot := GridTransform.grid_to_world(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, foot))
 		var lift := _lift_at(positions[i])
+		if _enemies.climbing[i] == 1:
+			lift = maxf(lift, CLIMB_LIFT_LEVELS * Atlas.PILE_SLAB_HEIGHT)
 		if lift != _lifts[i]:
 			_lifts[i] = lift
 			RenderingServer.canvas_item_set_transform(
@@ -93,6 +99,14 @@ func _draw_tints(count: int) -> void:
 		for item in _flashed_items:
 			RenderingServer.canvas_item_set_modulate(item, TINT)
 	_flashed_items.clear()
+	for item in _climb_tinted:
+		RenderingServer.canvas_item_set_modulate(item, TINT)
+	_climb_tinted.clear()
+	var climbing := _enemies.climbing
+	for i in count:
+		if climbing[i] == 1:
+			RenderingServer.canvas_item_set_modulate(_items[i], CLIMB_TINT)
+			_climb_tinted.append(_items[i])
 	var now := Time.get_ticks_msec()
 	for id: int in _flash_ends.keys():
 		var index := _enemies.index_of(id)
