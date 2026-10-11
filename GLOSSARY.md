@@ -92,16 +92,20 @@ The alternative route where piles are cheap and walls are worth breaking; an ene
 _Avoid_: Reckless, personality
 
 **Crush**:
-A dense, stalled crowd of living enemies pressed against a pile, wall or structure. "Mob" and "swarm" are informal words for enemies, not for a crush.
+A dense, stalled crowd of living enemies pressed against a wall or building, one per connected run of them. The base never has one: enemies there have arrived. "Mob" and "swarm" are informal words for enemies, not for a crush.
 _Avoid_: Pile up, jam, clump (piles are bodies; a crush is alive)
 
 **Pressure**:
-How close a crush is to overflowing, shown as a gauge above it. It rises as the crush gets denser.
+How close a crush is to overflowing, shown as a gauge above it. It rises while the crush stays stalled, faster the bigger the crush, and drops as its enemies overflow.
 _Avoid_: Density meter, stress
 
 **Overflow**:
-Enemies from a crush at breaking point spilling over the pile, wall or structure in their way, into the nearest free cell towards their destination.
+Enemies from a crush at breaking point climbing over the wall or building in their way, into the nearest free cell towards their destination.
 _Avoid_: Spill-over, climb, breach
+
+**Overflow tier**:
+How hard a crush is overflowing, read from its pressure: a **trickle** (one enemy now and then), a **stream** (a steady line) or a **surge** (the front ranks pouring over together).
+_Avoid_: Stage, phase
 
 ### Flow of play
 
