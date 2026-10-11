@@ -100,8 +100,12 @@ How close a crush is to overflowing, shown as a gauge above it. It rises while t
 _Avoid_: Density meter, stress
 
 **Overflow**:
-Enemies from a crush at breaking point climbing over the wall or building in their way, into the nearest free cell towards their destination.
+Enemies from a crush at breaking point tumbling over the wall or building in their way, into the nearest free cell towards their destination.
 _Avoid_: Spill-over, climb, breach
+
+**Tumble**:
+One enemy's fall over the wall or building in front of it during an overflow, from leaving the crush to landing on a free cell beyond. It falls faster than walking and can be shot on the way. "Tumble" still fits when the far side is lower or a pile.
+_Avoid_: Climb, climber, jump
 
 **Overflow tier**:
 How hard a crush is overflowing, read from its pressure: a **trickle** (one enemy now and then), a **stream** (a steady line) or a **surge** (the front ranks pouring over together).

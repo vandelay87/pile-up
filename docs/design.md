@@ -41,16 +41,16 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 ### Pressure and overflow
 
-From v3, a crowd that stalls against a defence builds up until it climbs over, so a big enough wave always threatens to spill.
+From v3, a crowd that stalls against a defence builds up until it tumbles over, so a big enough wave always threatens to spill.
 
 - **Crush:** the stalled crowd against one connected run of walls and buildings. Enemies within 3 cells of it count. Piles at levels 1–4 don't stop enemies, so a crowd can't crush against them, and the base never has a crush. A crowd at each end of one long wall shares the same crush.
 - **Pressure:** each crush has a gauge, drawn above the middle of its stalled enemies. It fills while enemies near the obstacle want to move but make no progress, faster the more of them there are, and leaks at a steady rate, so a passing clump drains away and early waves rarely fill it. A crush starts above one reading and ends below a lower one, so the gauge doesn't flicker.
-- **Overflow tiers:** the gauge has three segments: a **trickle** (one enemy now and then), a **stream** (a steady line) and a **surge** (the front ranks pouring over together). Each enemy that climbs over takes something off the gauge, so a trickle can settle and a surge lasts only while the wave keeps feeding the crush.
-- **Who climbs:** stalled enemies right against the obstacle that aren't attacking it, nearest first. Attackers keep attacking; they climb only when every enemy at the front is attacking.
-- **The climb:** a climber follows the direct field over the obstacle to the first free, uncrowded cell beyond it, then goes back to the sensible field. It moves at about half walking speed, is drawn raised, ignores collision with the obstacle and the crowd, and can be shot and killed on the way; its body lands by the normal rule, on whichever side is nearer. There is no limit on how far a climb crosses: a thick block of buildings still resists, because a long climb keeps the climber exposed to every tower in range. If the route over reaches the base with no free cell, the climber stops beside the base and attacks it.
+- **Overflow tiers:** the gauge has three segments: a **trickle** (one enemy now and then), a **stream** (a steady line) and a **surge** (the front ranks pouring over together). Each enemy that tumbles over takes something off the gauge, so a trickle can settle and a surge lasts only while the wave keeps feeding the crush.
+- **Who tumbles:** stalled enemies right against the obstacle that aren't attacking it, taken from anywhere along the front, so overflow comes over as a broad front rather than one line. Attackers keep attacking; they tumble only when every enemy at the front is attacking.
+- **The tumble:** an enemy tumbles straight over the piece of wall or building it is touching, on the side facing most towards the base, to the first free, uncrowded cell beyond it, then goes back to the sensible field. If nothing it touches faces forwards, it follows the direct field over instead. It falls fast, quicker than walking, is drawn raised, ignores collision with the obstacle and the crowd and isn't slowed by piles, and can be shot and killed on the way; its body lands by the normal rule, on whichever side is nearer. There is no limit on how far a tumble crosses: a thick block of buildings still resists, because a long tumble keeps the enemy exposed to every tower in range. If a tumble reaches the base with no free cell, the enemy stops beside the base and attacks it.
 - **What it crosses:** nothing changes. Overflow goes over a defence; attacks still wear it down.
-- Towers target climbers like any other enemy, and route rolls and wave-tail push-through stay as they are.
-- The prototype's debug panel tests the alternatives: contact pressure (how hard the crowd shoves) instead of stalled enemies as the fill, climbing without relieving pressure, climbers knocking a level off a wall, and a limit on how far a climb crosses. Thresholds, rates per tier, the climb speed and the band are set in the v3 numbers.
+- Towers target tumbling enemies like any other enemy, and route rolls and wave-tail push-through stay as they are.
+- Thresholds, rates per tier, the tumble speed, the band and how crowded a landing cell may be are set in the v3 numbers.
 
 ## Body piles
 
