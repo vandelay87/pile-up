@@ -13,6 +13,7 @@ const KINDS := {
 }
 const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
+const NEAR_SPAWN := "too close to a spawn edge"
 const OFF_GRID := "off the power grid"
 const OCCUPIED := "occupied"
 const NOT_ENOUGH_GOLD := "not enough gold"
@@ -271,10 +272,15 @@ func _placement_error(kind: StringName, origin: Vector2i) -> String:
 	for cell in cells_of(kind, origin):
 		if not _map.in_bounds(cell):
 			return OFF_MAP
+		if _map.is_no_build(cell):
+			return NEAR_SPAWN
 		if not _power_grid.is_on_grid(cell):
 			return OFF_GRID
-		if _map.is_rock(cell) or _map.is_base(cell) or _occupancy.is_occupied(cell):
-			return OCCUPIED
-		if _piles.level(cell) > 0:
+		if (
+			_map.is_rock(cell)
+			or _map.is_base(cell)
+			or _occupancy.is_occupied(cell)
+			or _piles.level(cell) > 0
+		):
 			return OCCUPIED
 	return ""

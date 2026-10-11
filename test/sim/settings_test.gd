@@ -76,7 +76,7 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 
 	assert_int(settings.base_hp).is_equal(200)
 	assert_int(settings.starting_gold).is_equal(200)
-	assert_str(settings.map_path).is_equal("res://data/maps/v2-narrow.json")
+	assert_str(settings.map_path).is_equal("res://data/maps/v3-flared.json")
 	assert_float(settings.enemy_speed).is_equal_approx(2.0, 1e-6)
 	assert_float(settings.structure_damage).is_equal_approx(2.0, 1e-6)
 	assert_float(settings.wall_hp).is_equal_approx(15.0, 1e-6)
@@ -93,7 +93,7 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_float(settings.separation_push).is_equal_approx(0.5, 1e-6)
 	assert_int(settings.neighbour_cap).is_equal(0)
 	assert_int(settings.wave_1_size).is_equal(20)
-	assert_float(settings.wave_growth).is_equal_approx(1.3, 1e-6)
+	assert_float(settings.wave_growth).is_equal_approx(1.25, 1e-6)
 	assert_float(settings.hp_growth).is_equal_approx(1.05, 1e-6)
 	assert_float(settings.spawn_rate).is_equal_approx(10.0, 1e-6)
 	assert_float(settings.second_edge_chance).is_equal_approx(0.5, 1e-6)

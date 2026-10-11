@@ -68,6 +68,22 @@ func test_a_different_seed_gives_different_positions() -> void:
 	)
 
 
+func test_enemies_walk_over_no_build_cells_to_the_base() -> void:
+	var rows: Array[String] = []
+	for y in 16:
+		rows.append("::::::::::::::::" if y < 6 else "................")
+	var edges: Array[String] = ["N"]
+	var map := TestMaps.from_rows(rows, Rect2i(7, 13, 2, 2), edges)
+	var sim := Simulation.new(Settings.load_file(Settings.DEFAULTS_PATH).settings, map, 1)
+	var start_hp := sim.run_state.base_hp
+
+	sim.queue_command(Commands.NextWave.new())
+	for tick in 600:
+		sim.tick()
+
+	assert_float(sim.run_state.base_hp).is_less(start_hp)
+
+
 func _enemy_positions_after_wave_start(run_seed: int) -> PackedVector2Array:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 	var rows: Array[String] = []

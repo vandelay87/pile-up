@@ -5,6 +5,8 @@ const VERSION := 1
 const MAX_SIZE := 150
 const CLEAR := "."
 const ROCK := "#"
+## Clear ground that enemies walk on but nothing can be built on.
+const NO_BUILD := ":"
 const EDGES: Array[String] = ["N", "E", "S", "W"]
 
 var width: int:
@@ -22,10 +24,14 @@ var spawn_edges: PackedStringArray:
 var rock: PackedByteArray:
 	get:
 		return _rock
+var no_build: PackedByteArray:
+	get:
+		return _no_build
 
 var _width: int
 var _height: int
 var _rock: PackedByteArray
+var _no_build: PackedByteArray
 var _base: Rect2i
 var _spawn_edges: PackedStringArray
 var _spawn_cells := {}
@@ -48,10 +54,12 @@ func _init(
 	rock: PackedByteArray,
 	base_rect: Rect2i,
 	edges: PackedStringArray,
+	no_build_cells: PackedByteArray,
 ) -> void:
 	_width = map_width
 	_height = map_height
 	_rock = rock
+	_no_build = no_build_cells
 	_base = base_rect
 	_spawn_edges = edges
 	var reaches_base := _cells_reaching_base()
@@ -95,7 +103,8 @@ static func from_json(text: String) -> LoadResult:
 	if not errors.is_empty():
 		return _failure(errors)
 
-	var rock := _parse_rock(rows, map_width, map_height, errors)
+	var no_build_cells := PackedByteArray()
+	var rock := _parse_cells(rows, map_width, map_height, no_build_cells, errors)
 	if not errors.is_empty():
 		return _failure(errors)
 
@@ -103,7 +112,7 @@ static func from_json(text: String) -> LoadResult:
 	if not errors.is_empty():
 		return _failure(errors)
 
-	var map := MapData.new(map_width, map_height, rock, base_rect, edges)
+	var map := MapData.new(map_width, map_height, rock, base_rect, edges, no_build_cells)
 	for edge in edges:
 		if map.spawn_cells(edge).is_empty():
 			errors.append("spawn_edges: %s has no passable cell that reaches the base" % edge)
@@ -114,6 +123,10 @@ static func from_json(text: String) -> LoadResult:
 
 func is_rock(cell: Vector2i) -> bool:
 	return _rock[index_of(cell)] == 1
+
+
+func is_no_build(cell: Vector2i) -> bool:
+	return _no_build[index_of(cell)] == 1
 
 
 func is_base(cell: Vector2i) -> bool:
@@ -195,14 +208,20 @@ static func _failure(errors: PackedStringArray) -> LoadResult:
 	return LoadResult.new(null, "\n".join(errors))
 
 
-static func _parse_rock(
-	rows: PackedStringArray, map_width: int, map_height: int, errors: PackedStringArray
+## Returns the rock mask and fills `no_build_cells` with the no-build mask.
+static func _parse_cells(
+	rows: PackedStringArray,
+	map_width: int,
+	map_height: int,
+	no_build_cells: PackedByteArray,
+	errors: PackedStringArray,
 ) -> PackedByteArray:
 	var rock := PackedByteArray()
 	if rows.size() != map_height:
 		errors.append("rows: %d rows, expected %d" % [rows.size(), map_height])
 		return rock
 	rock.resize(map_width * map_height)
+	no_build_cells.resize(map_width * map_height)
 	for y in map_height:
 		var row := rows[y]
 		if row.length() != map_width:
@@ -212,6 +231,8 @@ static func _parse_rock(
 			match row[x]:
 				ROCK:
 					rock[y * map_width + x] = 1
+				NO_BUILD:
+					no_build_cells[y * map_width + x] = 1
 				CLEAR:
 					pass
 				_:
