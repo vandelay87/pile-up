@@ -343,15 +343,20 @@ func _distance_to_cell(pos: Vector2, index: int) -> float:
 	return pos.distance_to(pos.clamp(corner, corner + Vector2.ONE))
 
 
+# Pushes from overlapping peers are averaged: summed, they overcorrect in a packed crowd and
+# the enemy steps back and forth every tick. A walker takes the doubled push of each attacker
+# in full, so the crowd cannot squeeze attackers off their targets.
 func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 	var spacing := 2.0 * radius
 	var spacing_squared := spacing * spacing
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
-	var holding := structure_targets[i] != NONE
+	var attacking := structure_targets[i] != NONE
 	var checked := 0
-	var total := Vector2.ZERO
+	var from_peers := Vector2.ZERO
+	var peers := 0
+	var from_attackers := Vector2.ZERO
 	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
 		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, width)):
 			var bucket := y * width + x
@@ -360,20 +365,27 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 				if j == i:
 					continue
 				if cap > 0 and checked == cap:
-					return total
+					return _separation_total(from_peers, peers, from_attackers)
 				checked += 1
 				var away := pos - positions[j]
 				if away.length_squared() >= spacing_squared:
 					continue
-				var share := 1.0
-				if structure_targets[j] != NONE and not holding:
-					share = 2.0
-				elif holding and structure_targets[j] == NONE:
+				var other_attacking := structure_targets[j] != NONE
+				if attacking and not other_attacking:
 					continue
 				var distance := away.length()
 				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
-				total += direction * (spacing - distance) * push * share
-	return total
+				var shove := direction * (spacing - distance) * push
+				if other_attacking and not attacking:
+					from_attackers += shove * 2.0
+				else:
+					from_peers += shove
+					peers += 1
+	return _separation_total(from_peers, peers, from_attackers)
+
+
+func _separation_total(from_peers: Vector2, peers: int, from_attackers: Vector2) -> Vector2:
+	return from_peers / maxi(peers, 1) + from_attackers
 
 
 # A soft push that keeps neighbours a personal-space radius apart, wider than the
