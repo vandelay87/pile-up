@@ -8,7 +8,7 @@ signal gold_changed(gold: int)
 signal base_hp_changed(hp: float)
 signal kills_changed(kills: int)
 signal enemies_left_changed(left: int)
-signal combo_changed(tier: int)
+signal combo_events(events: Array[Combos.Event])
 signal payout(amount: int, tier: int)
 signal building_placed(id: int)
 signal building_destroyed(id: int)
@@ -51,6 +51,7 @@ var enemies: Enemies
 var waves: Waves
 var buildings: Buildings
 var run_state: RunState
+var combos: Combos
 var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
@@ -61,9 +62,6 @@ var speed := 1
 var tick_cost := TickCost.new()
 ## The deaths the last removal step took, read-only.
 var deaths := Deaths.new()
-var combo_tier: int:
-	get:
-		return run_state.combo_tier
 var enemies_left: int:
 	get:
 		return waves.enemies_left
@@ -83,7 +81,6 @@ var _restart_requested := false
 var _reported_gold: int
 var _reported_base_hp: float
 var _reported_kills := 0
-var _reported_combo_tier := 1
 var _payout_was_multiplied := false
 var _reported_enemies_left: int
 var _wave_ended := false
@@ -98,6 +95,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
 	run_state = RunState.new(settings)
+	combos = Combos.new(settings)
 	power_grid = PowerGrid.new(settings, map)
 	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
 	repair_yards = RepairYards.new(settings, buildings)
@@ -283,9 +281,9 @@ func _emit_signals() -> void:
 		_reported_kills = run_state.kills
 		kills_changed.emit(_reported_kills)
 	_emit_enemies_left()
-	if run_state.combo_tier != _reported_combo_tier:
-		_reported_combo_tier = run_state.combo_tier
-		combo_changed.emit(_reported_combo_tier)
+	var events := combos.take_events()
+	if not events.is_empty():
+		combo_events.emit(events)
 	if _payout_was_multiplied:
 		_payout_was_multiplied = false
 		payout.emit(run_state.payout, run_state.payout_tier)
@@ -410,7 +408,10 @@ func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	deaths = enemies.remove_dead()
 	piles.queue_bodies(deaths)
-	run_state.record_kills(deaths, tick_count)
+	for id in buildings.pending_destroyed():
+		combos.remove(id)
+	combos.expire(tick_count)
+	run_state.pay(deaths, combos, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
 	waves.record_kills(deaths.size())
 

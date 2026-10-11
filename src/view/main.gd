@@ -27,6 +27,7 @@ var _map: MapData
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
+@onready var _combo_view: ComboView = $ComboView
 
 
 func _ready() -> void:
@@ -70,7 +71,8 @@ func _start_run(simulation: Simulation) -> void:
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
-	_hud.setup(_simulation, _selection)
+	_combo_view.setup(_simulation)
+	_hud.setup(_simulation, _selection, _combo_view)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
 	_drone_view.setup(_simulation)

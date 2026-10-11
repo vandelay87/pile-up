@@ -47,14 +47,21 @@ func has_selection() -> bool:
 func details() -> Array[String]:
 	if _simulation == null or not has_selection():
 		return []
-	var building := _selected_building()
+	var building := selected_building()
 	if not _base and building == null:
 		return []
 	return _base_stats() if _base else _building_stats(building)
 
 
+## The selected building, or null for none or the base.
+func selected_building() -> Buildings.Building:
+	if _simulation == null or _building_id == Occupancy.EMPTY:
+		return null
+	return _simulation.buildings.building(_building_id)
+
+
 func is_yard_selected() -> bool:
-	var building := _selected_building()
+	var building := selected_building()
 	return building != null and building.kind == Buildings.REPAIR_YARD
 
 
@@ -101,7 +108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if _simulation == null or not has_selection():
 		return
-	var building := _selected_building()
+	var building := selected_building()
 	if not _base and building == null:
 		clear()
 		return
@@ -131,12 +138,6 @@ func _assign_at(cell: Vector2i) -> void:
 		_simulation.queue_command(Commands.Assign.new(_building_id, target))
 
 
-func _selected_building() -> Buildings.Building:
-	if _building_id == Occupancy.EMPTY:
-		return null
-	return _simulation.buildings.building(_building_id)
-
-
 func _building_stats(building: Buildings.Building) -> Array[String]:
 	var settings := _simulation.settings
 	var fire_rate: float = settings.value("towers", "fire_rate")
@@ -151,10 +152,29 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 			lines.append("Shots/s %s" % _number(fire_rate))
 			lines.append("Range %s" % _number(settings.tower_range))
 			lines.append("Kills %d" % building.kills)
+			lines.append_array(_combo_stats(building))
 		Buildings.PYLON:
 			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
 			lines.append_array(_yard_stats(building))
+	return lines
+
+
+# Tier and count, the next tier's threshold, time left on the timer and the best this run.
+func _combo_stats(building: Buildings.Building) -> Array[String]:
+	var combos := _simulation.combos
+	var combo := combos.combo(building.id)
+	var count := 0 if combo == null else combo.count
+	var tier := 1 if combo == null else combo.tier
+	var next := combos.next_threshold(tier)
+	var ticks := combos.ticks_left(building.id, _simulation.tick_count)
+	var seconds := float(ticks) / Simulation.TICKS_PER_SECOND
+	var lines: Array[String] = [
+		"Combo x%d, %d kills" % [tier, count],
+		"Next x%d at %d" % [tier + 1, next] if next >= 0 else "Top tier",
+		"Timer %.1f s" % seconds,
+		"Best x%d" % (1 if combo == null else combo.best),
+	]
 	return lines
 
 
@@ -202,7 +222,7 @@ func _draw() -> void:
 		_outline_cells(_simulation.map.base)
 		PowerGridDrawing.outline(self, grid.base_area(), POWER_AREA, 2.0)
 		return
-	var building := _selected_building()
+	var building := selected_building()
 	if building == null:
 		return
 	_outline_cells(Rect2i(building.origin, Buildings.footprint_size(building.kind)))

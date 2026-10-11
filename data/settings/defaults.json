@@ -66,14 +66,16 @@
 		"drone_speed": 8,
 		"repair_rate": 5
 	},
+	"combo": {
+		"timer": 2,
+		"tier_2_kills": 10,
+		"tier_3_kills": 25,
+		"cap": 3
+	},
 	"run": {
 		"base_hp": 200,
 		"starting_gold": 200,
 		"base_power_area": 10,
-		"combo_window": 2,
-		"combo_tier_2_kills": 10,
-		"combo_tier_3_kills": 20,
-		"combo_cap": 3,
 		"map_path": "res://data/maps/v3-flared.json"
 	},
 	"view": {

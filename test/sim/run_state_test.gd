@@ -19,7 +19,8 @@ func test_a_run_starts_with_200_base_hp_and_200_gold_at_wave_0() -> void:
 func test_a_kill_adds_the_bounty() -> void:
 	_settings.change("enemies", "bounty", 3)
 
-	_run.record_kills(Deaths.bodies_at(PackedVector2Array([Vector2.ZERO, Vector2.ZERO])), 0)
+	var deaths := Deaths.bodies_at(PackedVector2Array([Vector2.ZERO, Vector2.ZERO]))
+	_run.pay(deaths, Combos.new(_settings), 0)
 
 	assert_int(_run.gold).is_equal(206)
 

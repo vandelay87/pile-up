@@ -504,6 +504,45 @@ const SCHEMA := {
 			"apply": Apply.LIVE,
 		},
 	},
+	"combo":
+	{
+		"timer":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 10.0,
+			"step": 0.5,
+			"unit": "s from a kill until the combo breaks",
+			"apply": Apply.LIVE,
+		},
+		"tier_2_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in a combo for x2",
+			"apply": Apply.LIVE,
+		},
+		"tier_3_kills":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 500,
+			"step": 1,
+			"unit": "kills in a combo for x3",
+			"apply": Apply.LIVE,
+		},
+		"cap":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 3,
+			"step": 1,
+			"unit": "highest combo tier",
+			"apply": Apply.LIVE,
+		},
+	},
 	"run":
 	{
 		"base_hp":
@@ -531,42 +570,6 @@ const SCHEMA := {
 			"max": 50,
 			"step": 1,
 			"unit": "cells from the base",
-			"apply": Apply.LIVE,
-		},
-		"combo_window":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 10.0,
-			"step": 0.5,
-			"unit": "s of kills counted",
-			"apply": Apply.LIVE,
-		},
-		"combo_tier_2_kills":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in the window for x2",
-			"apply": Apply.LIVE,
-		},
-		"combo_tier_3_kills":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in the window for x3",
-			"apply": Apply.LIVE,
-		},
-		"combo_cap":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 3,
-			"step": 1,
-			"unit": "highest combo tier",
 			"apply": Apply.LIVE,
 		},
 		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
@@ -704,19 +707,19 @@ var second_edge_chance: float:
 	get:
 		var percent: int = value("waves", "second_edge_chance")
 		return percent / 100.0
-var combo_window_ticks: int:
+var combo_timer_ticks: int:
 	get:
-		var seconds: float = value("run", "combo_window")
+		var seconds: float = value("combo", "timer")
 		return ticks_from_seconds(seconds)
 var combo_tier_2_kills: int:
 	get:
-		return value("run", "combo_tier_2_kills")
+		return value("combo", "tier_2_kills")
 var combo_tier_3_kills: int:
 	get:
-		return value("run", "combo_tier_3_kills")
+		return value("combo", "tier_3_kills")
 var combo_cap: int:
 	get:
-		return value("run", "combo_cap")
+		return value("combo", "cap")
 var tower_damage: float:
 	get:
 		return value("towers", "damage")
