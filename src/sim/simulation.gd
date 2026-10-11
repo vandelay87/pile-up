@@ -208,8 +208,18 @@ func request_restart() -> void:
 	_restart_requested = true
 
 
+## A fresh run with the pending restart settings. A changed map path loads that map; if it
+## won't load, the run keeps this one.
 func next_run(new_seed: int) -> Simulation:
-	return Simulation.new(settings.for_next_run(), map, new_seed)
+	var next_settings := settings.for_next_run()
+	var next_map := map
+	if next_settings.map_path != settings.map_path:
+		var loaded := MapData.load_file(next_settings.map_path)
+		if loaded.map == null:
+			push_error(loaded.error)
+		else:
+			next_map = loaded.map
+	return Simulation.new(next_settings, next_map, new_seed)
 
 
 func set_paused(value: bool) -> void:

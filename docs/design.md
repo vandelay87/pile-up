@@ -19,6 +19,8 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Isometric view with pan and zoom. The map is roughly 1.5–2 screens wide at default zoom.
 - Central base with 200 HP. Enemies attack it at its edge, and the run ends when it is destroyed.
 - Each wave spawns from 1–2 random map edges, announced at the start of the wave.
+- From the pressure prototype, the map's routes **flare out** towards the spawn edges: wide mouths that funnel down towards the base, so a big wave arrives spread out and packs tighter as it nears the base. Small pockets beside the chokepoints give an overflow room to spill into.
+- **No-build margin:** nothing can be built within 6 cells of a spawn edge. Enemies still walk there, but the power grid can never reach the spawn mouths. The margin is tinted while a building is being placed.
 - A fine logical grid sits underneath the isometric rendering. A tower occupies 2×2 cells and a pile occupies 1 cell. Enemies move smoothly, not tile to tile.
 - Art: plain coloured shapes. Pile height must read instantly, as stacked blocks that darken with each level.
 
