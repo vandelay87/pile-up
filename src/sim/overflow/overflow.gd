@@ -4,12 +4,15 @@ extends RefCounted
 ## Crushes. Every barrier, a connected stretch (8-way) of wall and building cells, has a label,
 ## and the clear and pile cells within the band of it belong to it. Enemies stalled in a
 ## barrier's band fill its gauge, which leaks; above the start reading the crush is active, with
-## a tier.
+## a tier. While it has a tier it sends its front rank tumbling over the barrier at the tier's
+## rate, each tumble taking some pressure off.
 
 enum Tier { NONE, TRICKLE, STREAM, SURGE }
 
 const NONE := -1
 const _UNREACHED := 255
+# How many cells the direct field's chain may run before it reaches the barrier it crosses.
+const _MAX_LEAD_IN := 2
 const _NEIGHBOURS: Array[Vector2i] = [
 	Vector2i(-1, -1),
 	Vector2i(0, -1),
@@ -28,6 +31,8 @@ var _settings: Settings
 var _map: MapData
 var _structures: Structures
 var _enemies: Enemies
+var _routing: Routing
+var _rng: RandomNumberGenerator
 # Barrier label per cell, or NONE.
 var _labels := PackedInt32Array()
 # The label of the barrier whose band each cell is in, or NONE, and its steps from that barrier.
@@ -35,6 +40,8 @@ var _band_labels := PackedInt32Array()
 var _band_steps := PackedByteArray()
 var _next_label := 0
 var _crushes: Dictionary[int, Crush] = {}
+# Every tumble in flight, by enemy id.
+var _tumbles: Dictionary[int, Tumble] = {}
 
 
 ## One barrier's gauge, and the stalled enemies filling it this tick.
@@ -48,6 +55,12 @@ class Crush:
 	var stalled := 0
 	## The mean position of its stalled enemies; kept from the last tick that had any.
 	var centre := Vector2.ZERO
+	## Tumbles banked towards the next launch.
+	var credit := 0.0
+	## The enemies (by index) in its front rank this tick that aren't attacking, and those that
+	## are, gathered before any launch.
+	var front_free := PackedInt32Array()
+	var front_attacking := PackedInt32Array()
 	var _centre_sum := Vector2.ZERO
 
 	func _init(crush_label: int) -> void:
@@ -56,6 +69,8 @@ class Crush:
 	func clear_stalled() -> void:
 		stalled = 0
 		_centre_sum = Vector2.ZERO
+		front_free.clear()
+		front_attacking.clear()
 
 	func add_stalled(pos: Vector2) -> void:
 		stalled += 1
@@ -63,13 +78,41 @@ class Crush:
 		centre = _centre_sum / stalled
 
 
+## One enemy's way over a barrier: the cells it crosses, ending on the one it lands on, and the
+## next one it is heading for.
+class Tumble:
+	extends RefCounted
+
+	## The centre of each cell on the way.
+	var path := PackedVector2Array()
+	## The cells on the way, in order.
+	var cells: Array[Vector2i] = []
+	## The index in [member path] of the point it is heading for.
+	var next := 0
+
+	func add(cell: Vector2i) -> void:
+		cells.append(cell)
+		path.append(Vector2(cell) + Vector2(0.5, 0.5))
+
+	## The cell it lands on.
+	func landing() -> Vector2i:
+		return cells[-1]
+
+
 func _init(
-	run_settings: Settings, run_map: MapData, run_structures: Structures, run_enemies: Enemies
+	run_settings: Settings,
+	run_map: MapData,
+	run_structures: Structures,
+	run_enemies: Enemies,
+	run_routing: Routing,
+	rng: RandomNumberGenerator,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_structures = run_structures
 	_enemies = run_enemies
+	_routing = run_routing
+	_rng = rng
 	var size := _map.width * _map.height
 	_labels.resize(size)
 	_labels.fill(NONE)
@@ -152,10 +195,22 @@ func band_label(cell: Vector2i) -> int:
 	return _band_labels[_map.index_of(cell)]
 
 
-## Fills and leaks each gauge from the enemies stalled in its band this tick.
+## True while the enemy with id [param id] is tumbling.
+func is_tumbling(id: int) -> bool:
+	return _tumbles.has(id)
+
+
+## The tumble the enemy with id [param id] is on, or null.
+func tumble(id: int) -> Tumble:
+	return _tumbles.get(id)
+
+
+## Fills and leaks each gauge from the enemies stalled in its band this tick, launches each
+## crush's tumbles, then moves every tumbling enemy. Switched off, only tumbles in flight go on.
 func step() -> void:
 	if not _settings.overflow_enabled:
 		_crushes.clear()
+		_move_tumblers()
 		return
 	_gather()
 	var dt := 1.0 / Simulation.TICKS_PER_SECOND
@@ -170,8 +225,12 @@ func step() -> void:
 		elif crush.active and crush.gauge < _settings.crush_end:
 			crush.active = false
 		crush.tier = _tier_of(crush)
+		_launch(crush, dt)
+		# Relief may have taken the gauge below its tier.
+		crush.tier = _tier_of(crush)
 		if crush.gauge <= 0.0 and not crush.active:
 			_crushes.erase(label)
+	_move_tumblers()
 
 
 func _tier_of(crush: Crush) -> Tier:
@@ -186,14 +245,194 @@ func _tier_of(crush: Crush) -> Tier:
 	return Tier.NONE
 
 
+func _rate_of(tier: Tier) -> float:
+	match tier:
+		Tier.TRICKLE:
+			return _settings.trickle_rate
+		Tier.STREAM:
+			return _settings.stream_rate
+		Tier.SURGE:
+			return _settings.surge_rate
+	return 0.0
+
+
+# Banks the crush's tier rate, launching a tumble for each whole credit: front-rank enemies
+# that aren't attacking, picked at random, or its attackers when every front enemy attacks.
+# One whose tumble can't be planned is skipped. Credit waiting on a front rank that can't go
+# is held at one launch.
+func _launch(crush: Crush, dt: float) -> void:
+	var rate := _rate_of(crush.tier)
+	if rate <= 0.0:
+		crush.credit = 0.0
+		return
+	crush.credit += rate * dt
+	var pool := crush.front_free if not crush.front_free.is_empty() else crush.front_attacking
+	pool = pool.duplicate()
+	while crush.credit >= 1.0:
+		var launched := false
+		while not launched and not pool.is_empty():
+			var k := _rng.randi_range(0, pool.size() - 1)
+			launched = _start_tumble(pool[k])
+			pool.remove_at(k)
+		if not launched:
+			crush.credit = 1.0
+			return
+		crush.credit -= 1.0
+		crush.gauge = maxf(crush.gauge - _settings.tumble_relief, 0.0)
+
+
+# Starts the enemy at [param i] tumbling, unless its tumble can't be planned.
+func _start_tumble(i: int) -> bool:
+	var planned := _plan_straight(i)
+	if planned == null:
+		planned = _plan_along_direct(i)
+	if planned == null:
+		return false
+	_enemies.start_tumble(i)
+	_tumbles[_enemies.ids[i]] = planned
+	return true
+
+
+# Straight over the wall or building cell the enemy touches that faces most nearly towards the
+# base by the direct field, in one of 8 directions, to the first cell it can land on along that
+# line. Null when nothing it touches faces forwards, or the line hits rock or the map's edge.
+func _plan_straight(i: int) -> Tumble:
+	var pos := _enemies.positions[i]
+	var cell := Vector2i(pos.floor())
+	var heading := _routing.sample_direction(Routing.Route.DIRECT, pos)
+	var reach := _settings.separation_radius + _settings.wall_reach
+	var best := Vector2i.ZERO
+	var best_facing := 0.0
+	for offset in _NEIGHBOURS:
+		var touched := cell + offset
+		if not _map.in_bounds(touched) or not _structures.is_breakable(_map.index_of(touched)):
+			continue
+		if _distance_to_square(pos, touched) > reach:
+			continue
+		var facing := Vector2(offset).normalized().dot(heading)
+		if facing > best_facing:
+			best_facing = facing
+			best = offset
+	if best == Vector2i.ZERO:
+		return null
+	var planned := Tumble.new()
+	var at := cell + best
+	while _map.in_bounds(at):
+		var index := _map.index_of(at)
+		if _map.rock[index] == 1:
+			return null
+		if _structures.is_base(index):
+			return _end_beside_base(planned, at)
+		planned.add(at)
+		if _can_land(index):
+			return planned
+		at += best
+	return null
+
+
+# Down the direct field's chain from the enemy, over the barrier it meets within a couple of
+# cells, to the first cell it can land on. Null when the chain crosses no barrier.
+func _plan_along_direct(i: int) -> Tumble:
+	var parents := _routing.parents(Routing.Route.DIRECT)
+	var cell := _map.index_of(Vector2i(_enemies.positions[i].floor()))
+	var planned := Tumble.new()
+	var crossed := false
+	for _step in parents.size():
+		var next := parents[cell]
+		if next < 0:
+			return null
+		var at := _map.cell_of(next)
+		if _structures.is_base(next):
+			return _end_beside_base(planned, at) if crossed else null
+		planned.add(at)
+		if _structures.is_breakable(next):
+			crossed = true
+		elif crossed:
+			if _can_land(next):
+				return planned
+		elif planned.cells.size() > _MAX_LEAD_IN:
+			return null
+		cell = next
+	return null
+
+
+# Clear or a pile, and not crowded; the caller has ruled out rock and the base.
+func _can_land(index: int) -> bool:
+	return (
+		not _structures.is_breakable(index)
+		and _enemies.count_in_cell(index) < _settings.landing_crowd
+	)
+
+
+# Ends [param planned] on the free cell beside the base nearest [param reached], the base cell
+# it got to, ties to the lower row then column. Null when the base has no free cell beside it.
+# A free cell is clear or a pile, and not crowded.
+func _end_beside_base(planned: Tumble, reached: Vector2i) -> Tumble:
+	var ring := _map.base.grow(1)
+	var best := Vector2i(-1, -1)
+	var best_distance := INF
+	for y in range(ring.position.y, ring.end.y):
+		for x in range(ring.position.x, ring.end.x):
+			var beside := Vector2i(x, y)
+			if not _map.in_bounds(beside):
+				continue
+			var index := _map.index_of(beside)
+			if _map.rock[index] == 1 or _structures.is_base(index) or not _can_land(index):
+				continue
+			var distance := Vector2(reached).distance_squared_to(Vector2(beside))
+			if distance < best_distance:
+				best_distance = distance
+				best = beside
+	if best_distance == INF:
+		return null
+	planned.add(best)
+	return planned
+
+
+# Moves each tumbling enemy along its path at the tumble speed, ignoring slow, collision and
+# structures. One that reaches its path's end lands. The dead stay where they fell until removal.
+func _move_tumblers() -> void:
+	var speed := _settings.tumble_speed
+	for id: int in _tumbles.keys():
+		var i := _enemies.index_of(id)
+		if i == Enemies.NONE:
+			_tumbles.erase(id)
+			continue
+		if not _enemies.is_alive(i):
+			continue
+		var tumbling: Tumble = _tumbles[id]
+		var kind := _enemies.kinds[i] as Enemies.Kind
+		var budget := _settings.enemy_speed_per_tick_of(kind) * _enemies.pace(i) * speed
+		var pos := _enemies.positions[i]
+		while budget > 0.0 and tumbling.next < tumbling.path.size():
+			var target := tumbling.path[tumbling.next]
+			var gap := pos.distance_to(target)
+			if gap > budget:
+				pos += (target - pos) / gap * budget
+				budget = 0.0
+			else:
+				pos = target
+				budget -= gap
+				tumbling.next += 1
+		_enemies.positions[i] = pos
+		if tumbling.next == tumbling.path.size():
+			_tumbles.erase(id)
+			_enemies.land(i)
+
+
+# Counts each band's stalled enemies, and sorts those within an attacker's reach of the band's
+# barrier into its front rank. Tumbling enemies count towards nothing.
 func _gather() -> void:
 	for crush: Crush in _crushes.values():
 		crush.clear_stalled()
 	var stall := _settings.stall_progress
+	var reach := _settings.separation_radius + _settings.wall_reach
 	var positions := _enemies.positions
 	var progress := _enemies.progress
+	var tumbling := _enemies.tumbling
+	var targets := _enemies.structure_targets
 	for i in _enemies.count:
-		if not _enemies.is_alive(i) or progress[i] >= stall:
+		if not _enemies.is_alive(i) or progress[i] >= stall or tumbling[i] == 1:
 			continue
 		var pos := positions[i]
 		var label := _band_labels[int(pos.y) * _map.width + int(pos.x)]
@@ -204,6 +443,28 @@ func _gather() -> void:
 			crush = Crush.new(label)
 			_crushes[label] = crush
 		crush.add_stalled(pos)
+		if not _touches_barrier(pos, label, reach):
+			continue
+		if targets[i] == Enemies.NONE:
+			crush.front_free.append(i)
+		else:
+			crush.front_attacking.append(i)
+
+
+func _touches_barrier(pos: Vector2, label: int, reach: float) -> bool:
+	var cell := Vector2i(pos.floor())
+	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
+		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
+			if _labels[y * _map.width + x] != label:
+				continue
+			if _distance_to_square(pos, Vector2i(x, y)) <= reach:
+				return true
+	return false
+
+
+static func _distance_to_square(pos: Vector2, cell: Vector2i) -> float:
+	var corner := Vector2(cell)
+	return pos.distance_to(pos.clamp(corner, corner + Vector2.ONE))
 
 
 # Each new barrier (by index into [param barriers]) gets the old label it overlaps most. Pairs are

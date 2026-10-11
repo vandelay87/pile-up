@@ -338,6 +338,60 @@ const SCHEMA := {
 			"unit": "gauge",
 			"apply": Settings.Apply.LIVE,
 		},
+		"trickle_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "enemies tumbling per s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"stream_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "enemies tumbling per s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"surge_rate":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "enemies tumbling per s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"relief":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "gauge per tumble",
+			"apply": Settings.Apply.LIVE,
+		},
+		"tumble_speed":
+		{
+			"type": TYPE_INT,
+			"min": 10,
+			"max": 500,
+			"step": 10,
+			"unit": "percent of walking speed",
+			"apply": Settings.Apply.LIVE,
+		},
+		"landing_crowd":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 50,
+			"step": 1,
+			"unit": "enemies in a cell that stop a tumble landing on it",
+			"apply": Settings.Apply.LIVE,
+		},
 	},
 	"routing":
 	{

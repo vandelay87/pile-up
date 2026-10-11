@@ -5,6 +5,9 @@ const TINT := Color(0.85, 0.3, 0.3)
 const DIRECT_TINT := Color(0.95, 0.8, 0.2)
 const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
+# Tumbling enemies are drawn raised above a wall's top, and tinted.
+const TUMBLE_TINT := Color(1.0, 0.55, 0.15)
+const TUMBLE_LIFT_LEVELS := 6.0
 
 var _enemies: Enemies
 var _piles: Piles
@@ -18,6 +21,7 @@ var _shown := 0
 var _flash_ends := {}
 var _flashed_items: Array[RID] = []
 var _route_tint := false
+var _tumble_tinted: Array[RID] = []
 
 
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
@@ -53,10 +57,14 @@ func _process(_delta: float) -> void:
 	_shown = count
 
 	var positions := _enemies.positions
+	var tumbling := _enemies.tumbling
+	var tumble_lift := TUMBLE_LIFT_LEVELS * Atlas.PILE_SLAB_HEIGHT
 	for i in count:
 		var foot := GridTransform.grid_to_world(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, foot))
 		var lift := _lift_at(positions[i])
+		if tumbling[i] == 1:
+			lift = maxf(lift, tumble_lift)
 		if lift != _lifts[i]:
 			_lifts[i] = lift
 			RenderingServer.canvas_item_set_transform(
@@ -84,6 +92,9 @@ func _lift_at(pos: Vector2) -> float:
 
 
 func _draw_tints(count: int) -> void:
+	for item in _tumble_tinted:
+		RenderingServer.canvas_item_set_modulate(item, TINT)
+	_tumble_tinted.clear()
 	if _route_tint:
 		var routes := _enemies.routes
 		for i in count:
@@ -93,6 +104,11 @@ func _draw_tints(count: int) -> void:
 		for item in _flashed_items:
 			RenderingServer.canvas_item_set_modulate(item, TINT)
 	_flashed_items.clear()
+	var tumbling := _enemies.tumbling
+	for i in count:
+		if tumbling[i] == 1:
+			RenderingServer.canvas_item_set_modulate(_items[i], TUMBLE_TINT)
+			_tumble_tinted.append(_items[i])
 	var now := Time.get_ticks_msec()
 	for id: int in _flash_ends.keys():
 		var index := _enemies.index_of(id)

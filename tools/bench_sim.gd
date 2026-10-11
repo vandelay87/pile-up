@@ -5,7 +5,8 @@
 # PYLON_INTERVAL ticks its first pylon is destroyed (cutting the branch off) or rebuilt, so power is
 # recomputed. A wave runs throughout, so two repair yards beside the base send their drones to the
 # crowd's ring of towers, which the crowd attacks; every REBUILD_INTERVAL ticks any broken tower or
-# yard is built again where it can be. Exits non-zero when either check fails.
+# yard is built again where it can be. The crowd stalls against the towers until their crushes
+# overflow at a surge, so enemies tumble over the ring. Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
 
@@ -35,6 +36,9 @@ class RunResult:
 	var digest: int
 	## Ticks each drone spent repairing, summed over the drones.
 	var repair_ticks := 0
+	## Ticks with a crush at a surge, and the enemies that started tumbling.
+	var surge_ticks := 0
+	var tumbles := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -59,10 +63,14 @@ func _init() -> void:
 	print("Tick mean %.2f ms, max %.2f ms (budget %.2f ms mean)" % [mean, worst, BUDGET_MSEC])
 
 	print("Drones spent %d drone-ticks repairing" % first.repair_ticks)
+	print("A crush surged for %d ticks; %d enemies tumbled" % [first.surge_ticks, first.tumbles])
 
 	var failed := false
 	if first.repair_ticks == 0:
 		printerr("No drone repaired anything")
+		failed = true
+	if first.surge_ticks == 0 or first.tumbles == 0:
+		printerr("No crush overflowed at a surge")
 		failed = true
 	if first.digest != second.digest:
 		printerr("Two runs with the same seed ended in different states")
@@ -80,6 +88,7 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	_build_yards(sim)
 	sim.queue_command(Commands.JumpToWave.new(WAVE))
 	var result := RunResult.new()
+	var tumbling: Dictionary[int, bool] = {}
 	for t in WARMUP_TICKS + MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
 		if t % PYLON_INTERVAL == PYLON_INTERVAL - 1:
@@ -97,8 +106,33 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 		for drone in sim.repair_yards.drones:
 			if drone.state == RepairYards.State.REPAIRING:
 				result.repair_ticks += 1
-	result.digest = hash([BenchCrowd.digest(sim), sim.power_grid.cells, _buildings_digest(sim)])
+		_count_overflow(sim, result, tumbling)
+	result.digest = hash(
+		[
+			BenchCrowd.digest(sim),
+			sim.power_grid.cells,
+			_buildings_digest(sim),
+			sim.enemies.tumbling.slice(0, sim.enemies.count),
+		]
+	)
 	return result
+
+
+# Counts a surge tick and each enemy that started tumbling; [param tumbling] holds the ids
+# tumbling at the last count.
+func _count_overflow(sim: Simulation, result: RunResult, tumbling: Dictionary[int, bool]) -> void:
+	for crush in sim.overflow.crushes():
+		if crush.tier == Overflow.Tier.SURGE:
+			result.surge_ticks += 1
+			break
+	var now: Dictionary[int, bool] = {}
+	for i in sim.enemies.count:
+		if sim.enemies.tumbling[i] == 1:
+			now[sim.enemies.ids[i]] = true
+			if not tumbling.has(sim.enemies.ids[i]):
+				result.tumbles += 1
+	tumbling.clear()
+	tumbling.merge(now)
 
 
 func _build_yards(sim: Simulation) -> void:

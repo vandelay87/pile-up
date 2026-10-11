@@ -146,6 +146,25 @@ var surge_at: float:
 var gauge_max: float:
 	get:
 		return value("overflow", "gauge_max")
+var trickle_rate: float:
+	get:
+		return value("overflow", "trickle_rate")
+var stream_rate: float:
+	get:
+		return value("overflow", "stream_rate")
+var surge_rate: float:
+	get:
+		return value("overflow", "surge_rate")
+var tumble_relief: float:
+	get:
+		return value("overflow", "relief")
+var tumble_speed: float:
+	get:
+		var percent: int = value("overflow", "tumble_speed")
+		return percent / 100.0
+var landing_crowd: int:
+	get:
+		return value("overflow", "landing_crowd")
 var wave_1_size: int:
 	get:
 		return value("waves", "wave_1_size")
