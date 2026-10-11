@@ -5,6 +5,7 @@ const WIDTH := 400.0
 const CHANGED_COLOUR := Color(1.0, 0.75, 0.3)
 const RESTART_COLOUR := Color(0.6, 0.6, 0.65)
 const ERROR_COLOUR := Color(1.0, 0.45, 0.4)
+const MAPS_DIR := "res://data/maps"
 
 var _simulation: Simulation
 var _file_settings: Settings
@@ -29,6 +30,7 @@ class Row:
 	var _type: int
 	var _range: Range
 	var _line_edit: LineEdit
+	var _choices: OptionButton
 
 	func _init(row_group: String, row_key: String, entry: Dictionary, initial: Variant) -> void:
 		group = row_group
@@ -37,7 +39,17 @@ class Row:
 		name_label.text = key.capitalize()
 		name_label.tooltip_text = entry["unit"]
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		if _type == TYPE_STRING:
+		if key == "map_path":
+			_choices = OptionButton.new()
+			_choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			for file in DirAccess.get_files_at(MAPS_DIR):
+				if file.ends_with(".json"):
+					_choices.add_item(file.get_basename())
+					_choices.set_item_metadata(_choices.item_count - 1, MAPS_DIR.path_join(file))
+			_select(initial)
+			_choices.item_selected.connect(func(_index: int) -> void: edited.emit())
+			editor.add_child(_choices)
+		elif _type == TYPE_STRING:
 			_line_edit = LineEdit.new()
 			_line_edit.text = initial
 			_line_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -59,16 +71,26 @@ class Row:
 			editor.add_child(field)
 
 	func value() -> Variant:
+		if _choices != null:
+			return _choices.get_selected_metadata()
 		if _line_edit != null:
 			return _line_edit.text
 		return type_convert(_range.value, _type)
 
 	func reset_to(file_value: Variant) -> void:
-		if _line_edit != null:
+		if _choices != null:
+			_select(file_value)
+			edited.emit()
+		elif _line_edit != null:
 			_line_edit.text = file_value
 			edited.emit()
 		else:
 			_range.value = file_value
+
+	func _select(path: Variant) -> void:
+		for index in _choices.item_count:
+			if _choices.get_item_metadata(index) == path:
+				_choices.select(index)
 
 	func highlight(file_value: Variant) -> void:
 		var changed: bool
@@ -76,7 +98,7 @@ class Row:
 			var file_number: float = file_value
 			changed = not is_equal_approx(_range.value, file_number)
 		else:
-			changed = _line_edit.text != file_value
+			changed = value() != file_value
 		if changed:
 			name_label.add_theme_color_override("font_color", CHANGED_COLOUR)
 		else:
@@ -142,6 +164,10 @@ func _add_time_controls() -> void:
 	step.text = "Step"
 	step.pressed.connect(func() -> void: _send(Commands.StepOneTick.new()))
 	row.add_child(step)
+	var restart := Button.new()
+	restart.text = "Restart"
+	restart.pressed.connect(func() -> void: _send(Commands.Restart.new()))
+	row.add_child(restart)
 	var speeds := ButtonGroup.new()
 	for speed in Simulation.SPEEDS:
 		var button := Button.new()

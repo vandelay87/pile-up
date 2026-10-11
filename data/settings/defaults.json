@@ -74,7 +74,7 @@
 		"combo_tier_2_kills": 10,
 		"combo_tier_3_kills": 20,
 		"combo_cap": 3,
-		"map_path": "res://data/maps/proto-flare-a-flare.json"
+		"map_path": "res://data/maps/v2-narrow.json"
 	},
 	"view": {
 		"tracer_speed": 60

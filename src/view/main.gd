@@ -82,7 +82,17 @@ func _start_run(simulation: Simulation) -> void:
 
 
 func _restart() -> void:
-	_start_run(_simulation.next_run(_new_seed()))
+	var settings := _simulation.settings.for_next_run()
+	if settings.map_path != _simulation.settings.map_path:
+		var loaded := MapData.load_file(settings.map_path)
+		if loaded.map == null:
+			push_error(loaded.error)
+		else:
+			_map = loaded.map
+			_draw_map(_map)
+			_camera.frame(_map)
+			_edge_highlight.setup(_map)
+	_start_run(Simulation.new(settings, _map, _new_seed()))
 
 
 func _new_seed() -> int:
@@ -113,6 +123,8 @@ func _draw_map(map: MapData) -> void:
 	_terrain.tile_set = tile_set
 	_base.tile_set = tile_set
 	_pile_layer.tile_set = tile_set
+	_terrain.clear()
+	_base.clear()
 	for y in map.height:
 		for x in map.width:
 			var cell := Vector2i(x, y)
