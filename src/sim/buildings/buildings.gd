@@ -20,6 +20,9 @@ const NOT_ENOUGH_GOLD := "not enough gold"
 const _REPAIR_SLACK := 1e-6
 
 var built: Array[Building] = []
+## The ids of the buildings under repair as of the last repair step, handed in by the tick driver
+## so a repair that starts on a tick stops its building from the next, whatever the build order.
+var under_repair: Dictionary[int, bool] = {}
 ## How many building cells are in each cell's 3x3 neighbourhood (row-major).
 var nearby := PackedByteArray()
 
@@ -198,6 +201,15 @@ func repair(id: int, amount: float) -> float:
 	return gained
 
 
+## Whether a building works: powered, and not under repair unless it is a pylon (a pylon under
+## repair keeps powering, so a repair never changes the grid).
+func is_working(id: int) -> bool:
+	var target := building(id)
+	if target == null or not target.powered:
+		return false
+	return target.kind == PYLON or not under_repair.has(id)
+
+
 func is_damaged(target: Building) -> bool:
 	return target.hp < max_hp(target.kind)
 
@@ -231,7 +243,7 @@ func take_destroyed() -> Array[int]:
 func fire(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for tower in built:
-		if tower.kind != TOWER or not tower.powered:
+		if tower.kind != TOWER or not is_working(tower.id):
 			continue
 		if tower.cooldown > 0:
 			tower.cooldown -= 1

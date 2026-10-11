@@ -332,10 +332,15 @@ func test_hp_repaired_adds_up_over_trips() -> void:
 	assert_float(drone.repaired).is_equal_approx(25.0, 0.001)
 
 
-func _build(kind: StringName, origin: Vector2i) -> Buildings.Building:
+# Yards repair any damage unless a test sets their threshold, so small hits start trips.
+func _build(kind: StringName, origin: Vector2i, threshold := 100) -> Buildings.Building:
 	_sim.queue_command(Commands.Build.new(kind, origin))
 	_sim.tick()
-	return _sim.buildings.building(_sim.occupancy.building_at(origin))
+	var built := _sim.buildings.building(_sim.occupancy.building_at(origin))
+	if kind == Buildings.REPAIR_YARD:
+		_sim.queue_command(Commands.SetRepairThreshold.new(built.id, threshold))
+		_sim.tick()
+	return built
 
 
 func _start_wave() -> void:

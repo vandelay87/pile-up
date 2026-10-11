@@ -6,8 +6,8 @@ extends Node2D
 ## HUD reads its details each frame. Clicking empty ground or Esc clears it; a destroyed
 ## building clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
 ## A selected repair yard can be put in assign mode (the next click on a building in its
-## repair area becomes its assignment; Esc cancels) or have its assignment cleared; both queue
-## commands.
+## repair area becomes its assignment; Esc cancels), have its assignment cleared or its repair
+## threshold set; each queues a command.
 
 const OUTLINE := Color(1.0, 1.0, 1.0, 0.9)
 const RANGE := Color(1.0, 0.9, 0.4, 0.8)
@@ -78,6 +78,18 @@ func clear_assignment() -> void:
 		_simulation.queue_command(Commands.ClearAssignment.new(_building_id))
 
 
+## The selected yard's repair threshold in percent, or 0 when no yard is selected.
+func yard_threshold() -> int:
+	if not is_yard_selected():
+		return 0
+	return _simulation.repair_yards.drone(_building_id).threshold
+
+
+func set_yard_threshold(percent: int) -> void:
+	if is_yard_selected():
+		_simulation.queue_command(Commands.SetRepairThreshold.new(_building_id, percent))
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
@@ -144,7 +156,7 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 	var lines: Array[String] = [
 		String(building.kind).capitalize(),
 		_hp_line(building.hp, _simulation.buildings.max_hp(building.kind)),
-		"Powered: %s" % ("yes" if building.powered else "no"),
+		_status(building),
 	]
 	match building.kind:
 		Buildings.TOWER:
@@ -158,6 +170,23 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 		Buildings.REPAIR_YARD:
 			lines.append_array(_yard_stats(building))
 	return lines
+
+
+# One word: Unpowered, else Under repair, else what the building is doing.
+func _status(building: Buildings.Building) -> String:
+	if not building.powered:
+		return "Unpowered"
+	if _simulation.repair_yards.is_under_repair(building.id):
+		return "Under repair"
+	match building.kind:
+		Buildings.TOWER:
+			var reach := _simulation.settings.tower_range
+			var target := _simulation.enemies.nearest_to_base_in_range(building.centre, reach)
+			return "Idle" if target == Enemies.NONE else "Firing"
+		Buildings.REPAIR_YARD:
+			var on_job := _simulation.repair_yards.drone(building.id).is_on_job()
+			return "Repairing" if on_job else "Idle"
+	return "Powering"
 
 
 # Tier and count, the next tier's threshold, time left on the timer and the best this run.
@@ -200,7 +229,6 @@ func _base_stats() -> Array[String]:
 	var lines: Array[String] = [
 		"Base",
 		_hp_line(_simulation.run_state.base_hp, _simulation.settings.base_hp),
-		"Powered: yes",
 		"Power area %d" % _simulation.settings.base_power_area,
 	]
 	return lines
