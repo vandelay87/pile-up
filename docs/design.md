@@ -73,7 +73,7 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 
 ## Structures
 
-- Walls, buildings (towers, pylons and repair yards) and the base are all structures, and one rule covers them all.
+- Walls, buildings (towers, pylons, repair yards and grinders) and the base are all structures, and one rule covers them all.
 - An enemy attacks a structure only when it is in the way: it is jammed against it, or its route crosses it. Enemies passing a structure that is not in their way ignore it.
 - Every attacker deals 2 damage per second to any structure, with no limit on attackers beyond space around it.
 - Enemies killed at a structure die in front of it, so defending a structure builds a pile in front of it.
@@ -94,17 +94,29 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 
 - **Repair yard**: 2×2, 80 gold, 60 HP, power area 4 cells. It follows every power rule: it must be built on the power grid, and an unpowered repair yard stops repairing. Like a tower, a destroyed repair yard leaves nothing behind.
 - Its **repair area** is a square reaching 8 cells from its edge. A building is inside when any of its cells is.
-- It repairs buildings only (towers, pylons and other repair yards), never itself, walls or the base, and only during waves.
+- It repairs buildings only (towers, pylons, grinders and other repair yards), never itself, walls or the base, and only during waves.
 - Each repair yard has one **drone**. A repair is a round trip: the drone flies straight to the building over any terrain at 8 cells/s, repairs it at 5 HP/s until it is full, then flies back to the yard before taking its next job. The travel is the cost of far-off repairs. Enemies cannot attack the drone.
 - **Auto:** the drone picks the damaged building nearest the yard, lowest HP first on a tie. It prefers a building no other drone is repairing, but doubles up when every damaged building is taken. Drones on the same building add their repair rates.
 - **Assignment:** the player can assign one building in the yard's area. Whenever that building is damaged it comes first, once the drone is home from its current trip. Otherwise the drone works on auto. The assignment lasts until the player clears it or the building is destroyed.
 - If the building being repaired is destroyed, the drone picks again. If the yard loses power, or the wave's last enemy dies, the drone flies home and stops. If the yard is destroyed, its drone goes with it.
 - A building being repaired shows a small steady repair effect. The repair area is tinted while the yard is being placed or selected.
 
+## Grinder
+
+From v3, a building that hurts enemies by touch, so the player can plan for a crush and its overflow.
+
+- **Grinder**: 2×2, power area 2 cells. It follows every building rule: it must be built on the power grid and stops hurting while unpowered, it blocks routes, enemies attack it, repair yards repair it, it joins a crush's connected run, and a destroyed grinder leaves nothing behind.
+- **Contact damage:** every enemy touching it, within a small band of its footprint, takes a flat damage per second: walkers brushing past, the crush pressed against it and enemies attacking it alike. Its total damage grows with how many enemies touch it, so it barely troubles a thin stream and grinds a crush down. An enemy touching two grinders takes damage from both.
+- **Overflow:** enemies tumble over a grinder like any other building, and take one second's worth of its damage for each of its cells they cross, so a thick block of grinders is a gauntlet.
+- **Role:** a wall that bites, not a tower. It costs somewhat less than a tower, has more HP than one, and kills a lone enemy slowly. Wrapping buildings in grinders is allowed; its price is the limit.
+- Its kills build its own combo like a tower's, kills on tumbling enemies included.
+- Bodies of enemies it kills land by the normal rule, so piles build up against it, and a wall there keeps enemies off it until that wall breaks or decays.
+- Its cost, HP, damage and touch band are set in the v3 numbers.
+
 ## Selecting buildings
 
 - Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
-- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and whether it is powered. A tower adds damage, shots/s, range and its kills this run. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it) and the HP it has repaired this run. A pylon adds its power area.
+- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and whether it is powered. A tower adds damage, shots/s, range and its kills this run. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
 
 ## Towers and economy
 

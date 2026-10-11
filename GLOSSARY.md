@@ -28,12 +28,16 @@ Anything with HP that enemies attack when it is in their way: a wall, a building
 _Avoid_: Target, obstacle
 
 **Building**:
-Anything the player builds: a tower, a pylon or a repair yard.
+Anything the player builds: a tower, a pylon, a repair yard or a grinder.
 _Avoid_: Structure (which also covers walls and the base)
 
 **Repair yard**:
 A building that restores HP to the other buildings around it. It never repairs itself, walls or the base.
 _Avoid_: Healer, medic
+
+**Grinder**:
+A building that hurts every enemy touching it, including those tumbling over it.
+_Avoid_: Trap (enemies press against it, they don't step on it), spike wall (a wall is a pile)
 
 **Repair**:
 Restoring HP to a damaged building. Only buildings are repaired.
