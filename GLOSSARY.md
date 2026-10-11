@@ -115,6 +115,10 @@ _Avoid_: Climb, climber, jump
 How hard a crush is overflowing, read from its pressure: a **trickle** (one enemy now and then), a **stream** (a steady line) or a **surge** (the front ranks pouring over together).
 _Avoid_: Stage, phase
 
+**Bloater**:
+A second type of enemy that blows up when it dies, or by itself after a short fuse once it reaches a structure in its way. Its blast kills enemies, damages buildings and erases piles and walls, and it leaves no body.
+_Avoid_: Bomber, kamikaze, creeper, exploding enemy
+
 ### Flow of play
 
 **Run**:

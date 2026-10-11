@@ -113,14 +113,28 @@ From v3, a building that hurts enemies by touch, so the player can plan for a cr
 - Bodies of enemies it kills land by the normal rule, so piles build up against it, and a wall there keeps enemies off it until that wall breaks or decays.
 - Its cost, HP, damage and touch band are set in the v3 numbers.
 
+## Bloater
+
+From v3, a second enemy type that blows up, so a crowd can be broken from inside and a defence from outside. Where it pops decides which.
+
+- **Bloater**: about 3× a normal enemy's HP and 0.8× its speed, so it drifts back into the crowd behind it. Bounty 2 gold. It grows with the waves' HP like any enemy. It is drawn in its own colour, about 1.5× the size of a normal enemy, and pulses faster and faster while its fuse burns.
+- **Fuse:** when a bloater reaches a structure in its way (the moment a normal enemy would start attacking), it lights a short fuse, about 1 s, and blows up when it runs out. It never attacks. Killing it during the fuse still blows it up there.
+- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within about 2 cells dies, every building and the base within it takes a flat damage, and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body.
+- **Chains:** a blast that kills another bloater sets it off too.
+- **Grinders** hurt a bloater like any enemy, so one that dies against a grinder blows up there and damages it.
+- **Crush:** blasts need no special rule. The enemies they kill leave the crush smaller, and a wall they erase is a hole the crowd walks through, not an overflow.
+- **Overflow:** a bloater with a lit fuse is not attacking, so it can be picked to tumble like any enemy at the front. Tumbling puts its fuse out, and it lights again at the next structure in its way after it lands, so an overflow can carry bloaters into the defence. A bloater killed mid-tumble blows up where it is, on top of the wall or building it is crossing.
+- **Combos and bounty:** a building that kills a bloater gets every kill its blast makes, chained blasts included: each adds to that building's combo and pays its bounty × the building's tier. A bloater that blows itself up pays no bounty of its own, and its blast kills pay ×1.
+- Its HP, speed, fuse, blast radius and blast damage to buildings (about 30, half a tower's HP) are set in the v3 numbers, as are which waves have bloaters and how many.
+
 ## Selecting buildings
 
 - Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
-- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and whether it is powered. A tower adds damage, shots/s, range and its kills this run. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
+- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and whether it is powered. A tower adds damage, shots/s, range, its kills this run and its targeting toggle. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
 
 ## Towers and economy
 
-- One tower type: single-target, aimed at the enemy closest to the base. 5 damage, 3.5 shots/s, range 8 cells, 60 HP, costs 80 gold.
+- One tower type: single-target, aimed at the enemy closest to the base. From v3, a tower prefers a bloater in its range by default, so long reach ahead of the walls pops bloaters in the open; each tower has a toggle in its details to aim at the closest enemy to the base instead. 5 damage, 3.5 shots/s, range 8 cells, 60 HP, costs 80 gold.
 - Towers can only be built on clear cells of the power grid. Building is allowed during waves.
 - A tower may cut off every path to the base: enemies then break through the cheapest structure.
 - Starting gold: 200.
