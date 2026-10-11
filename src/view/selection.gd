@@ -1,12 +1,13 @@
 class_name Selection
 extends Node2D
 
-## View-only selection: clicking a building or the base selects it, draws its range (a
-## tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and shows
-## a stats panel read each frame. Clicking empty ground or Esc clears it; a destroyed building
-## clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
-## A selected repair yard's panel has Assign (the next click on a building in its repair area
-## becomes its assignment; Esc cancels) and Clear controls, which queue commands.
+## View-only selection: clicking a building or the base selects it and draws its range (a
+## tower's fire range, a repair yard's repair area, a pylon's or the base's power area). The
+## HUD reads its details each frame. Clicking empty ground or Esc clears it; a destroyed
+## building clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
+## A selected repair yard can be put in assign mode (the next click on a building in its
+## repair area becomes its assignment; Esc cancels) or have its assignment cleared; both queue
+## commands.
 
 const OUTLINE := Color(1.0, 1.0, 1.0, 0.9)
 const RANGE := Color(1.0, 0.9, 0.4, 0.8)
@@ -17,19 +18,12 @@ const REPAIR_AREA_TINT := Color(0.35, 0.95, 0.45, 0.1)
 const ASSIGNMENT := Color(0.35, 0.95, 0.45, 1.0)
 ## A left press and release further apart than this (screen pixels) is a camera drag.
 const CLICK_SLOP := 6.0
-const MARGIN := 8.0
 
 var _simulation: Simulation
 var _building_id := Occupancy.EMPTY
 var _base := false
 var _press_position := Vector2.ZERO
 var _pressed := false
-var _layer := CanvasLayer.new()
-var _panel := PanelContainer.new()
-var _stats := Label.new()
-var _yard_controls := HBoxContainer.new()
-var _assign := Button.new()
-var _clear := Button.new()
 var _assigning := false
 
 
@@ -42,7 +36,6 @@ func clear() -> void:
 	_building_id = Occupancy.EMPTY
 	_base = false
 	_assigning = false
-	_panel.visible = false
 	queue_redraw()
 
 
@@ -50,33 +43,32 @@ func has_selection() -> bool:
 	return _base or _building_id != Occupancy.EMPTY
 
 
-func _ready() -> void:
-	add_child(_layer)
-	var ui := UiRoot.add_to(_layer)
-	var margin := MarginContainer.new()
-	for side: String in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 10)
-	var box := VBoxContainer.new()
-	box.add_child(_stats)
-	_assign.text = "Assign"
-	_assign.toggle_mode = true
-	_assign.toggled.connect(func(on: bool) -> void: _assigning = on)
-	_clear.text = "Clear"
-	_clear.pressed.connect(_clear_assignment)
-	for button: Button in [_assign, _clear]:
-		button.focus_mode = Control.FOCUS_NONE
-		_yard_controls.add_child(button)
-	box.add_child(_yard_controls)
-	for control: Control in [margin, box, _yard_controls]:
-		control.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_child(box)
-	_panel.add_child(margin)
-	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE)
-	_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_panel.position += Vector2(MARGIN, -MARGIN)
-	_panel.visible = false
-	ui.add_child(_panel)
+## The selection's details: a title, then one line per stat. Empty when nothing is selected.
+func details() -> Array[String]:
+	if _simulation == null or not has_selection():
+		return []
+	var building := _selected_building()
+	if not _base and building == null:
+		return []
+	return _base_stats() if _base else _building_stats(building)
+
+
+func is_yard_selected() -> bool:
+	var building := _selected_building()
+	return building != null and building.kind == Buildings.REPAIR_YARD
+
+
+func is_assigning() -> bool:
+	return _assigning
+
+
+func set_assigning(on: bool) -> void:
+	_assigning = on and is_yard_selected()
+
+
+func clear_assignment() -> void:
+	if is_yard_selected():
+		_simulation.queue_command(Commands.ClearAssignment.new(_building_id))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -84,7 +76,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo and key.keycode == KEY_ESCAPE and has_selection():
 			if _assigning:
-				_assign.button_pressed = false
+				_assigning = false
 			else:
 				clear()
 			get_viewport().set_input_as_handled()
@@ -113,8 +105,6 @@ func _process(_delta: float) -> void:
 	if not _base and building == null:
 		clear()
 		return
-	_stats.text = _base_stats() if _base else _building_stats(building)
-	_yard_controls.visible = not _base and building.kind == Buildings.REPAIR_YARD
 	queue_redraw()
 
 
@@ -128,24 +118,17 @@ func _select_at(cell: Vector2i) -> void:
 		_base = true
 	else:
 		_building_id = _simulation.occupancy.building_at(cell)
-	_panel.visible = has_selection()
-	# Fill the panel now so it never shows a frame of stale text.
-	_process(0.0)
+	queue_redraw()
 
 
 # The click names the building to assign; the yard stays selected and Assign switches off.
 func _assign_at(cell: Vector2i) -> void:
-	_assign.button_pressed = false
+	_assigning = false
 	if not _simulation.map.in_bounds(cell):
 		return
 	var target := _simulation.occupancy.building_at(cell)
 	if target != Occupancy.EMPTY:
 		_simulation.queue_command(Commands.Assign.new(_building_id, target))
-
-
-func _clear_assignment() -> void:
-	if _building_id != Occupancy.EMPTY:
-		_simulation.queue_command(Commands.ClearAssignment.new(_building_id))
 
 
 func _selected_building() -> Buildings.Building:
@@ -154,7 +137,7 @@ func _selected_building() -> Buildings.Building:
 	return _simulation.buildings.building(_building_id)
 
 
-func _building_stats(building: Buildings.Building) -> String:
+func _building_stats(building: Buildings.Building) -> Array[String]:
 	var settings := _simulation.settings
 	var fire_rate: float = settings.value("towers", "fire_rate")
 	var lines: Array[String] = [
@@ -172,7 +155,7 @@ func _building_stats(building: Buildings.Building) -> String:
 			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
 			lines.append_array(_yard_stats(building))
-	return "\n".join(lines)
+	return lines
 
 
 func _yard_stats(yard: Buildings.Building) -> Array[String]:
@@ -193,14 +176,14 @@ func _yard_stats(yard: Buildings.Building) -> Array[String]:
 	return lines
 
 
-func _base_stats() -> String:
+func _base_stats() -> Array[String]:
 	var lines: Array[String] = [
 		"Base",
 		_hp_line(_simulation.run_state.base_hp, _simulation.settings.base_hp),
 		"Powered: yes",
 		"Power area %d" % _simulation.settings.base_power_area,
 	]
-	return "\n".join(lines)
+	return lines
 
 
 func _hp_line(hp: float, max_hp: float) -> String:
