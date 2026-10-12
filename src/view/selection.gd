@@ -7,7 +7,7 @@ extends Node2D
 ## building clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
 ## A selected repair yard can be put in assign mode (the next click on a building in its
 ## repair area becomes its assignment; Esc cancels), have its assignment cleared or its repair
-## threshold set; each queues a command.
+## threshold set; a selected tower can have its targeting set. Each queues a command.
 
 const OUTLINE := Color(1.0, 1.0, 1.0, 0.9)
 const RANGE := Color(1.0, 0.9, 0.4, 0.8)
@@ -88,6 +88,23 @@ func yard_threshold() -> int:
 func set_yard_threshold(percent: int) -> void:
 	if is_yard_selected():
 		_simulation.queue_command(Commands.SetRepairThreshold.new(_building_id, percent))
+
+
+func is_tower_selected() -> bool:
+	var building := selected_building()
+	return building != null and building.kind == Buildings.TOWER
+
+
+## The selected tower's targeting mode, or empty when no tower is selected.
+func tower_targeting() -> StringName:
+	if not is_tower_selected():
+		return &""
+	return selected_building().targeting
+
+
+func set_tower_targeting(mode: StringName) -> void:
+	if is_tower_selected():
+		_simulation.queue_command(Commands.SetTargeting.new(_building_id, mode))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -186,7 +203,9 @@ func _status(building: Buildings.Building) -> String:
 	match building.kind:
 		Buildings.TOWER:
 			var reach := _simulation.settings.tower_range
-			var target := _simulation.enemies.nearest_to_base_in_range(building.centre, reach)
+			var target := _simulation.enemies.target_in_range(
+				building.centre, reach, building.targeting
+			)
 			return "Idle" if target == Enemies.NONE else "Firing"
 		Buildings.GRINDER:
 			return "Grinding" if building.touching > 0 else "Idle"

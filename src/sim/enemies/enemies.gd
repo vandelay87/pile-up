@@ -3,6 +3,11 @@ extends RefCounted
 
 enum Kind { NORMAL, BLOATER }
 
+## A tower's targeting modes, for [method target_in_range].
+const BLOATERS_FIRST := &"bloaters_first"
+const CLOSEST_TO_BASE := &"closest_to_base"
+const TARGETINGS: Array[StringName] = [BLOATERS_FIRST, CLOSEST_TO_BASE]
+
 const NONE := -1
 # A bloater's fuse once it has run out: it pops with no killer.
 const _FUSE_RAN_OUT := -1
@@ -147,12 +152,17 @@ func is_alive(index: int) -> bool:
 	return hp[index] > 0.0
 
 
-func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
+## The id of the living enemy within [param reach] of [param pos] closest to the base (lowest
+## sensible-field value, ties to the lowest id), or [constant NONE]. With [param mode]
+## [constant BLOATERS_FIRST], a bloater in reach wins over any normal enemy; tumbling ones count.
+func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
+	var bloaters_first := mode == BLOATERS_FIRST
 	var low := Vector2i((pos - Vector2(reach, reach)).floor()) - Vector2i.ONE * _HASH_MARGIN
 	var high := Vector2i((pos + Vector2(reach, reach)).floor()) + Vector2i.ONE * _HASH_MARGIN
 	var reach_squared := reach * reach
 	var best_id := NONE
 	var best_value := INF
+	var best_outranks := false
 	for y in range(maxi(low.y, 0), mini(high.y + 1, _map.height)):
 		var row := y * _map.width
 		for x in range(maxi(low.x, 0), mini(high.x + 1, _map.width)):
@@ -160,13 +170,18 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 				var i := _bucket_enemies[slot]
 				if hp[i] <= 0.0:
 					continue
+				var outranks_normal := bloaters_first and kinds[i] == Kind.BLOATER
+				if best_outranks and not outranks_normal:
+					continue
 				if positions[i].distance_squared_to(pos) > reach_squared:
 					continue
 				var field_value := _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
 				var ties_lower := field_value == best_value and ids[i] < best_id
-				if best_id == NONE or field_value < best_value or ties_lower:
+				var outranks := outranks_normal and not best_outranks
+				if best_id == NONE or outranks or field_value < best_value or ties_lower:
 					best_value = field_value
 					best_id = ids[i]
+					best_outranks = outranks_normal
 	return best_id
 
 
