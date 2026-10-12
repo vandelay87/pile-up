@@ -19,6 +19,7 @@
 [ext_resource type="Script" path="res://src/view/drone_view.gd" id="17"]
 [ext_resource type="Script" path="res://src/view/combo_view.gd" id="18"]
 [ext_resource type="Script" path="res://src/view/overflow_view.gd" id="19"]
+[ext_resource type="Script" path="res://src/view/blast_rings.gd" id="20"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -52,6 +53,9 @@ script = ExtResource("16")
 
 [node name="PileOverlay" type="Node2D" parent="."]
 script = ExtResource("14")
+
+[node name="BlastRings" type="Node2D" parent="."]
+script = ExtResource("20")
 
 [node name="Tracers" type="Node2D" parent="."]
 script = ExtResource("10")

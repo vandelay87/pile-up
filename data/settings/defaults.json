@@ -27,7 +27,10 @@
 		"share": 2,
 		"share_per_wave": 0.3,
 		"share_cap": 5,
-		"size": 1.5
+		"size": 1.5,
+		"fuse": 1,
+		"blast_radius": 2,
+		"blast_damage": 30
 	},
 	"piles": {
 		"slow_level_1": 15,

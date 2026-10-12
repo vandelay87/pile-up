@@ -190,6 +190,16 @@ var first_bloater_wave: int:
 var bloater_size: float:
 	get:
 		return value("bloaters", "size")
+var fuse_ticks: int:
+	get:
+		var seconds: float = value("bloaters", "fuse")
+		return ticks_from_seconds(seconds)
+var blast_radius: float:
+	get:
+		return value("bloaters", "blast_radius")
+var blast_damage: float:
+	get:
+		return value("bloaters", "blast_damage")
 var wave_1_size: int:
 	get:
 		return value("waves", "wave_1_size")

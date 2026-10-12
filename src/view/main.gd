@@ -27,6 +27,7 @@ var _last_saved_json := ""
 @onready var _edge_highlight: EdgeHighlight = $EdgeHighlight
 @onready var _tower_view: TowerView = $TowerView
 @onready var _tracers: Tracers = $Tracers
+@onready var _blast_rings: BlastRings = $BlastRings
 @onready var _drone_view: DroneView = $DroneView
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
@@ -105,6 +106,7 @@ func _start_run(simulation: Simulation) -> void:
 	_hud.setup(_simulation, _selection, _combo_view)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
+	_blast_rings.setup(_simulation)
 	_drone_view.setup(_simulation)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)

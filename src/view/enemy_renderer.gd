@@ -9,6 +9,10 @@ const FLASH_MSEC := 100
 # Tumbling enemies are drawn raised above a wall's top, and tinted.
 const TUMBLE_TINT := Color(1.0, 0.55, 0.15)
 const TUMBLE_LIFT_LEVELS := 6.0
+# A burning bloater pulses towards this, from this many times a second to the last.
+const FUSE_TINT := Color(1.0, 0.95, 0.6)
+const FUSE_PULSE_FROM := 2.0
+const FUSE_PULSE_TO := 12.0
 
 var _enemies: Enemies
 var _settings: Settings
@@ -25,7 +29,8 @@ var _shown := 0
 var _flash_ends := {}
 var _flashed_items := PackedInt32Array()
 var _route_tint := false
-var _tumble_tinted := PackedInt32Array()
+# The items tinted this frame for a tumble or a burning fuse, to restore next frame.
+var _state_tinted := PackedInt32Array()
 
 
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
@@ -111,11 +116,22 @@ func _tint(index: int) -> Color:
 	return BLOATER_TINT if _enemies.kinds[index] == Enemies.Kind.BLOATER else TINT
 
 
+# A burning bloater's tint: its own, pulsing towards the fuse tint faster and faster as the
+# fuse burns down. The pulse's phase is the integral of a rate rising linearly over the fuse.
+func _fuse_tint(index: int, fuse_left: int) -> Color:
+	var length := maxf(_settings.fuse_ticks, 1.0) / Simulation.TICKS_PER_SECOND
+	var burnt := clampf(length - float(fuse_left) / Simulation.TICKS_PER_SECOND, 0.0, length)
+	var cycles := FUSE_PULSE_FROM * burnt
+	cycles += (FUSE_PULSE_TO - FUSE_PULSE_FROM) * burnt * burnt / (2.0 * length)
+	var glow := 0.5 - 0.5 * cos(TAU * cycles)
+	return _tint(index).lerp(FUSE_TINT, glow)
+
+
 func _draw_tints(count: int) -> void:
-	for i in _tumble_tinted:
+	for i in _state_tinted:
 		if i < count:
 			RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
-	_tumble_tinted.clear()
+	_state_tinted.clear()
 	if _route_tint:
 		var routes := _enemies.routes
 		for i in count:
@@ -127,10 +143,14 @@ func _draw_tints(count: int) -> void:
 				RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 	_flashed_items.clear()
 	var tumbling := _enemies.tumbling
+	var fuses := _enemies.fuses
 	for i in count:
 		if tumbling[i] == 1:
 			RenderingServer.canvas_item_set_modulate(_items[i], TUMBLE_TINT)
-			_tumble_tinted.append(i)
+			_state_tinted.append(i)
+		elif fuses[i] > 0:
+			RenderingServer.canvas_item_set_modulate(_items[i], _fuse_tint(i, fuses[i]))
+			_state_tinted.append(i)
 	var now := Time.get_ticks_msec()
 	for id: int in _flash_ends.keys():
 		var index := _enemies.index_of(id)

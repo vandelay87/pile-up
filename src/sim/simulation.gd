@@ -14,6 +14,7 @@ signal building_placed(id: int)
 signal building_destroyed(id: int)
 signal power_changed
 signal shots_fired(shots: Array[Buildings.Shot])
+signal blasts(went_off: Array[Blasts.Blast])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
 signal game_over
@@ -57,6 +58,7 @@ var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
+var bloater_blasts: Blasts
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
@@ -80,6 +82,7 @@ var _decay_due := false
 var _rebuild_swap_tick := 0
 var _placed: Array[int] = []
 var _shots: Array[Buildings.Shot] = []
+var _blasts: Array[Blasts.Blast] = []
 var _run_seed: int
 var _pending_steps := 0
 var _wave_started := false
@@ -124,6 +127,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	overflow = Overflow.new(
 		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
 	)
+	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -318,6 +322,10 @@ func _emit_signals() -> void:
 		var shots := _shots
 		_shots = []
 		shots_fired.emit(shots)
+	if not _blasts.is_empty():
+		var went_off := _blasts
+		_blasts = []
+		blasts.emit(went_off)
 	if waves.phase != _reported_phase:
 		_reported_phase = waves.phase
 		phase_changed.emit(_reported_phase)
@@ -428,6 +436,7 @@ func _repair_buildings() -> void:
 func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	deaths = enemies.remove_dead()
+	_blasts.append_array(bloater_blasts.resolve(deaths))
 	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
 	for id in buildings.pending_destroyed():

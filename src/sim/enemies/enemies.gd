@@ -35,6 +35,8 @@ var progress := PackedFloat32Array()
 # 1 while the enemy tumbles over a barrier: Overflow moves it, and it doesn't walk, collide,
 # separate, attack or roll, and others don't separate from it.
 var tumbling := PackedByteArray()
+# Each bloater's fuse: the ticks left until it pops, or 0 while unlit.
+var fuses := PackedInt32Array()
 
 var _settings: Settings
 var _map: MapData
@@ -102,6 +104,7 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	progress[count] = 1.0
 	_last_values[count] = INF
 	tumbling[count] = 0
+	fuses[count] = 0
 	_index_by_id[id] = count
 	count += 1
 	return id
@@ -130,6 +133,12 @@ func kill(id: int) -> void:
 	if index != NONE:
 		hp[index] = minf(hp[index], 0.0)
 		last_hitters[index] = NONE
+
+
+## The ticks left on the fuse of the enemy with id [param id]: 0 while unlit, or not a bloater.
+func fuse(id: int) -> int:
+	var index := index_of(id)
+	return fuses[index] if index != NONE else 0
 
 
 func is_alive(index: int) -> bool:
@@ -180,14 +189,32 @@ func touching(area: Rect2i, reach: float) -> PackedInt32Array:
 	return found
 
 
+## The indices of the living enemies within [param radius] of [param pos], from the spatial hash.
+func living_within(pos: Vector2, radius: float) -> PackedInt32Array:
+	var found := PackedInt32Array()
+	var low := Vector2i((pos - Vector2(radius, radius)).floor()) - Vector2i.ONE * _HASH_MARGIN
+	var high := Vector2i((pos + Vector2(radius, radius)).floor()) + Vector2i.ONE * _HASH_MARGIN
+	var radius_squared := radius * radius
+	for y in range(maxi(low.y, 0), mini(high.y + 1, _map.height)):
+		var row := y * _map.width
+		for x in range(maxi(low.x, 0), mini(high.x + 1, _map.width)):
+			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
+				var i := _bucket_enemies[slot]
+				if hp[i] > 0.0 and positions[i].distance_squared_to(pos) <= radius_squared:
+					found.append(i)
+	return found
+
+
 ## The enemies in the cell at [param cell_index], from this tick's spatial hash.
 func count_in_cell(cell_index: int) -> int:
 	return _bucket_starts[cell_index + 1] - _bucket_starts[cell_index]
 
 
 ## The enemy at [param index] starts a tumble: it stops attacking and counts towards no crush.
+## A bloater's fuse goes out.
 func start_tumble(index: int) -> void:
 	tumbling[index] = 1
+	fuses[index] = 0
 	structure_targets[index] = NONE
 	progress[index] = 1.0
 	_last_values[index] = INF
@@ -251,9 +278,14 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		_push_through_turned_back(sensible_before, direct_parents)
 	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
 	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
+	var fuse_ticks := _settings.fuse_ticks
 	for i in count:
+		if fuses[i] > 0 and hp[i] > 0.0:
+			_burn_fuse(i)
 		var idle := hp[i] <= 0.0 or tumbling[i] == 1
 		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
+		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
+			fuses[i] = fuse_ticks
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
@@ -293,8 +325,16 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		)
 	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
-		if structure_targets[i] != NONE:
+		if structure_targets[i] != NONE and kinds[i] != Kind.BLOATER:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+
+
+# A lit fuse burns down a tick; one that runs out pops its bloater, with no killer.
+func _burn_fuse(i: int) -> void:
+	fuses[i] -= 1
+	if fuses[i] == 0:
+		hp[i] = 0.0
+		last_hitters[i] = NONE
 
 
 func _track_progress(i: int, pos: Vector2, band_mask: PackedByteArray, full_step: float) -> void:
@@ -594,6 +634,7 @@ func _swap_remove(index: int) -> void:
 	progress[index] = progress[count]
 	_last_values[index] = _last_values[count]
 	tumbling[index] = tumbling[count]
+	fuses[index] = fuses[count]
 	_index_by_id[ids[index]] = index
 
 
@@ -615,3 +656,4 @@ func _grow() -> void:
 	progress.resize(capacity)
 	_last_values.resize(capacity)
 	tumbling.resize(capacity)
+	fuses.resize(capacity)
