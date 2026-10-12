@@ -11,7 +11,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **v1**: corpse loop
   - **v2**: power, plus a rework of v1 after playtesting
   - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (specified in `docs/specs/v3.md`)
-  - **v4**: reanimation, after a performance pass towards the 1,000-enemy target
+  - **v4**: to be decided; it starts with a performance pass towards the 1,000-enemy target ([#150](https://github.com/vandelay87/pile-up/issues/150))
   - **v5**: power-ups (to be designed after v4)
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
@@ -152,34 +152,27 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - Enemies spawn in bursts of 16, each on a random cell along the spawn edge, at an average of 10 per second. v3 keeps these on the flared map, where the wider mouths already spread the bursts out.
 - **Bloaters** (from v3) appear from wave 5. They take the place of normal enemies, so the wave size is unchanged. Their count steps up slowly whatever the wave's size: 1, then one more every few waves, and each wave rolls once for one fewer or one more, so an early wave sometimes has none. The roll is fixed per run and wave, so the build phase's count always matches the wave. Each bloater takes a random place among the wave's bursts, mixed in with normal enemies; there are no bursts of only bloaters. **v3 numbers:** one more every 6 waves, so a base of 1 for waves 5–10, 2 for 11–16, 3 for 17–22 and 4 from 23; a 25% chance of one fewer and a 10% chance of one more. (Replaced a share of the wave, 2% rising to 5%, after the v3 tuning playtest: with 25% wave growth it gave 23 bloaters at wave 15 and 69 at wave 20.)
 
-## v1 fun test
+## Prototype results
 
-After about 10 runs:
+Each prototype is played to answer a question, and what the playtest finds shapes the next one. The full technical record of each is in `docs/specs/`.
 
-1. Does the player deliberately place towers to shape where piles form? (This is the most important test.)
-2. Do walls change plans in an enjoyable way?
-3. Do piles shrinking between waves create real choices?
-4. Do 1,000 enemies flowing around piles look and feel good?
+### v1: corpse loop
 
-If 1 and 2 fail, the pile rules get reworked before starting reanimation. Playtesting led to that rework, which is v2.
+- **Question:** does the corpse loop make the game? After about 10 runs: does the player deliberately place towers to shape where piles form (the most important test), do walls change plans in an enjoyable way, do piles shrinking between waves create real choices, and do 1,000 enemies flowing around piles look and feel good?
+- **Found:** the map was too open, so walls rarely formed, and the game was too slow.
+- **Led to:** v2 reworks the loop: a narrow map, a fast pace with many enemies on screen so piles and then walls form readily, every structure attackable, and bodies landing where enemies die.
 
-## v4: reanimation
+### v2: power, and the corpse loop reworked
 
-- Unlocked by building an **altar** (100 gold) in one of a few build slots touching the base. Each altar raises one pile at a time.
-- Raising costs 1.5 s and 10 gold per body, during waves only, and produces one minion per body. The pile is used up.
-- A pile being raised is attackable, with 5 HP per body. Enemies within 2 cells target it about 30% of the time. If it is destroyed, the bodies and the gold are lost.
-- Minions have the same stats as enemies and are controlled with one rally point per group.
+- **Question:** does the reworked loop form piles and walls readily, and does power (the power grid, pylons and the repair yard) give building its limits?
+- **Found:** the late game could not be broken. From about wave 15, enough towers and repair yards held any wave, however many enemies came, and repair was too strong. The combo reached ×3 only in bursts, and a level's goal felt about right at wave 15.
+- **Led to:** v3 is about pressure, so a big enough crowd can break a defence.
 
-### Combat between minions and enemies
+### v3: pressure
 
-- **Enemies**:
-  - An enemy touching a minion rolls about 20% to stop and fight.
-  - It always fights when minions block its path or when a minion attacks it.
-  - Enemies never chase fleeing minions. Once contact breaks, they return to their route.
-- **Minions**:
-  - When a group is given a move order, each minion that is in a fight rolls 50% to break off. The rest stay stuck until their opponent dies.
-  - Dead minions leave bodies, like everything else.
-  - Survivors stay standing through the build phase and can be moved. When "next wave" is pressed, each group collapses into a pile where it stands, which lets the player build corpse terrain on purpose.
+- **Question:** does pressure make the late game breakable, and give the player real answers to it? A crowd that stalls against a defence builds up until it tumbles over it, the bloater blows holes in piles, walls and buildings, and the grinder, per-building combos and repair as a trade-off are the player's tools.
+- **Found:** in tuning, the bloater count first grew far too fast with the waves, so it became a slow stepped count with a per-wave roll. Gold was tightened by raising starting gold and every cost by half, and pile decay was turned off because blasts now clear piles. v3 misses the 1,000-enemy target at 60 fps and was accepted as a prototype as it is.
+- **Verdict:** yes. Pressure makes the game more of a challenge.
 
 ## Finished game direction
 
@@ -201,7 +194,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - Selling or demolishing buildings.
 - Building upgrades, such as more drones per repair yard (with power-ups in v5).
 - A ranked queue of assignments for a repair yard.
-- Larger piles producing a single brute minion.
+- Reanimation: raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion. It was planned as a prototype and is dropped for now.
 - A landing animation for bodies, with the final art.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
 - Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters. Further on, waves that mutate into a random mix of enemy types.
