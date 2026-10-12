@@ -9,3 +9,6 @@
 # Build output
 /build/
 /reports/
+
+# Tuning sessions (editor runs; kept numbers go in defaults.json)
+/data/settings/tuning-sessions/
