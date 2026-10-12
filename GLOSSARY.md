@@ -141,6 +141,10 @@ _Avoid_: Bomber, kamikaze, creeper, exploding enemy
 One game, from the first wave until the base is destroyed. A restart begins a new run.
 _Avoid_: Game, match, session
 
+**Tuning session**:
+One launch of the game from the editor, across however many runs it spans. Its settings are saved to its own file in `data/settings/tuning-sessions/` whenever they change.
+_Avoid_: Playtest (a playtest is the human playing, not the file)
+
 **Wave**:
 One spawned group of enemies, from pressing "next wave" until the last of them dies.
 _Avoid_: Round, level
