@@ -46,7 +46,7 @@ func wall_hp(cell: Vector2i) -> float:
 
 
 func queue_bodies(deaths: Deaths) -> void:
-	_queued.append_array(deaths.positions)
+	_queued.append_array(deaths.bodies)
 
 
 func land() -> void:

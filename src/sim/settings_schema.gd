@@ -392,6 +392,25 @@ const SCHEMA := {
 			"unit": "enemies in a cell that stop a tumble landing on it",
 			"apply": Settings.Apply.LIVE,
 		},
+		"bodies_fall_back":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1,
+			"step": 1,
+			"unit": "on/off",
+			"toggle": true,
+			"apply": Settings.Apply.LIVE,
+		},
+		"fall_back_window":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 10.0,
+			"step": 0.5,
+			"unit": "s after landing that a body still falls back",
+			"apply": Settings.Apply.LIVE,
+		},
 	},
 	"routing":
 	{

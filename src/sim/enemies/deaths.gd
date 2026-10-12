@@ -1,10 +1,14 @@
 class_name Deaths
 extends RefCounted
 
-## The enemies the removal step took this tick, in removal order: where each died, its kind,
-## its killer (the last building to damage it, or Enemies.NONE) and whether a blast killed it.
+## The enemies the removal step took this tick, in removal order: each one's id, where it died,
+## where its body lands, its kind, its killer (the last building to damage it, or Enemies.NONE)
+## and whether a blast killed it.
 
+var ids := PackedInt32Array()
 var positions := PackedVector2Array()
+## Where each body lands: where it died, unless Overflow sends it back the way it came.
+var bodies := PackedVector2Array()
 var kinds := PackedByteArray()
 var killers := PackedInt32Array()
 var blasts := PackedByteArray()
@@ -14,12 +18,14 @@ var blasts := PackedByteArray()
 static func bodies_at(dead_at: PackedVector2Array) -> Deaths:
 	var deaths := Deaths.new()
 	for pos in dead_at:
-		deaths.add(pos, Enemies.Kind.NORMAL, Enemies.NONE)
+		deaths.add(Enemies.NONE, pos, Enemies.Kind.NORMAL, Enemies.NONE)
 	return deaths
 
 
-func add(pos: Vector2, kind: Enemies.Kind, killer: int, by_blast := false) -> void:
+func add(id: int, pos: Vector2, kind: Enemies.Kind, killer: int, by_blast := false) -> void:
+	ids.append(id)
 	positions.append(pos)
+	bodies.append(pos)
 	kinds.append(kind)
 	killers.append(killer)
 	blasts.append(1 if by_blast else 0)

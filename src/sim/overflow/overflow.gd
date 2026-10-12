@@ -43,6 +43,10 @@ var _next_label := 0
 var _crushes: Dictionary[int, Crush] = {}
 # Every tumble in flight, by enemy id.
 var _tumbles: Dictionary[int, Tumble] = {}
+# Where each enemy that landed within the fall-back window started its tumble, and the ticks
+# left in its window, by enemy id.
+var _landed_from: Dictionary[int, Vector2] = {}
+var _landed_ticks: Dictionary[int, int] = {}
 
 
 ## One barrier's gauge, and the stalled enemies filling it this tick.
@@ -92,6 +96,8 @@ class Tumble:
 	var next := 0
 	## The cell it was last in.
 	var last_cell := Vector2i.ZERO
+	## Where the enemy was when it started.
+	var from := Vector2.ZERO
 
 	func add(cell: Vector2i) -> void:
 		cells.append(cell)
@@ -213,6 +219,7 @@ func tumble(id: int) -> Tumble:
 ## Fills and leaks each gauge from the enemies stalled in its band this tick, launches each
 ## crush's tumbles, then moves every tumbling enemy. Switched off, only tumbles in flight go on.
 func step() -> void:
+	_count_down_landings()
 	if not _settings.overflow_enabled:
 		_crushes.clear()
 		_move_tumblers()
@@ -236,6 +243,30 @@ func step() -> void:
 		if crush.gauge <= 0.0 and not crush.active:
 			_crushes.erase(label)
 	_move_tumblers()
+
+
+## Step 7: the body of each enemy in [param deaths] that died mid-tumble, or within the
+## fall-back window of landing, lands where its tumble started instead, back the way it came,
+## so the overflow's dead don't build its barrier out ahead of it.
+func fall_back(deaths: Deaths) -> void:
+	if not _settings.bodies_fall_back:
+		return
+	for k in deaths.size():
+		var id := deaths.ids[k]
+		if _tumbles.has(id):
+			deaths.bodies[k] = _tumbles[id].from
+		elif _landed_from.has(id):
+			deaths.bodies[k] = _landed_from[id]
+
+
+func _count_down_landings() -> void:
+	for id: int in _landed_ticks.keys():
+		var left := _landed_ticks[id] - 1
+		if left <= 0:
+			_landed_ticks.erase(id)
+			_landed_from.erase(id)
+		else:
+			_landed_ticks[id] = left
 
 
 func _tier_of(crush: Crush) -> Tier:
@@ -294,6 +325,7 @@ func _start_tumble(i: int) -> bool:
 	if planned == null:
 		return false
 	planned.last_cell = Vector2i(_enemies.positions[i].floor())
+	planned.from = _enemies.positions[i]
 	_enemies.start_tumble(i)
 	_tumbles[_enemies.ids[i]] = planned
 	return true
@@ -433,6 +465,8 @@ func _move_tumblers() -> void:
 		if tumbling.next == tumbling.path.size():
 			_tumbles.erase(id)
 			_enemies.land(i)
+			_landed_from[id] = tumbling.from
+			_landed_ticks[id] = _settings.fall_back_window_ticks
 
 
 # Counts each band's stalled enemies, and sorts those within an attacker's reach of the band's

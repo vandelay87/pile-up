@@ -424,6 +424,7 @@ func _repair_buildings() -> void:
 func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	deaths = enemies.remove_dead()
+	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
 	for id in buildings.pending_destroyed():
 		combos.remove(id)
