@@ -1,7 +1,7 @@
 class_name Enemies
 extends RefCounted
 
-enum Kind { NORMAL }
+enum Kind { NORMAL, BLOATER }
 
 const NONE := -1
 const _COLLISION_PASSES := 2

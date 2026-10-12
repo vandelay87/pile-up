@@ -272,8 +272,15 @@ func _show_gold(gold: int) -> void:
 		button.modulate = Color.WHITE if gold >= cost else UNAFFORDABLE_COLOUR
 
 
+# In the build phase, the next wave's size and its bloaters, like "120 enemies · 3 bloaters".
 func _show_enemies_left(left: int) -> void:
-	_enemies_left.text = str(left)
+	if _simulation.waves.phase == Waves.Phase.WAVE:
+		_enemies_left.text = str(left)
+		return
+	_enemies_left.text = "%d enemies" % left
+	var bloaters := _simulation.next_wave_bloaters
+	if bloaters > 0:
+		_enemies_left.text += " · %d bloater%s" % [bloaters, "" if bloaters == 1 else "s"]
 
 
 func _show_kills(kills: int) -> void:
@@ -344,6 +351,7 @@ func _show_combo_ring() -> void:
 
 func _show_phase(_phase: Waves.Phase) -> void:
 	_wave.text = str(_simulation.run_state.wave)
+	_show_enemies_left(_simulation.enemies_left)
 
 
 func _show_game_over() -> void:

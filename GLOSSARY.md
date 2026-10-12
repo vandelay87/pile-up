@@ -154,7 +154,7 @@ The time between waves.
 _Avoid_: Intermission
 
 **Enemies left**:
-The enemies in the current wave not yet killed, including those not yet spawned.
+The enemies in the current wave not yet killed, including those not yet spawned. Between waves, the next wave's size and how many of them are bloaters.
 
 **Wave tail**:
 The end of a wave, once Enemies left falls to a set count, which grows with the wave number.

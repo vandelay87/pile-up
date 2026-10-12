@@ -67,6 +67,10 @@ var deaths := Deaths.new()
 var enemies_left: int:
 	get:
 		return waves.enemies_left
+## How many bloaters the next wave brings.
+var next_wave_bloaters: int:
+	get:
+		return waves.bloater_count(run_state.wave + 1)
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []

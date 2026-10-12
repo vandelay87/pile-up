@@ -2,6 +2,7 @@ class_name EnemyRenderer
 extends Node
 
 const TINT := Color(0.85, 0.3, 0.3)
+const BLOATER_TINT := Color(0.55, 0.85, 0.25)
 const DIRECT_TINT := Color(0.95, 0.8, 0.2)
 const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
@@ -10,6 +11,7 @@ const TUMBLE_TINT := Color(1.0, 0.55, 0.15)
 const TUMBLE_LIFT_LEVELS := 6.0
 
 var _enemies: Enemies
+var _settings: Settings
 var _piles: Piles
 var _map: MapData
 var _parent: RID
@@ -17,15 +19,18 @@ var _texture: Texture2D
 var _items: Array[RID] = []
 var _sprites: Array[RID] = []
 var _lifts := PackedFloat32Array()
+# The drawn scale of each item's sprite: the bloater size for a bloater, else 1.
+var _scales := PackedFloat32Array()
 var _shown := 0
 var _flash_ends := {}
-var _flashed_items: Array[RID] = []
+var _flashed_items := PackedInt32Array()
 var _route_tint := false
-var _tumble_tinted: Array[RID] = []
+var _tumble_tinted := PackedInt32Array()
 
 
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
 	_enemies = simulation.enemies
+	_settings = simulation.settings
 	_piles = simulation.piles
 	_map = simulation.map
 	_parent = parent.get_canvas_item()
@@ -40,8 +45,8 @@ func flash(id: int) -> void:
 func show_route_tint(on: bool) -> void:
 	_route_tint = on
 	if not on:
-		for item in _items:
-			RenderingServer.canvas_item_set_modulate(item, TINT)
+		for i in mini(_enemies.count, _items.size()):
+			RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 
 
 func _process(_delta: float) -> void:
@@ -54,21 +59,31 @@ func _process(_delta: float) -> void:
 		RenderingServer.canvas_item_set_visible(_items[i], false)
 	for i in range(_shown, count):
 		RenderingServer.canvas_item_set_visible(_items[i], true)
+		# A reused item may still carry its last enemy's flash or tint: draw it afresh.
+		_scales[i] = 0.0
 	_shown = count
 
 	var positions := _enemies.positions
 	var tumbling := _enemies.tumbling
+	var kinds := _enemies.kinds
 	var tumble_lift := TUMBLE_LIFT_LEVELS * Atlas.PILE_SLAB_HEIGHT
+	var bloater_size := _settings.bloater_size
 	for i in count:
 		var foot := GridTransform.grid_to_world(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, foot))
 		var lift := _lift_at(positions[i])
 		if tumbling[i] == 1:
 			lift = maxf(lift, tumble_lift)
+		var scale := bloater_size if kinds[i] == Enemies.Kind.BLOATER else 1.0
+		if scale != _scales[i]:
+			# Removal moves enemies between items, so a new kind here needs its own look.
+			_scales[i] = scale
+			_lifts[i] = NAN
+			RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 		if lift != _lifts[i]:
 			_lifts[i] = lift
 			RenderingServer.canvas_item_set_transform(
-				_sprites[i], Transform2D(0.0, Vector2(0, -lift))
+				_sprites[i], Transform2D(0.0, Vector2(scale, scale), 0.0, Vector2(0, -lift))
 			)
 	_draw_tints(count)
 
@@ -91,24 +106,31 @@ func _lift_at(pos: Vector2) -> float:
 	return height * Atlas.PILE_SLAB_HEIGHT
 
 
+# The enemy at [param index]'s own colour.
+func _tint(index: int) -> Color:
+	return BLOATER_TINT if _enemies.kinds[index] == Enemies.Kind.BLOATER else TINT
+
+
 func _draw_tints(count: int) -> void:
-	for item in _tumble_tinted:
-		RenderingServer.canvas_item_set_modulate(item, TINT)
+	for i in _tumble_tinted:
+		if i < count:
+			RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 	_tumble_tinted.clear()
 	if _route_tint:
 		var routes := _enemies.routes
 		for i in count:
 			var direct := routes[i] == Routing.Route.DIRECT
-			RenderingServer.canvas_item_set_modulate(_items[i], DIRECT_TINT if direct else TINT)
+			RenderingServer.canvas_item_set_modulate(_items[i], DIRECT_TINT if direct else _tint(i))
 	else:
-		for item in _flashed_items:
-			RenderingServer.canvas_item_set_modulate(item, TINT)
+		for i in _flashed_items:
+			if i < count:
+				RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 	_flashed_items.clear()
 	var tumbling := _enemies.tumbling
 	for i in count:
 		if tumbling[i] == 1:
 			RenderingServer.canvas_item_set_modulate(_items[i], TUMBLE_TINT)
-			_tumble_tinted.append(_items[i])
+			_tumble_tinted.append(i)
 	var now := Time.get_ticks_msec()
 	for id: int in _flash_ends.keys():
 		var index := _enemies.index_of(id)
@@ -116,7 +138,7 @@ func _draw_tints(count: int) -> void:
 			_flash_ends.erase(id)
 			continue
 		RenderingServer.canvas_item_set_modulate(_items[index], FLASH_TINT)
-		_flashed_items.append(_items[index])
+		_flashed_items.append(index)
 
 
 func _create_item() -> void:
@@ -132,6 +154,7 @@ func _create_item() -> void:
 	_items.append(item)
 	_sprites.append(sprite)
 	_lifts.append(0.0)
+	_scales.append(1.0)
 
 
 func _exit_tree() -> void:

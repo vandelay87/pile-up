@@ -175,6 +175,21 @@ var fall_back_window_ticks: int:
 	get:
 		var seconds: float = value("overflow", "fall_back_window")
 		return roundi(seconds * Simulation.TICKS_PER_SECOND)
+var bloater_hp: float:
+	get:
+		return value("bloaters", "hp")
+var bloater_speed: float:
+	get:
+		return value("bloaters", "speed")
+var bloater_bounty: int:
+	get:
+		return value("bloaters", "bounty")
+var first_bloater_wave: int:
+	get:
+		return value("bloaters", "first_wave")
+var bloater_size: float:
+	get:
+		return value("bloaters", "size")
 var wave_1_size: int:
 	get:
 		return value("waves", "wave_1_size")
@@ -344,17 +359,29 @@ func pile_slow(level: int) -> float:
 	return percent / 100.0
 
 
-# Kind-specific enemy numbers. Every kind has the normal enemy's numbers for now.
-func enemy_hp_of(_kind: Enemies.Kind) -> float:
-	return enemy_hp
+# Kind-specific enemy numbers.
+func enemy_hp_of(kind: Enemies.Kind) -> float:
+	return bloater_hp if kind == Enemies.Kind.BLOATER else enemy_hp
 
 
-func enemy_bounty_of(_kind: Enemies.Kind) -> int:
-	return enemy_bounty
+func enemy_bounty_of(kind: Enemies.Kind) -> int:
+	return bloater_bounty if kind == Enemies.Kind.BLOATER else enemy_bounty
 
 
-func enemy_speed_per_tick_of(_kind: Enemies.Kind) -> float:
-	return enemy_speed_per_tick
+func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:
+	var speed := bloater_speed if kind == Enemies.Kind.BLOATER else enemy_speed
+	return speed / Simulation.TICKS_PER_SECOND
+
+
+# The share of wave [param wave]'s spawns that are bloaters: 0 before the first bloater wave,
+# then growing each wave up to the cap.
+func bloater_share(wave: int) -> float:
+	if wave < first_bloater_wave:
+		return 0.0
+	var share: float = value("bloaters", "share")
+	var per_wave: float = value("bloaters", "share_per_wave")
+	var cap: float = value("bloaters", "share_cap")
+	return minf(cap, share + per_wave * (wave - first_bloater_wave)) / 100.0
 
 
 func value(group: String, key: String) -> Variant:
