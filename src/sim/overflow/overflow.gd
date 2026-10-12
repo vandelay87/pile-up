@@ -224,7 +224,10 @@ func step() -> void:
 		_crushes.clear()
 		_move_tumblers()
 		return
+	var t := Time.get_ticks_usec()
 	_gather()
+	Prof.add(&"5.2.1 overflow gather", t)
+	t = Time.get_ticks_usec()
 	var dt := 1.0 / Simulation.TICKS_PER_SECOND
 	var fill := _settings.fill_per_stalled
 	var leak := _settings.overflow_leak
@@ -242,7 +245,10 @@ func step() -> void:
 		crush.tier = _tier_of(crush)
 		if crush.gauge <= 0.0 and not crush.active:
 			_crushes.erase(label)
+	Prof.add(&"5.2.2 overflow gauges + launch", t)
+	t = Time.get_ticks_usec()
 	_move_tumblers()
+	Prof.add(&"5.2.3 overflow move tumblers", t)
 
 
 ## Step 7: the body of each enemy in [param deaths] that died mid-tumble, or within the

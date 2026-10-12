@@ -265,7 +265,9 @@ func rebuild_spatial_hash() -> void:
 # through on the direct route instead. Progress is tracked for enemies on cells marked 1 in
 # [param band_mask].
 func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
+	var t := Time.get_ticks_usec()
 	var sensible_before := _routing.take_sensible_before()
+	Prof.add(&"5.1.1 take sensible before", t)
 	if count == 0:
 		return
 	# The step for each kind on each pile level, at kind * _PILE_LEVELS + level.
@@ -291,8 +293,11 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	var space_push := _settings.personal_space_push
 	var spreads := space_radius > 2.0 * radius and space_push > 0.0
 	_ticks += 1
+	t = Time.get_ticks_usec()
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
+	Prof.add(&"5.1.2 push through turned back", t)
+	t = Time.get_ticks_usec()
 	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
 	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
 	var fuse_ticks := _settings.fuse_ticks
@@ -303,6 +308,8 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
 		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
 			fuses[i] = fuse_ticks
+	Prof.add(&"5.1.3 fuses + structure targets loop", t)
+	t = Time.get_ticks_usec()
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
@@ -323,6 +330,8 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		var kind_level := kinds[i] * _PILE_LEVELS + levels[_cell_index(pos)]
 		var pace_step := steps[kind_level] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
+	Prof.add(&"5.1.4 steer loop (separation, space, heading)", t)
+	t = Time.get_ticks_usec()
 	for i in count:
 		if hp[i] <= 0.0 or tumbling[i] == 1:
 			continue
@@ -340,10 +349,13 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		_track_progress(
 			i, pos, band_mask, steps[kinds[i] * _PILE_LEVELS] * (1.0 + pace_rolls[i] * variety)
 		)
+	Prof.add(&"5.1.5 collide + route + progress loop", t)
+	t = Time.get_ticks_usec()
 	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
 		if structure_targets[i] != NONE and kinds[i] != Kind.BLOATER:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+	Prof.add(&"5.1.6 structure damage loop", t)
 
 
 # A lit fuse burns down a tick; one that runs out pops its bloater, with no killer.

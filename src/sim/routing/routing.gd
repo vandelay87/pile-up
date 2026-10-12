@@ -270,14 +270,21 @@ func _repair(route: Route, cells: Array[Vector2i]) -> bool:
 		return false
 	if route == Route.SENSIBLE:
 		_keep_sensible_before(true)
+	var t := Time.get_ticks_usec()
 	var invalid := _invalidate(field, factors, region)
+	Prof.add(&"2.4.1 invalidate", t)
+	t = Time.get_ticks_usec()
 	var changed := invalid.duplicate()
 	var heap := _Heap.new(64)
 	for seeds: PackedInt32Array in [region, invalid]:
 		for cell in seeds:
 			if _reseed(field, factors, cell, heap):
 				changed.append(cell)
+	Prof.add(&"2.4.2 reseed", t)
+	t = Time.get_ticks_usec()
 	_settle(_map.width, _map.height, factors, _solid, field, heap, changed)
+	Prof.add(&"2.4.3 settle", t)
+	Prof.usec[&"field cells repaired"] = Prof.usec.get(&"field cells repaired", 0) + changed.size()
 	for cell in changed:
 		field.directions[cell] = _directions[field.parent_offsets[cell]]
 	for cell in region:

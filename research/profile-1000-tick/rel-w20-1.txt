@@ -1,0 +1,79 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M5 (Apple9)
+
+Run seed: 1669073828
+Flow fields: full rebuild of both fields took 11.7 ms
+ticks 300, enemies 96, tick 0.78 ms
+ticks 600, enemies 144, tick 1.03 ms
+ticks 900, enemies 192, tick 1.28 ms
+ticks 1200, enemies 240, tick 1.59 ms
+ticks 1500, enemies 302, tick 1.92 ms
+ticks 1800, enemies 347, tick 2.28 ms
+ticks 2100, enemies 394, tick 2.69 ms
+ticks 2400, enemies 434, tick 2.94 ms
+ticks 2700, enemies 474, tick 3.39 ms
+ticks 3000, enemies 512, tick 3.61 ms
+ticks 3300, enemies 545, tick 4.10 ms
+ticks 3600, enemies 578, tick 11.78 ms
+ticks 3900, enemies 630, tick 4.78 ms
+ticks 4200, enemies 660, tick 5.68 ms
+ticks 4500, enemies 695, tick 6.02 ms
+ticks 4800, enemies 734, tick 6.24 ms
+ticks 5100, enemies 740, tick 6.44 ms
+ticks 5400, enemies 738, tick 6.58 ms
+ticks 5700, enemies 771, tick 7.07 ms
+ticks 6000, enemies 806, tick 8.79 ms
+ticks 6300, enemies 827, tick 7.38 ms
+ticks 6600, enemies 859, tick 7.45 ms
+ticks 6900, enemies 892, tick 8.64 ms
+ticks 7200, enemies 929, tick 9.44 ms
+
+Godot 4.7.2-stable (official) | Apple M5 | debug build: false | scenario wave-20 | 7200 ticks after 240 warm-up frames
+Enemies on field: mean 547, max 930. Tick mean 4.62 / p99 9.47 / max 21.08 ms.
+Ticks with field changes: 363 of 7200; changed cells per such tick mean 1.1; field cells repaired per such tick mean 542.
+
+| Section | Mean ms | p99 ms | Max ms | Share of tick mean | Mean in worst 1% ticks |
+|---|---|---|---|---|---|
+| **tick** | 4.616 | 9.471 | 21.084 | 100% | 11.802 |
+| 1 drain commands | 0.003 | 0.005 | 0.037 | 0.1% | 0.003 |
+| 2 land bodies + fields | 0.073 | 1.883 | 12.733 | 1.6% | 4.014 |
+| 2.1 piles.land | 0.001 | 0.007 | 0.011 | 0.0% | 0.004 |
+| 2.4 routing.update (field repair) | 0.040 | 0.420 | 11.270 | 0.9% | 2.886 |
+| 2.4.1 invalidate | 0.006 | 0.050 | 1.903 | 0.1% | 0.398 |
+| 2.4.2 reseed | 0.012 | 0.095 | 4.229 | 0.3% | 0.876 |
+| 2.4.3 settle | 0.020 | 0.260 | 4.819 | 0.4% | 1.501 |
+| 2.5 overflow.update (relabel) | 0.031 | 1.454 | 1.542 | 0.7% | 1.122 |
+| 3 spawn | 0.002 | 0.012 | 0.029 | 0.0% | 0.002 |
+| 4 spatial hash | 0.215 | 0.289 | 0.310 | 4.6% | 0.261 |
+| 5 move enemies + overflow | 4.259 | 8.902 | 9.167 | 92.3% | 7.446 |
+| 5.1 enemies.move | 4.126 | 8.477 | 8.657 | 89.4% | 7.153 |
+| 5.1.1 take sensible before | 0.000 | 0.001 | 0.008 | 0.0% | 0.000 |
+| 5.1.2 push through turned back | 0.000 | 0.001 | 0.008 | 0.0% | 0.000 |
+| 5.1.3 fuses + structure targets loop | 0.319 | 0.623 | 0.669 | 6.9% | 0.531 |
+| 5.1.4 steer loop (separation, space, heading) | 2.762 | 5.895 | 6.011 | 59.8% | 4.917 |
+| 5.1.5 collide + route + progress loop | 1.017 | 1.936 | 2.134 | 22.0% | 1.663 |
+| 5.1.6 structure damage loop | 0.017 | 0.036 | 0.055 | 0.4% | 0.030 |
+| 5.2 overflow.step | 0.132 | 0.448 | 0.556 | 2.9% | 0.293 |
+| 5.2.1 overflow gather | 0.116 | 0.411 | 0.508 | 2.5% | 0.262 |
+| 5.2.2 overflow gauges + launch | 0.009 | 0.047 | 0.095 | 0.2% | 0.016 |
+| 5.2.3 overflow move tumblers | 0.006 | 0.026 | 0.044 | 0.1% | 0.012 |
+| 6 buildings act | 0.045 | 0.166 | 0.216 | 1.0% | 0.049 |
+| 6.1 towers + grinders | 0.043 | 0.164 | 0.214 | 0.9% | 0.048 |
+| 7 repair | 0.001 | 0.002 | 0.009 | 0.0% | 0.001 |
+| 8 remove dead | 0.012 | 0.023 | 0.425 | 0.3% | 0.016 |
+| 8.1 enemies.remove_dead | 0.008 | 0.013 | 0.027 | 0.2% | 0.011 |
+| 8.2 blasts.resolve | 0.001 | 0.002 | 0.353 | 0.0% | 0.001 |
+| 8.3 fall back + queue bodies | 0.001 | 0.002 | 0.018 | 0.0% | 0.001 |
+| 8.4 combos + pay | 0.002 | 0.006 | 0.069 | 0.0% | 0.002 |
+| 9 wave end | 0.001 | 0.001 | 0.002 | 0.0% | 0.001 |
+| 10 emit signals (+view handlers) | 0.005 | 0.023 | 0.052 | 0.1% | 0.009 |
+
+Per-enemy helpers, timed outside the tick once per frame (3599 frames):
+| Helper or frame part | Mean ms | p99 ms |
+|---|---|---|
+| view process (frame without shadow passes) | 9.665 | 21.977 |
+| render | 0.136 | 0.188 |
+| separation | 1.213 | 2.682 |
+| personal space | 1.109 | 2.424 |
+| sample direction | 0.515 | 0.854 |
+| resolve collision (1 pass) | 0.634 | 1.048 |

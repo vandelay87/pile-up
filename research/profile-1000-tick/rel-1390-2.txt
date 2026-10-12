@@ -1,0 +1,61 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M5 (Apple9)
+
+Run seed: 1076777182
+Flow fields: full rebuild of both fields took 11.6 ms
+ticks 300, enemies 1390, tick 21.41 ms
+ticks 600, enemies 1390, tick 20.99 ms
+ticks 900, enemies 1390, tick 20.43 ms
+ticks 1200, enemies 1390, tick 20.03 ms
+ticks 1500, enemies 1390, tick 20.82 ms
+ticks 1800, enemies 1390, tick 20.58 ms
+
+Godot 4.7.2-stable (official) | Apple M5 | debug build: false | scenario dense-1390 | 1800 ticks after 240 warm-up frames
+Enemies on field: mean 1390, max 1390. Tick mean 20.74 / p99 27.20 / max 37.51 ms.
+Ticks with field changes: 146 of 1800; changed cells per such tick mean 1.7; field cells repaired per such tick mean 1350.
+
+| Section | Mean ms | p99 ms | Max ms | Share of tick mean | Mean in worst 1% ticks |
+|---|---|---|---|---|---|
+| **tick** | 20.735 | 27.202 | 37.506 | 100% | 31.885 |
+| 1 drain commands | 0.003 | 0.006 | 0.036 | 0.0% | 0.003 |
+| 2 land bodies + fields | 0.204 | 6.336 | 16.763 | 1.0% | 11.054 |
+| 2.1 piles.land | 0.001 | 0.009 | 0.025 | 0.0% | 0.009 |
+| 2.4 routing.update (field repair) | 0.153 | 5.181 | 15.525 | 0.7% | 9.780 |
+| 2.4.1 invalidate | 0.021 | 0.899 | 2.568 | 0.1% | 1.593 |
+| 2.4.2 reseed | 0.046 | 1.933 | 5.740 | 0.2% | 3.536 |
+| 2.4.3 settle | 0.080 | 3.809 | 6.805 | 0.4% | 4.364 |
+| 2.5 overflow.update (relabel) | 0.048 | 1.309 | 1.484 | 0.2% | 1.263 |
+| 3 spawn | 0.001 | 0.001 | 0.004 | 0.0% | 0.001 |
+| 4 spatial hash | 0.375 | 0.397 | 0.407 | 1.8% | 0.365 |
+| 5 move enemies + overflow | 20.070 | 22.140 | 23.082 | 96.8% | 20.421 |
+| 5.1 enemies.move | 19.583 | 21.318 | 22.182 | 94.4% | 19.881 |
+| 5.1.1 take sensible before | 0.000 | 0.001 | 0.001 | 0.0% | 0.000 |
+| 5.1.2 push through turned back | 0.000 | 0.001 | 0.001 | 0.0% | 0.000 |
+| 5.1.3 fuses + structure targets loop | 0.949 | 1.117 | 1.299 | 4.6% | 1.042 |
+| 5.1.4 steer loop (separation, space, heading) | 15.701 | 16.752 | 18.177 | 75.7% | 15.643 |
+| 5.1.5 collide + route + progress loop | 2.884 | 3.668 | 3.971 | 13.9% | 3.132 |
+| 5.1.6 structure damage loop | 0.038 | 0.071 | 0.111 | 0.2% | 0.051 |
+| 5.2 overflow.step | 0.487 | 1.037 | 1.302 | 2.3% | 0.539 |
+| 5.2.1 overflow gather | 0.436 | 0.946 | 1.226 | 2.1% | 0.481 |
+| 5.2.2 overflow gauges + launch | 0.037 | 0.199 | 0.286 | 0.2% | 0.045 |
+| 5.2.3 overflow move tumblers | 0.011 | 0.029 | 0.037 | 0.1% | 0.011 |
+| 6 buildings act | 0.051 | 0.814 | 2.510 | 0.2% | 0.003 |
+| 6.1 towers + grinders | 0.049 | 0.813 | 2.508 | 0.2% | 0.002 |
+| 7 repair | 0.001 | 0.002 | 0.005 | 0.0% | 0.001 |
+| 8 remove dead | 0.022 | 0.035 | 0.046 | 0.1% | 0.022 |
+| 8.1 enemies.remove_dead | 0.018 | 0.024 | 0.036 | 0.1% | 0.018 |
+| 8.2 blasts.resolve | 0.001 | 0.003 | 0.010 | 0.0% | 0.001 |
+| 8.3 fall back + queue bodies | 0.001 | 0.002 | 0.003 | 0.0% | 0.001 |
+| 8.4 combos + pay | 0.002 | 0.008 | 0.013 | 0.0% | 0.002 |
+| 9 wave end | 0.001 | 0.001 | 0.013 | 0.0% | 0.001 |
+| 10 emit signals (+view handlers) | 0.007 | 0.034 | 0.056 | 0.0% | 0.012 |
+
+Per-enemy helpers, timed outside the tick once per frame (899 frames):
+| Helper or frame part | Mean ms | p99 ms |
+|---|---|---|
+| view process (frame without shadow passes) | 18.891 | 21.265 |
+| render | 0.256 | 0.347 |
+| separation | 7.235 | 7.747 |
+| personal space | 6.657 | 7.195 |
+| sample direction | 1.324 | 1.447 |
+| resolve collision (1 pass) | 1.658 | 1.784 |

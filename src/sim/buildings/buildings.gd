@@ -263,11 +263,13 @@ func take_destroyed() -> Array[int]:
 ## grinders hurt every enemy touching them.
 func act(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
+	var t := Time.get_ticks_usec()
 	for acting in built:
 		if acting.kind == TOWER:
 			_fire(acting, enemies, shots)
 		elif acting.kind == GRINDER:
 			_grind(acting, enemies)
+	Prof.add(&"6.1 towers + grinders", t)
 	return shots
 
 

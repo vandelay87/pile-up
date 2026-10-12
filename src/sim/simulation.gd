@@ -274,21 +274,41 @@ func run_frame() -> void:
 
 
 func tick() -> void:
+	var t := Time.get_ticks_usec()
 	_drain_commands()
+	Prof.add(&"1 drain commands", t)
 	if run_state.is_game_over:
 		tick_count += 1
 		_emit_signals()
 		return
+	t = Time.get_ticks_usec()
 	_land_bodies_and_update_fields()
+	Prof.add(&"2 land bodies + fields", t)
+	t = Time.get_ticks_usec()
 	_spawn_enemies()
+	Prof.add(&"3 spawn", t)
+	t = Time.get_ticks_usec()
 	_rebuild_spatial_hash()
+	Prof.add(&"4 spatial hash", t)
+	t = Time.get_ticks_usec()
 	_move_enemies()
+	Prof.add(&"5 move enemies + overflow", t)
+	t = Time.get_ticks_usec()
 	_buildings_act()
+	Prof.add(&"6 buildings act", t)
+	t = Time.get_ticks_usec()
 	_repair_buildings()
+	Prof.add(&"7 repair", t)
+	t = Time.get_ticks_usec()
 	_remove_dead()
+	Prof.add(&"8 remove dead", t)
+	t = Time.get_ticks_usec()
 	_check_wave_end()
+	Prof.add(&"9 wave end", t)
 	tick_count += 1
+	t = Time.get_ticks_usec()
 	_emit_signals()
+	Prof.add(&"10 emit signals (+view handlers)", t)
 
 
 func _emit_signals() -> void:
@@ -383,27 +403,39 @@ func _drain_time_controls() -> void:
 
 func _land_bodies_and_update_fields() -> void:
 	_observe(Step.LAND_BODIES_AND_UPDATE_FIELDS)
+	var t := Time.get_ticks_usec()
 	piles.land()
+	Prof.add(&"2.1 piles.land", t)
 	_changed_cells.append_array(piles.take_field_changes())
 	_changed_cells.append_array(buildings.take_field_changes())
 	if _decay_due:
 		_decay_due = false
 		_changed_cells.clear()
+		t = Time.get_ticks_usec()
 		piles.decay()
 		overflow.relabel()
 		routing.start_rebuild()
+		Prof.add(&"2.2 decay + start rebuild", t)
 		_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
 	elif routing.is_rebuilding() and tick_count >= _rebuild_swap_tick:
-		if routing.finish_rebuild():
+		t = Time.get_ticks_usec()
+		var finished := routing.finish_rebuild()
+		Prof.add(&"2.3 finish threaded rebuild", t)
+		if finished:
 			_fields_changed = true
 		else:
 			_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
 	if not _changed_cells.is_empty():
 		var cells := _changed_cells
 		_changed_cells = []
+		t = Time.get_ticks_usec()
 		if routing.update(cells):
 			_fields_changed = true
+		Prof.add(&"2.4 routing.update (field repair)", t)
+		t = Time.get_ticks_usec()
 		overflow.update(cells)
+		Prof.add(&"2.5 overflow.update (relabel)", t)
+		Prof.usec[&"cells changed"] = Prof.usec.get(&"cells changed", 0) + cells.size()
 
 
 func _spawn_enemies() -> void:
@@ -418,8 +450,12 @@ func _rebuild_spatial_hash() -> void:
 
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
+	var t := Time.get_ticks_usec()
 	enemies.move(waves.in_wave_tail(), overflow.band_mask)
+	Prof.add(&"5.1 enemies.move", t)
+	t = Time.get_ticks_usec()
 	overflow.step()
+	Prof.add(&"5.2 overflow.step", t)
 
 
 func _buildings_act() -> void:
@@ -435,16 +471,24 @@ func _repair_buildings() -> void:
 
 func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
+	var t := Time.get_ticks_usec()
 	deaths = enemies.remove_dead()
+	Prof.add(&"8.1 enemies.remove_dead", t)
+	t = Time.get_ticks_usec()
 	_blasts.append_array(bloater_blasts.resolve(deaths))
+	Prof.add(&"8.2 blasts.resolve", t)
+	t = Time.get_ticks_usec()
 	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
+	Prof.add(&"8.3 fall back + queue bodies", t)
+	t = Time.get_ticks_usec()
 	for id in buildings.pending_destroyed():
 		combos.remove(id)
 	combos.expire(tick_count)
 	run_state.pay(deaths, combos, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
 	waves.record_kills(deaths.size())
+	Prof.add(&"8.4 combos + pay", t)
 
 
 func _check_wave_end() -> void:
