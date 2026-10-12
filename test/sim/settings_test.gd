@@ -75,14 +75,14 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 
 	assert_int(settings.base_hp).is_equal(200)
-	assert_int(settings.starting_gold).is_equal(200)
+	assert_int(settings.starting_gold).is_equal(300)
 	assert_str(settings.map_path).is_equal("res://data/maps/v3-flared.json")
 	assert_float(settings.enemy_speed).is_equal_approx(2.0, 1e-6)
 	assert_float(settings.structure_damage).is_equal_approx(2.0, 1e-6)
 	assert_float(settings.wall_hp).is_equal_approx(15.0, 1e-6)
 	assert_float(settings.tower_damage).is_equal_approx(5.0, 1e-6)
 	assert_int(settings.tower_cooldown_ticks).is_equal(17)
-	assert_int(settings.tower_cost).is_equal(80)
+	assert_int(settings.tower_cost).is_equal(120)
 	assert_float(settings.tower_hp).is_equal_approx(60.0, 1e-6)
 	assert_float(settings.pile_slow(1)).is_equal_approx(0.15, 1e-6)
 	assert_float(settings.pile_slow(4)).is_equal_approx(0.6, 1e-6)

@@ -69,6 +69,7 @@ func test_at_0_percent_a_pile_survives_even_the_lowest_roll() -> void:
 
 
 func test_over_many_piles_the_loss_rate_is_near_each_chance() -> void:
+	_set_chances(50, 25)
 	var map := TestMaps.from_rows(_rows(40, 40), Rect2i(39, 39, 1, 1))
 	var piles := Piles.new(_settings, map, Occupancy.new(map.width, map.height), _rng(3))
 	var cells := 0
@@ -132,6 +133,7 @@ func test_a_fallen_wall_rolls_like_any_other_pile() -> void:
 
 
 func test_the_same_seed_gives_the_same_decay() -> void:
+	_set_chances(50, 25)
 	var first := _random_piles(_rng(11))
 	var second := _random_piles(_rng(11))
 
@@ -143,6 +145,7 @@ func test_the_same_seed_gives_the_same_decay() -> void:
 
 
 func test_the_run_seed_seeds_the_decay_rolls() -> void:
+	_set_chances(50, 25)
 	var first := _decayed_sim(5)
 	var second := _decayed_sim(5)
 	var other := _decayed_sim(6)

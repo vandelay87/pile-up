@@ -15,12 +15,12 @@ func test_a_placement_charges_the_cost_and_occupies_all_four_cells() -> void:
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 5)))
 	sim.tick()
 
-	assert_int(sim.run_state.gold).is_equal(120)
+	assert_int(sim.run_state.gold).is_equal(180)
 	for cell: Vector2i in [Vector2i(0, 5), Vector2i(1, 5), Vector2i(0, 6), Vector2i(1, 6)]:
 		assert_bool(sim.occupancy.is_occupied(cell)).is_true()
 	for cell: Vector2i in [Vector2i(2, 5), Vector2i(0, 7), Vector2i(0, 4)]:
 		assert_bool(sim.occupancy.is_occupied(cell)).is_false()
-	assert_array(_events).contains_exactly(["gold 120", "placed (0, 5)"])
+	assert_array(_events).contains_exactly(["gold 180", "placed (0, 5)"])
 
 
 func test_a_placement_overlapping_rock_base_or_a_tower_is_rejected_as_occupied() -> void:
@@ -37,7 +37,7 @@ func test_a_placement_overlapping_rock_base_or_a_tower_is_rejected_as_occupied()
 
 	var occupied := "build tower: occupied"
 	assert_array(_events).contains_exactly([occupied, occupied, occupied, occupied])
-	assert_int(sim.run_state.gold).is_equal(120)
+	assert_int(sim.run_state.gold).is_equal(180)
 	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 0))).is_false()
 
 
@@ -61,7 +61,7 @@ func test_a_placement_off_the_map_is_rejected() -> void:
 	sim.tick()
 
 	assert_array(_events).contains_exactly(["build tower: off the map", "build tower: off the map"])
-	assert_int(sim.run_state.gold).is_equal(200)
+	assert_int(sim.run_state.gold).is_equal(300)
 
 
 func test_a_placement_touching_a_no_build_cell_is_rejected_and_costs_nothing() -> void:
@@ -76,12 +76,12 @@ func test_a_placement_touching_a_no_build_cell_is_rejected_and_costs_nothing() -
 	var tower := "build tower: too close to a spawn edge"
 	var pylon := "build pylon: too close to a spawn edge"
 	assert_array(_events).contains_exactly([tower, pylon])
-	assert_int(sim.run_state.gold).is_equal(200)
+	assert_int(sim.run_state.gold).is_equal(300)
 	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 1))).is_false()
 
 
 func test_a_placement_without_enough_gold_is_rejected() -> void:
-	_settings.change("towers", "cost", 90)
+	_settings.change("towers", "cost", 130)
 	var sim := _sim(_open_rows())
 
 	for origin: Vector2i in [Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)]:
@@ -89,7 +89,7 @@ func test_a_placement_without_enough_gold_is_rejected() -> void:
 	sim.tick()
 
 	assert_array(_events).contains_exactly(
-		["gold 20", "placed (0, 2)", "placed (0, 4)", "build tower: not enough gold"]
+		["gold 40", "placed (0, 2)", "placed (0, 4)", "build tower: not enough gold"]
 	)
 	assert_bool(sim.occupancy.is_occupied(Vector2i(0, 6))).is_false()
 
@@ -103,7 +103,7 @@ func test_a_placement_that_cuts_every_route_to_the_base_is_accepted() -> void:
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 1)))
 	sim.tick()
 
-	assert_array(_events).contains_exactly(["gold 120", "placed (0, 1)"])
+	assert_array(_events).contains_exactly(["gold 180", "placed (0, 1)"])
 	assert_float(sim.routing.value(Routing.Route.SENSIBLE, Vector2i(5, 0))).is_less(INF)
 
 
@@ -114,7 +114,7 @@ func test_a_placement_on_top_of_a_live_enemy_is_accepted() -> void:
 	sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(0, 6)))
 	sim.tick()
 
-	assert_array(_events).contains_exactly(["gold 120", "placed (0, 6)"])
+	assert_array(_events).contains_exactly(["gold 180", "placed (0, 6)"])
 
 
 func test_both_fields_cost_a_new_tower_on_the_tick_it_is_built() -> void:
