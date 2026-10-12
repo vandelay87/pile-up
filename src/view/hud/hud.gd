@@ -33,6 +33,11 @@ const COMMAND_LABELS := {
 	Buildings.PYLON: ["Pylon", "P"],
 	Buildings.REPAIR_YARD: ["Repair", "R"],
 }
+## A tower's targeting toggle, in button order.
+const TARGETING_NAMES := {
+	Enemies.BLOATERS_FIRST: "Bloaters first",
+	Enemies.CLOSEST_TO_BASE: "Closest to base",
+}
 
 var _simulation: Simulation
 var _bar: PanelContainer
@@ -50,6 +55,8 @@ var _details_lines := VFlowContainer.new()
 var _yard_controls := HBoxContainer.new()
 var _assign := Button.new()
 var _threshold_buttons: Dictionary[int, Button] = {}
+var _tower_controls := HBoxContainer.new()
+var _targeting_buttons: Dictionary[StringName, Button] = {}
 var _next_wave := Button.new()
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _toast := Label.new()
@@ -218,6 +225,17 @@ func _details_panel() -> PanelContainer:
 		_threshold_buttons[percent] = button
 		_yard_controls.add_child(button)
 	text_column.add_child(_yard_controls)
+	var targeting := ButtonGroup.new()
+	for mode: StringName in TARGETING_NAMES:
+		var button := Button.new()
+		button.text = TARGETING_NAMES[mode]
+		button.toggle_mode = true
+		button.button_group = targeting
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(func() -> void: _selection.set_tower_targeting(mode))
+		_targeting_buttons[mode] = button
+		_tower_controls.add_child(button)
+	text_column.add_child(_tower_controls)
 	details_row.add_child(text_column)
 	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
 	_combo_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -332,6 +350,10 @@ func _show_details() -> void:
 	var threshold := _selection.yard_threshold()
 	for percent in _threshold_buttons:
 		_threshold_buttons[percent].set_pressed_no_signal(percent == threshold)
+	_tower_controls.visible = _selection.is_tower_selected()
+	var mode := _selection.tower_targeting()
+	for each: StringName in _targeting_buttons:
+		_targeting_buttons[each].set_pressed_no_signal(each == mode)
 
 
 # A tower's or grinder's ring, in pale gold at x1 rather than hidden, so its progress towards

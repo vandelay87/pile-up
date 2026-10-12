@@ -19,6 +19,8 @@ const NEAR_SPAWN := "too close to a spawn edge"
 const OFF_GRID := "off the power grid"
 const OCCUPIED := "occupied"
 const NOT_ENOUGH_GOLD := "not enough gold"
+const NOT_A_TOWER := "not a tower"
+const BAD_TARGETING := "the mode must be bloaters_first or closest_to_base"
 const _REPAIR_SLACK := 1e-6
 
 var built: Array[Building] = []
@@ -52,6 +54,8 @@ class Building:
 	var powered := false
 	var cooldown := 0
 	var target_id := Enemies.NONE
+	## What this tower aims at: one of [constant Enemies.TARGETINGS].
+	var targeting := Enemies.BLOATERS_FIRST
 	## Enemies this tower or grinder has killed this run (it took them to 0 HP).
 	var kills := 0
 	## Enemies touching this grinder as it last ground (0 while it isn't working).
@@ -214,6 +218,17 @@ func is_working(id: int) -> bool:
 	return target.kind == PYLON or not under_repair.has(id)
 
 
+## Sets the targeting of the tower with id [param id]; returns why not, or "" once set.
+func set_targeting(id: int, mode: StringName) -> String:
+	var tower := building(id)
+	if tower == null or tower.kind != TOWER:
+		return NOT_A_TOWER
+	if mode not in Enemies.TARGETINGS:
+		return BAD_TARGETING
+	tower.targeting = mode
+	return ""
+
+
 func is_damaged(target: Building) -> bool:
 	return target.hp < max_hp(target.kind)
 
@@ -272,7 +287,7 @@ func _fire(tower: Building, enemies: Enemies, shots: Array[Shot]) -> void:
 		tower.cooldown -= 1
 		if tower.cooldown > 0:
 			return
-	var target := enemies.nearest_to_base_in_range(tower.centre, _settings.tower_range)
+	var target := enemies.target_in_range(tower.centre, _settings.tower_range, tower.targeting)
 	if target == Enemies.NONE:
 		return
 	var index := enemies.index_of(target)
