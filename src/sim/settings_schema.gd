@@ -208,31 +208,31 @@ const SCHEMA := {
 			"unit": "wave",
 			"apply": Settings.Apply.LIVE,
 		},
-		"share":
+		"waves_per_step":
 		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 100.0,
-			"step": 0.1,
-			"unit": "percent of the first bloater wave",
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 50,
+			"step": 1,
+			"unit": "waves per extra bloater",
 			"apply": Settings.Apply.LIVE,
 		},
-		"share_per_wave":
+		"miss_chance":
 		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 10.0,
-			"step": 0.1,
-			"unit": "percent added each wave",
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent chance a wave has one fewer",
 			"apply": Settings.Apply.LIVE,
 		},
-		"share_cap":
+		"extra_chance":
 		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 100.0,
-			"step": 0.1,
-			"unit": "percent",
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent chance a wave has one more",
 			"apply": Settings.Apply.LIVE,
 		},
 		"size":

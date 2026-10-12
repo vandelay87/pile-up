@@ -96,7 +96,7 @@ func test_add_gold_adds_to_the_run_gold() -> void:
 
 	_sim.tick()
 
-	assert_int(_sim.run_state.gold).is_equal(300)
+	assert_int(_sim.run_state.gold).is_equal(400)
 
 
 func _run_until_build_phase() -> void:

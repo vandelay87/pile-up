@@ -24,9 +24,9 @@
 		"speed": 1.6,
 		"bounty": 2,
 		"first_wave": 5,
-		"share": 2,
-		"share_per_wave": 0.3,
-		"share_cap": 5,
+		"waves_per_step": 6,
+		"miss_chance": 25,
+		"extra_chance": 10,
 		"size": 1.5,
 		"fuse": 1,
 		"blast_radius": 2,
@@ -38,8 +38,8 @@
 		"slow_level_3": 45,
 		"slow_level_4": 60,
 		"wall_hp": 15,
-		"decay_chance": 50,
-		"wall_decay_chance": 25
+		"decay_chance": 0,
+		"wall_decay_chance": 0
 	},
 	"overflow": {
 		"enabled": 1,
@@ -83,23 +83,23 @@
 		"damage": 5,
 		"fire_rate": 3.5,
 		"range": 8,
-		"cost": 80,
+		"cost": 120,
 		"hp": 60,
 		"power_area": 4
 	},
 	"grinders": {
-		"cost": 60,
+		"cost": 90,
 		"hp": 100,
 		"power_area": 2,
 		"damage": 3
 	},
 	"pylons": {
-		"cost": 20,
+		"cost": 30,
 		"hp": 20,
 		"power_area": 10
 	},
 	"repair_yards": {
-		"cost": 80,
+		"cost": 120,
 		"hp": 60,
 		"power_area": 4,
 		"repair_area": 8,
@@ -114,7 +114,7 @@
 	},
 	"run": {
 		"base_hp": 200,
-		"starting_gold": 200,
+		"starting_gold": 300,
 		"base_power_area": 10,
 		"map_path": "res://data/maps/v3-flared.json"
 	},

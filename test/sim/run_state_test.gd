@@ -9,9 +9,9 @@ func before_test() -> void:
 	_run = RunState.new(_settings)
 
 
-func test_a_run_starts_with_200_base_hp_and_200_gold_at_wave_0() -> void:
+func test_a_run_starts_with_200_base_hp_and_300_gold_at_wave_0() -> void:
 	assert_float(_run.base_hp).is_equal(200.0)
-	assert_int(_run.gold).is_equal(200)
+	assert_int(_run.gold).is_equal(300)
 	assert_int(_run.wave).is_equal(0)
 	assert_bool(_run.is_game_over).is_false()
 
@@ -22,7 +22,7 @@ func test_a_kill_adds_the_bounty() -> void:
 	var deaths := Deaths.bodies_at(PackedVector2Array([Vector2.ZERO, Vector2.ZERO]))
 	_run.pay(deaths, Combos.new(_settings), 0)
 
-	assert_int(_run.gold).is_equal(206)
+	assert_int(_run.gold).is_equal(306)
 
 
 func test_damage_lowers_base_hp() -> void:
@@ -40,12 +40,12 @@ func test_the_run_is_over_at_0_base_hp_and_base_hp_never_goes_below_0() -> void:
 
 
 func test_can_afford_compares_the_cost_with_gold() -> void:
-	assert_bool(_run.can_afford(200)).is_true()
-	assert_bool(_run.can_afford(201)).is_false()
+	assert_bool(_run.can_afford(300)).is_true()
+	assert_bool(_run.can_afford(301)).is_false()
 
 	_run.add_gold(1)
 
-	assert_bool(_run.can_afford(201)).is_true()
+	assert_bool(_run.can_afford(301)).is_true()
 
 
 func test_a_kill_in_a_tick_adds_the_bounty_and_reports_the_gold() -> void:
@@ -58,8 +58,8 @@ func test_a_kill_in_a_tick_adds_the_bounty_and_reports_the_gold() -> void:
 	sim.enemies.damage(sim.enemies.ids[0], 100.0, Enemies.NONE)
 	sim.tick()
 
-	assert_int(sim.run_state.gold).is_equal(201)
-	assert_array(reported).contains_exactly([201])
+	assert_int(sim.run_state.gold).is_equal(301)
+	assert_array(reported).contains_exactly([301])
 
 
 func test_the_next_run_is_a_fresh_simulation_with_pending_restart_settings() -> void:

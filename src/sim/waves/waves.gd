@@ -17,6 +17,9 @@ var _settings: Settings
 var _map: MapData
 var _enemies: Enemies
 var _rng: RandomNumberGenerator
+# Seeds each wave's bloater roll with the wave number, so a wave's count is the same however
+# often, and whenever, it is asked for.
+var _bloater_seed := 0
 var _hp := 0.0
 var _bloater_hp := 0.0
 # 1 for each spawn slot of this wave that is a bloater.
@@ -29,24 +32,39 @@ var _kills := 0
 
 
 func _init(
-	run_settings: Settings, run_map: MapData, run_enemies: Enemies, rng: RandomNumberGenerator
+	run_settings: Settings,
+	run_map: MapData,
+	run_enemies: Enemies,
+	rng: RandomNumberGenerator,
+	bloater_seed: int
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_enemies = run_enemies
 	_rng = rng
+	_bloater_seed = bloater_seed
 
 
 func size(wave: int) -> int:
 	return roundi(_settings.wave_1_size * pow(_settings.wave_growth, wave - 1))
 
 
-# How many of wave [param wave]'s spawns are bloaters: at least 1 from the first bloater wave.
+# How many of wave [param wave]'s spawns are bloaters: none before the first bloater wave, then
+# 1, and one more every waves_per_step waves, whatever the wave's size. Each wave rolls once for
+# one fewer (miss_chance) or one more (extra_chance).
 func bloater_count(wave: int) -> int:
-	var share := _settings.bloater_share(wave)
-	if share == 0.0:
+	var first := _settings.first_bloater_wave
+	if wave < first:
 		return 0
-	return maxi(1, roundi(share * size(wave)))
+	var count := 1 + (wave - first) / _settings.bloater_waves_per_step
+	var roll_rng := RandomNumberGenerator.new()
+	roll_rng.seed = hash([_bloater_seed, wave])
+	var roll := roll_rng.randf()
+	if roll < _settings.bloater_miss_chance:
+		return count - 1
+	if roll >= 1.0 - _settings.bloater_extra_chance:
+		return count + 1
+	return count
 
 
 func enemy_hp(wave: int, kind := Enemies.Kind.NORMAL) -> float:

@@ -69,7 +69,7 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
   | 5 | Wall: impassable, 15 HP |
 
 - A destroyed wall drops back to a level-3 pile.
-- **Decay:** at the end of each wave, every pile rolls once to lose one level: about 50% for piles at levels 1–4 and 25% for walls, so walls stand for longer. Each pile rolls on its own, and a pile never loses more than one level per wave end. There is no warning of which piles will decay.
+- **Decay:** at the end of each wave, every pile rolls once to lose one level: one chance for piles at levels 1–4 and a lower one for walls, so walls stand for longer. Each pile rolls on its own, and a pile never loses more than one level per wave end. There is no warning of which piles will decay. **v3 numbers:** both chances are 0, so decay is off: blasts now erase piles and walls, and the v3 tuning playtest kept the field without decay (v2 was 50% for piles and 25% for walls).
 - A destroyed wall drops to level 3 straight away and then rolls at the wave's end like any other pile. A wall that survives its roll keeps its damage into the next wave. A pile that climbs back to a wall comes back at full HP.
 
 ## Structures
@@ -87,13 +87,13 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 - The power grid is every cell in a powered area. At the start of a run the base's area alone (24×24 cells) is room for the first three towers.
 - A new building's whole footprint must be on the power grid, so the grid grows outwards from its edge.
 - Losing a link (a destroyed pylon or tower) can cut off a whole branch. An unpowered tower stops firing, but it is still a structure: it keeps its HP, blocks routes, can be attacked and holds its cells. Power returns at once when a new building links it back up.
-- **Pylon**: 1×1, 20 gold, 20 HP, does nothing but power cells. Like a tower, a destroyed pylon leaves nothing behind.
+- **Pylon**: 1×1, 30 gold, 20 HP, does nothing but power cells. Like a tower, a destroyed pylon leaves nothing behind.
 - While a building is being placed, powered cells are tinted. Unpowered buildings are always drawn greyed out with an icon.
 - No selling or demolishing in v2, so a stranded building stays until it is destroyed or reconnected.
 
 ## Repair yard
 
-- **Repair yard**: 2×2, 80 gold, 60 HP, power area 4 cells. It follows every power rule: it must be built on the power grid, and an unpowered repair yard stops repairing. Like a tower, a destroyed repair yard leaves nothing behind.
+- **Repair yard**: 2×2, 120 gold, 60 HP, power area 4 cells. It follows every power rule: it must be built on the power grid, and an unpowered repair yard stops repairing. Like a tower, a destroyed repair yard leaves nothing behind.
 - Its **repair area** is a square reaching 8 cells from its edge. A building is inside when any of its cells is.
 - It repairs buildings only (towers, pylons, grinders and other repair yards), never itself, walls or the base, and only during waves.
 - Each repair yard has one **drone**. A repair is a round trip: the drone flies straight to the building over any terrain at 8 cells/s, repairs it at 5 HP/s until it is full, then flies back to the yard before taking its next job. The travel is the cost of far-off repairs. Enemies cannot attack the drone.
@@ -114,7 +114,7 @@ From v3, a building that hurts enemies by touch, so the player can plan for a cr
 - **Role:** a wall that bites, not a tower. It costs somewhat less than a tower, has more HP than one, and kills a lone enemy slowly. Wrapping buildings in grinders is allowed; its price is the limit.
 - Its kills build its own combo like a tower's, kills on tumbling enemies included.
 - Bodies of enemies it kills land by the normal rule, so piles build up against it, and a wall there keeps enemies off it until that wall breaks or decays.
-- **v3 numbers:** 60 gold, 100 HP, 3 damage per second to each enemy touching it. Touching means close enough to attack it, so its band is an attacker's reach and needs no number of its own. A lone enemy takes about 3 s to die at wave 1 and about 7 s at wave 15, and an enemy tumbling over one grinder takes 6.
+- **v3 numbers:** 90 gold, 100 HP, 3 damage per second to each enemy touching it. Touching means close enough to attack it, so its band is an attacker's reach and needs no number of its own. A lone enemy takes about 3 s to die at wave 1 and about 7 s at wave 15, and an enemy tumbling over one grinder takes 6.
 
 ## Bloater
 
@@ -137,10 +137,10 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 
 ## Towers and economy
 
-- One tower type: single-target, aimed at the enemy closest to the base. From v3, a tower prefers a bloater in its range by default, so long reach ahead of the walls pops bloaters in the open; each tower has a toggle in its details to aim at the closest enemy to the base instead. 5 damage, 3.5 shots/s, range 8 cells, 60 HP, costs 80 gold.
+- One tower type: single-target, aimed at the enemy closest to the base. From v3, a tower prefers a bloater in its range by default, so long reach ahead of the walls pops bloaters in the open; each tower has a toggle in its details to aim at the closest enemy to the base instead. 5 damage, 3.5 shots/s, range 8 cells, 60 HP, costs 120 gold.
 - Towers can only be built on clear cells of the power grid. Building is allowed during waves.
 - A tower may cut off every path to the base: enemies then break through the cheapest structure.
-- Starting gold: 200.
+- Starting gold: 300, 2.5 towers' worth. The v3 tuning playtest raised it and every building's cost by half (from 200 gold, and 80 for a tower), so the opening is unchanged and the mid and late waves are tighter.
 - **Bounty:** each kill pays 1 gold before any combo.
 - **Combo:** each building has its own combo; there is none for the whole defence. The building that lands the killing blow gets the kill, and any building that damages enemies can build a combo. Each kill adds 1 to the building's count and restarts its timer; if the timer runs out with no kill, the combo breaks back to ×1. The count sets the building's tier, capped. Each kill pays its bounty times the killing building's tier, at once, the kill that crosses a threshold already paying the new tier, so gold earned mid-burst can be spent during the wave. Kills with no building behind them pay ×1. A destroyed building loses its combo and its rebuild starts at ×1; damage to a building or the base does not break one. A high combo needs a dense crowd in front of one building, so it rewards letting pressure build, at the risk of an overflow. **v3 numbers:** a 2 s timer, ×2 from 10 kills, ×3 from 25, capped at ×3. A busy tower kills often enough to hold its timer while a crowd feeds it, and the cap stays at ×3 so the combo doesn't bring back v2's gold surplus.
 - **HUD:** **Enemies left** counts the current wave's enemies not yet killed, unspawned ones included, so it starts at the wave size and reaches 0 as the wave ends; in the build phase it shows the next wave's size, followed by its bloater count when it has any (for example, "120 enemies · 3 bloaters"). **Kills** counts the run's kills and is also shown on the game-over screen. A building's combo shows above it as a **ring**, hidden at ×1: its tier in the middle, an outer arc filling towards the next tier, and an inner arc for its timer running down. A kill pulses the ring, a tier-up sends a ring outwards, and a break scatters it. The ring stays the same size on screen at any zoom, in shades of gold so it isn't mistaken for the pressure gauge. The selected building's details show the same ring, larger, with its tier and count, the next tier's threshold, the time left on its timer and its best combo this run. The final art may restyle the ring but keeps what it shows. There is no combo readout for the whole defence. The gold readout flashes on a multiplied payout.
@@ -150,7 +150,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - Endless. The next wave starts when the player presses "next wave".
 - Wave 1 has 20 enemies. Each wave has 25% more enemies and 5% more enemy HP than the last, so wave 10 is roughly 150 enemies, wave 15 roughly 455 and wave 20 roughly 1,390. (v2 grew 30% a wave; v3 lowers it to cut the gold surplus and keep wave 20 nearer the on-screen target.)
 - Enemies spawn in bursts of 16, each on a random cell along the spawn edge, at an average of 10 per second. v3 keeps these on the flared map, where the wider mouths already spread the bursts out.
-- **Bloaters** (from v3) appear from wave 5. They take the place of normal enemies, so the wave size is unchanged. Their share of the wave ramps from about 2% at wave 5 to about 5% by about wave 15 and stays there, with at least 1 in every wave from wave 5. Each takes a random place among the wave's bursts, mixed in with normal enemies; there are no bursts of only bloaters. **v3 numbers:** the share is 2% at wave 5, rising 0.3% a wave to 5% at wave 15, and the count is that share of the wave size, rounded, but at least 1. With 25% growth that is 1 bloater at wave 5, 5 at wave 10, 23 at wave 15 and 69 at wave 20.
+- **Bloaters** (from v3) appear from wave 5. They take the place of normal enemies, so the wave size is unchanged. Their count steps up slowly whatever the wave's size: 1, then one more every few waves, and each wave rolls once for one fewer or one more, so an early wave sometimes has none. The roll is fixed per run and wave, so the build phase's count always matches the wave. Each bloater takes a random place among the wave's bursts, mixed in with normal enemies; there are no bursts of only bloaters. **v3 numbers:** one more every 6 waves, so a base of 1 for waves 5–10, 2 for 11–16, 3 for 17–22 and 4 from 23; a 25% chance of one fewer and a 10% chance of one more. (Replaced a share of the wave, 2% rising to 5%, after the v3 tuning playtest: with 25% wave growth it gave 23 bloaters at wave 15 and 69 at wave 20.)
 
 ## v1 fun test
 

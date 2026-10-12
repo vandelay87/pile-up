@@ -123,7 +123,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 			_system_rng("swarm"),
 		)
 	)
-	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
+	waves = Waves.new(settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"))
 	overflow = Overflow.new(
 		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
 	)
@@ -471,8 +471,12 @@ func _start_wave(wave: int, label: String) -> void:
 
 func _system_rng(system: String) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([_run_seed, system])
+	rng.seed = _system_seed(system)
 	return rng
+
+
+func _system_seed(system: String) -> int:
+	return hash([_run_seed, system])
 
 
 func _observe(step: Step) -> void:
