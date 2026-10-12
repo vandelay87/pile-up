@@ -7,12 +7,12 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 - Goal: a local prototype to test whether the core loop is fun. A Steam release is considered only if it is.
 - Platforms: desktop, macOS and Windows.
 - Engine: Godot 4 (standard build), GDScript.
-- Built in five prototypes, each adding one system:
+- Built in a series of prototypes, each adding one system:
   - **v1**: corpse loop
   - **v2**: power, plus a rework of v1 after playtesting
   - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (specified in `docs/specs/v3.md`)
-  - **v4**: to be decided; it starts with a performance pass towards the 1,000-enemy target ([#150](https://github.com/vandelay87/pile-up/issues/150))
-  - **v5**: power-ups (to be designed after v4)
+  - **v4**: units, a fire squad the player directs (lite RTS, never an RTS), with high ground tying units to piles; it starts with a performance pass towards the 1,000-enemy target ([#150](https://github.com/vandelay87/pile-up/issues/150)). Planned in [Map: prototype v4 spec](https://github.com/vandelay87/pile-up/issues/156)
+  - Later prototypes are not set in stone. Power-ups and wildcards come when they are ready to be fleshed out
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
 ## World and camera
@@ -202,7 +202,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Buildings
 
 - A splash/area tower.
-- **Building upgrades:** towers with a higher fire rate, more damage or longer range; more drones per repair yard (with power-ups in v5).
+- **Building upgrades:** towers with a higher fire rate, more damage or longer range; more drones per repair yard (perhaps with power-ups).
 - **One-sided walls:** walls that can only be attacked from one side, to encourage overflow to build up. Perhaps bloaters damage them too, and units (if added) walk through them both ways. Unsure: they may undercut the hook of piles building up.
 - **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
 - **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
@@ -236,7 +236,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 ### Runs
 
-- Power-ups (v5), including interactions with piles (for example, flame setting piles alight).
+- Power-ups, including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
 - Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters. Further on, waves that mutate into a random mix of enemy types.
-- Wildcards: rule changes for the rest of a run, such as towers firing twice as fast, buildings with more HP or lower enemy counts, and rarer, wilder ones, such as every enemy having a small chance to blow up like a bloater. Perhaps trade-offs: more enemies for a strong power-up. In the story, the drill could strike something extraordinary that grants one at random. How the player gets one is left to a later prototype. They sit close to power-ups (v5), so they may end up as one system.
+- Wildcards: rule changes for the rest of a run, such as towers firing twice as fast, buildings with more HP or lower enemy counts, and rarer, wilder ones, such as every enemy having a small chance to blow up like a bloater. Perhaps trade-offs: more enemies for a strong power-up. In the story, the drill could strike something extraordinary that grants one at random. How the player gets one is left to a later prototype. They sit close to power-ups, so they may end up as one system.
