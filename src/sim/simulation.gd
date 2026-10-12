@@ -25,7 +25,7 @@ enum Step {
 	SPAWN_ENEMIES,
 	REBUILD_SPATIAL_HASH,
 	MOVE_ENEMIES,
-	FIRE_TOWERS,
+	BUILDINGS_ACT,
 	REPAIR_BUILDINGS,
 	REMOVE_DEAD,
 	CHECK_WAVE_END,
@@ -38,6 +38,7 @@ const DECAY_REBUILD_TICKS := 12
 const POWER_AREA_SETTINGS := [
 	["run", "base_power_area"],
 	["towers", "power_area"],
+	["grinders", "power_area"],
 	["pylons", "power_area"],
 	["repair_yards", "power_area"],
 ]
@@ -116,7 +117,9 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
-	overflow = Overflow.new(settings, map, structures, enemies, routing, _system_rng("overflow"))
+	overflow = Overflow.new(
+		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
+	)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -272,7 +275,7 @@ func tick() -> void:
 	_spawn_enemies()
 	_rebuild_spatial_hash()
 	_move_enemies()
-	_fire_towers()
+	_buildings_act()
 	_repair_buildings()
 	_remove_dead()
 	_check_wave_end()
@@ -407,9 +410,9 @@ func _move_enemies() -> void:
 	overflow.step()
 
 
-func _fire_towers() -> void:
-	_observe(Step.FIRE_TOWERS)
-	_shots = buildings.fire(enemies)
+func _buildings_act() -> void:
+	_observe(Step.BUILDINGS_ACT)
+	_shots = buildings.act(enemies)
 
 
 func _repair_buildings() -> void:

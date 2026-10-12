@@ -159,6 +159,27 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 	return best_id
 
 
+## The indices of the living, walking enemies within [param reach] of one of the squares in
+## [param area], from this tick's spatial hash: those touching a building with that footprint.
+func touching(area: Rect2i, reach: float) -> PackedInt32Array:
+	var found := PackedInt32Array()
+	var margin := ceili(reach) + _HASH_MARGIN
+	var low := area.position - Vector2i.ONE * margin
+	var high := area.end + Vector2i.ONE * margin
+	var square := Rect2(area)
+	for y in range(maxi(low.y, 0), mini(high.y, _map.height)):
+		var row := y * _map.width
+		for x in range(maxi(low.x, 0), mini(high.x, _map.width)):
+			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
+				var i := _bucket_enemies[slot]
+				if hp[i] <= 0.0 or tumbling[i] == 1:
+					continue
+				var pos := positions[i]
+				if pos.distance_to(pos.clamp(square.position, square.end)) <= reach:
+					found.append(i)
+	return found
+
+
 ## The enemies in the cell at [param cell_index], from this tick's spatial hash.
 func count_in_cell(cell_index: int) -> int:
 	return _bucket_starts[cell_index + 1] - _bucket_starts[cell_index]

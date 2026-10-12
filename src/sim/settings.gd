@@ -210,6 +210,11 @@ var tower_cost: int:
 var tower_hp: float:
 	get:
 		return value("towers", "hp")
+## HP a second a grinder deals to each enemy touching it, and at once to a tumbler entering one of
+## its cells.
+var grinder_damage: float:
+	get:
+		return value("grinders", "damage")
 var pylon_cost: int:
 	get:
 		return value("pylons", "cost")

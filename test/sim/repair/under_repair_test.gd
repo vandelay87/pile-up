@@ -58,6 +58,26 @@ func test_a_tower_under_repair_holds_fire_until_the_drone_lifts_off() -> void:
 	assert_int(shots[0].tower_id).is_equal(tower.id)
 
 
+func test_a_grinder_under_repair_hurts_nothing_until_the_drone_lifts_off() -> void:
+	var yard := _build(Buildings.REPAIR_YARD, YARD)
+	var grinder := _build(Buildings.GRINDER, TOWER)
+	_start_wave()
+	_sim.buildings.damage(grinder.id, 10.0)
+	_run(60)
+	var drone := _sim.repair_yards.drone(yard.id)
+	assert_int(drone.state).is_equal(RepairYards.State.REPAIRING)
+
+	# 0.3 cells off the grinder's west face.
+	var id := _sim.enemies.spawn(Vector2(17.7, 20.5), 1000.0)
+	var index := _sim.enemies.index_of(id)
+	while drone.state == RepairYards.State.REPAIRING:
+		_sim.tick()
+	assert_float(_sim.enemies.hp[index]).is_equal(1000.0)
+
+	_sim.tick()
+	assert_float(_sim.enemies.hp[index]).is_less(1000.0)
+
+
 func test_a_pylon_under_repair_keeps_powering() -> void:
 	# The pylon at the base grid's edge is the yard's only power.
 	var pylon := _build(Buildings.PYLON, Vector2i(25, 13))

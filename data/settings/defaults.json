@@ -72,6 +72,12 @@
 		"hp": 60,
 		"power_area": 4
 	},
+	"grinders": {
+		"cost": 60,
+		"hp": 100,
+		"power_area": 2,
+		"damage": 3
+	},
 	"pylons": {
 		"cost": 20,
 		"hp": 20,

@@ -8,7 +8,12 @@ const RANGE_ALPHA := 0.5
 const GRID_TINT := Color(0.45, 0.75, 1.0, 0.12)
 const NO_BUILD_TINT := Color(1.0, 0.3, 0.2, 0.18)
 const REPAIR_AREA_TINT := Color(0.35, 0.95, 0.45, 0.12)
-const KEYS := {KEY_T: Buildings.TOWER, KEY_P: Buildings.PYLON, KEY_R: Buildings.REPAIR_YARD}
+const KEYS := {
+	KEY_T: Buildings.TOWER,
+	KEY_G: Buildings.GRINDER,
+	KEY_P: Buildings.PYLON,
+	KEY_R: Buildings.REPAIR_YARD,
+}
 
 var active := false
 var kind := Buildings.TOWER

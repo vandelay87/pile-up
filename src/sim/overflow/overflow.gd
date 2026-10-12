@@ -30,6 +30,7 @@ var band_mask := PackedByteArray()
 var _settings: Settings
 var _map: MapData
 var _structures: Structures
+var _buildings: Buildings
 var _enemies: Enemies
 var _routing: Routing
 var _rng: RandomNumberGenerator
@@ -89,6 +90,8 @@ class Tumble:
 	var cells: Array[Vector2i] = []
 	## The index in [member path] of the point it is heading for.
 	var next := 0
+	## The cell it was last in.
+	var last_cell := Vector2i.ZERO
 
 	func add(cell: Vector2i) -> void:
 		cells.append(cell)
@@ -103,6 +106,7 @@ func _init(
 	run_settings: Settings,
 	run_map: MapData,
 	run_structures: Structures,
+	run_buildings: Buildings,
 	run_enemies: Enemies,
 	run_routing: Routing,
 	rng: RandomNumberGenerator,
@@ -110,6 +114,7 @@ func _init(
 	_settings = run_settings
 	_map = run_map
 	_structures = run_structures
+	_buildings = run_buildings
 	_enemies = run_enemies
 	_routing = run_routing
 	_rng = rng
@@ -288,6 +293,7 @@ func _start_tumble(i: int) -> bool:
 		planned = _plan_along_direct(i)
 	if planned == null:
 		return false
+	planned.last_cell = Vector2i(_enemies.positions[i].floor())
 	_enemies.start_tumble(i)
 	_tumbles[_enemies.ids[i]] = planned
 	return true
@@ -390,7 +396,8 @@ func _end_beside_base(planned: Tumble, reached: Vector2i) -> Tumble:
 
 
 # Moves each tumbling enemy along its path at the tumble speed, ignoring slow, collision and
-# structures. One that reaches its path's end lands. The dead stay where they fell until removal.
+# structures. Each cell it enters is ground by a working grinder there. One that reaches its
+# path's end lands. The dead stay where they fell until removal.
 func _move_tumblers() -> void:
 	var speed := _settings.tumble_speed
 	for id: int in _tumbles.keys():
@@ -414,7 +421,15 @@ func _move_tumblers() -> void:
 				pos = target
 				budget -= gap
 				tumbling.next += 1
+			var cell := Vector2i(pos.floor())
+			if cell != tumbling.last_cell:
+				tumbling.last_cell = cell
+				_buildings.grind_tumble(_enemies, i, cell)
+				if not _enemies.is_alive(i):
+					break
 		_enemies.positions[i] = pos
+		if not _enemies.is_alive(i):
+			continue
 		if tumbling.next == tumbling.path.size():
 			_tumbles.erase(id)
 			_enemies.land(i)

@@ -25,10 +25,11 @@ const COMMAND_SIZE := Vector2(72, 56)
 const COMMAND_COLUMNS := 3
 ## The command card's slots in grid order: a building kind, or an empty slot.
 const COMMANDS: Array[StringName] = [
-	Buildings.TOWER, Buildings.PYLON, Buildings.REPAIR_YARD, &"", &""
+	Buildings.TOWER, Buildings.GRINDER, Buildings.PYLON, Buildings.REPAIR_YARD, &""
 ]
 const COMMAND_LABELS := {
 	Buildings.TOWER: ["Tower", "T"],
+	Buildings.GRINDER: ["Grinder", "G"],
 	Buildings.PYLON: ["Pylon", "P"],
 	Buildings.REPAIR_YARD: ["Repair", "R"],
 }
@@ -326,10 +327,13 @@ func _show_details() -> void:
 		_threshold_buttons[percent].set_pressed_no_signal(percent == threshold)
 
 
-# A tower's ring, in pale gold at x1 rather than hidden, so its progress towards x2 shows.
+# A tower's or grinder's ring, in pale gold at x1 rather than hidden, so its progress towards
+# x2 shows.
 func _show_combo_ring() -> void:
 	var building := _selection.selected_building()
-	_combo_ring.visible = building != null and building.kind == Buildings.TOWER
+	_combo_ring.visible = (
+		building != null and building.kind in [Buildings.TOWER, Buildings.GRINDER]
+	)
 	if not _combo_ring.visible:
 		return
 	_combo_ring.ring = _combo_view.ring_of(building.id)
