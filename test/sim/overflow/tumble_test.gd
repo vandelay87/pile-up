@@ -15,6 +15,8 @@ var _settings: Settings
 var _sim: Simulation
 # Every enemy id seen tumbling so far.
 var _seen := {}
+# Where the last tumbler _kill_a_tumbler_between killed started its tumble.
+var _from := Vector2.ZERO
 
 
 func before_test() -> void:
@@ -176,7 +178,26 @@ func test_a_tumble_reaching_the_base_ends_beside_it_and_the_enemy_attacks() -> v
 	assert_float(_sim.run_state.base_hp).is_less(hp)
 
 
-func test_a_tumbler_killed_mid_way_leaves_its_body_on_the_nearer_side() -> void:
+func test_a_tumbler_killed_anywhere_leaves_its_body_where_its_tumble_started() -> void:
+	_settings.change("overflow", "fill_per_stalled", 10.0)
+	_walls(_column(9, 0, HEIGHT - 1) + _column(10, 0, HEIGHT - 1) + _column(11, 0, HEIGHT - 1))
+	_crowd(60, Rect2(1, 1, 7, HEIGHT - 2))
+	var near := _kill_a_tumbler_between(9.0, 10.4)
+	var near_from := _from
+	var far := _kill_a_tumbler_between(10.6, 12.0)
+	var far_from := _from
+	_run(2)
+
+	assert_int(_sim.piles.level(_cell(near_from))).is_greater_equal(1)
+	assert_int(_sim.piles.level(_cell(far_from))).is_greater_equal(1)
+	assert_int(_sim.piles.level(Vector2i(12, int(far.y)))).is_equal(0)
+	for x in range(9, 12):
+		assert_int(_sim.piles.level(Vector2i(x, int(near.y)))).is_equal(Piles.WALL_LEVEL)
+		assert_int(_sim.piles.level(Vector2i(x, int(far.y)))).is_equal(Piles.WALL_LEVEL)
+
+
+func test_with_bodies_falling_back_off_a_tumbler_leaves_its_body_on_the_nearer_side() -> void:
+	_settings.change("overflow", "bodies_fall_back", 0)
 	_settings.change("overflow", "fill_per_stalled", 10.0)
 	_walls(_column(9, 0, HEIGHT - 1) + _column(10, 0, HEIGHT - 1) + _column(11, 0, HEIGHT - 1))
 	_crowd(60, Rect2(1, 1, 7, HEIGHT - 2))
@@ -189,6 +210,19 @@ func test_a_tumbler_killed_mid_way_leaves_its_body_on_the_nearer_side() -> void:
 	for x in range(9, 12):
 		assert_int(_sim.piles.level(Vector2i(x, int(near.y)))).is_equal(Piles.WALL_LEVEL)
 		assert_int(_sim.piles.level(Vector2i(x, int(far.y)))).is_equal(Piles.WALL_LEVEL)
+
+
+func test_an_enemy_killed_within_1_s_of_landing_leaves_its_body_where_its_tumble_started() -> void:
+	_settings.change("overflow", "fill_per_stalled", 10.0)
+	_walls(_column(10, 0, HEIGHT - 1))
+	_crowd(60, Rect2(1, 1, 8, HEIGHT - 2))
+	var soon := _land_then_kill_after(50)
+	var later := _land_then_kill_after(70)
+	_run(2)
+
+	assert_int(_sim.piles.level(_cell(soon[0]))).is_greater_equal(1)
+	assert_int(_sim.piles.level(_cell(soon[1]))).is_equal(0)
+	assert_int(_sim.piles.level(_cell(later[1]))).is_greater_equal(1)
 
 
 func test_towers_shoot_tumblers() -> void:
@@ -335,17 +369,39 @@ func _losses_crossing_a_grinder(after_build := Callable()) -> Array[float]:
 
 
 # Ticks until a tumbler's position is between [param left] and [param right], then kills it,
-# returning where it died.
+# returning where it died. Where its tumble started goes in [member _from].
 func _kill_a_tumbler_between(left: float, right: float) -> Vector2:
 	for tick in 10 * Simulation.TICKS_PER_SECOND:
 		_sim.tick()
 		for i in _sim.enemies.count:
 			var pos := _sim.enemies.positions[i]
-			if _sim.overflow.is_tumbling(_sim.enemies.ids[i]) and pos.x > left and pos.x < right:
-				_sim.enemies.kill(_sim.enemies.ids[i])
+			var id := _sim.enemies.ids[i]
+			if _sim.overflow.is_tumbling(id) and pos.x > left and pos.x < right:
+				_from = _sim.overflow.tumble(id).from
+				_sim.enemies.kill(id)
 				return pos
 	fail("no tumbler passed between %s and %s" % [left, right])
 	return Vector2.ZERO
+
+
+# Ticks until a tumbler lands, then [param ticks] more, and kills it. Returns where its tumble
+# started and where it died.
+func _land_then_kill_after(ticks: int) -> Array[Vector2]:
+	var id := _first_tumbler()
+	var from := _sim.overflow.tumble(id).from
+	while _sim.overflow.is_tumbling(id):
+		_sim.tick()
+	_run(ticks)
+	var index := _sim.enemies.index_of(id)
+	var died_at := _sim.enemies.positions[index]
+	_sim.enemies.kill(id)
+	_sim.tick()
+	var result: Array[Vector2] = [from, died_at]
+	return result
+
+
+func _cell(pos: Vector2) -> Vector2i:
+	return Vector2i(pos.floor())
 
 
 # Ticks until an enemy starts tumbling, returning its id.

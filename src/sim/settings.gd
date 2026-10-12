@@ -165,6 +165,16 @@ var tumble_speed: float:
 var landing_crowd: int:
 	get:
 		return value("overflow", "landing_crowd")
+## Whether a body of an enemy killed mid-tumble or just after landing lands where its tumble
+## started.
+var bodies_fall_back: bool:
+	get:
+		var on: int = value("overflow", "bodies_fall_back")
+		return on == 1
+var fall_back_window_ticks: int:
+	get:
+		var seconds: float = value("overflow", "fall_back_window")
+		return roundi(seconds * Simulation.TICKS_PER_SECOND)
 var wave_1_size: int:
 	get:
 		return value("waves", "wave_1_size")

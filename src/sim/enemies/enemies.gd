@@ -562,7 +562,7 @@ func remove_dead() -> Deaths:
 	var i := 0
 	while i < count:
 		if hp[i] <= 0.0:
-			deaths.add(positions[i], kinds[i] as Kind, last_hitters[i])
+			deaths.add(ids[i], positions[i], kinds[i] as Kind, last_hitters[i])
 			_swap_remove(i)
 		else:
 			i += 1

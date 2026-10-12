@@ -45,7 +45,9 @@
 		"surge_rate": 15,
 		"relief": 2,
 		"tumble_speed": 180,
-		"landing_crowd": 6
+		"landing_crowd": 6,
+		"bodies_fall_back": 1,
+		"fall_back_window": 1
 	},
 	"routing": {
 		"sensible_pile_weight": 1,
