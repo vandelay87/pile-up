@@ -186,16 +186,57 @@ Not built in the prototypes, but decisions should leave room for it.
 
 ## Later ideas
 
-- Enemy types: brutes that always break walls, enemies that seek out buildings even when they are not in the way, enemies that chase.
+### Setting
+
+- The base is a drilling rig mining precious minerals, and the enemies attack to stop it. The tone is Starship Troopers: the player's side is the intrusive, militaristic, authoritarian species, stealing the planet's minerals and wrecking it. Towers may be renamed turrets to fit.
+
+### Enemies
+
+- Brutes that always break walls, and enemies that chase.
+- **Seekers:** enemies that seek out buildings even when they are not in the way. One that gets inside the defence goes for other buildings before the base, which gives it a chance to reach a generator and blow it up.
+- **Climbing buildings:** a line of towers can exploit overflow. Enemies could get on top of buildings, perhaps only by an overflow tumble, with a limit per building set by its space. On top they attack the building, and perhaps walk along linked buildings to spread the attack. With a hit-chance system, enemies on top could be harder to hit.
+- **Jumper:** an enemy that jumps over walls, and over or onto buildings.
+- **Small enemies:** die in about one shot, are faster and come in greater numbers: perhaps 2 count as 1 normal enemy in a wave's size. They pass through walls. They first appear on their own at the spawn edges.
+- **Carrier:** a bloated flying enemy full of small enemies. It drifts slowly towards the base and, close to it, releases them all. Shot down before then, it dies and releases them where it fell. Only towers can hurt it. Open: whether small enemies collide with each other or share space; either way they must look good in the final art.
+
+### Buildings
+
 - A splash/area tower.
-- Power-ups (v5), including interactions with piles (for example, flame setting piles alight).
-- Meta-progression between runs.
-- A generator that powers an area cut off from the base's power grid.
-- Selling or demolishing buildings.
-- Building upgrades, such as more drones per repair yard (with power-ups in v5).
+- **Building upgrades:** towers with a higher fire rate, more damage or longer range; more drones per repair yard (with power-ups in v5).
+- **One-sided walls:** walls that can only be attacked from one side, to encourage overflow to build up. Perhaps bloaters damage them too, and units (if added) walk through them both ways. Unsure: they may undercut the hook of piles building up.
+- **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
+- **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
 - A ranked queue of assignments for a repair yard.
-- Reanimation: raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion. It was planned as a prototype and is dropped for now.
+
+### Units
+
+- Prompted by a playtest: a few enemies got behind the base and attacked it, and the only answer was a turret the player didn't want there. Units would be selected and directed like StarCraft's, in feel and action.
+- **First unit:** a fire squad with machine fire like a turret, perhaps trained in groups of about 10 in a new building (an armoury, or a better name). Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
+- **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
+- **High ground:** a unit gets a bonus when it stands higher than its attacker, perhaps on a pile.
+- Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
+
+### Details and art
+
+- Clicking any unit or enemy shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
+- **Graphs:** graphs of the run, such as gold gained and lost and kills, including live graphs during a wave.
+- **Dynamic portraits:** every unit and building has a portrait in its details that reacts, like Doom's face: angry while firing, resting when idle. A building's portrait changes with what it is doing and its HP.
+- **Blood:** a burst of blood when an enemy dies, and cells grow bloodier, through several levels, as more enemies die on them.
 - A landing animation for bodies, with the final art.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
+
+### Levels
+
+- Map themes, each with its own gameplay:
+  - Desert, with rocky mountains and lakes or rivers.
+  - Jungle, with dense trees, perhaps cut down or dropped by the player.
+  - A crashed ship of the player's side, with tight corridors and malfunctioning or burning electronics.
+  - An alien hive, slimy, where slime cells slow walking right down.
+  - Open to more.
+
+### Runs
+
+- Power-ups (v5), including interactions with piles (for example, flame setting piles alight).
+- Meta-progression between runs.
 - Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters. Further on, waves that mutate into a random mix of enemy types.
-- Wildcards: rule changes for the rest of a run, such as towers firing twice as fast or buildings with more HP, and rarer, wilder ones, such as every enemy having a small chance to blow up like a bloater. How the player gets one is open: perhaps by building a special building, perhaps at random. They sit close to power-ups (v5), so they may end up as one system.
+- Wildcards: rule changes for the rest of a run, such as towers firing twice as fast, buildings with more HP or lower enemy counts, and rarer, wilder ones, such as every enemy having a small chance to blow up like a bloater. Perhaps trade-offs: more enemies for a strong power-up. In the story, the drill could strike something extraordinary that grants one at random. How the player gets one is left to a later prototype. They sit close to power-ups (v5), so they may end up as one system.
