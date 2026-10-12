@@ -11,7 +11,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **v1**: corpse loop
   - **v2**: power, plus a rework of v1 after playtesting
   - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (specified in `docs/specs/v3.md`)
-  - **v4**: reanimation
+  - **v4**: reanimation, after a performance pass towards the 1,000-enemy target
   - **v5**: power-ups (to be designed after v4)
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
@@ -29,7 +29,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 - 10 HP, 2 cells/s, drops 1 gold.
 - **Swarm spread:** each enemy rolls a pace at spawn (±3% of the base speed), weaves ±30° around its heading over 4 s, and keeps a soft personal space of 0.7 cells, so the swarm spreads across a corridor instead of walking in single file.
-- Target: about 1,000 on screen at 60 fps on a MacBook.
+- Target: about 1,000 on screen at 60 fps on a MacBook. v3 doesn't meet it yet: on an M5 release build, 1,000 dense enemies average about 16 ms a frame, but the slowest frames take 22–24 ms, from the simulation. v3 was accepted as a prototype as it is, and v4 starts with a performance pass ([#150](https://github.com/vandelay87/pile-up/issues/150)).
 - Data-oriented: enemies are plain data rendered in batches, not one scene node each. Separation uses a spatial hash, so each enemy checks only neighbouring cells.
 
 ### Routing
