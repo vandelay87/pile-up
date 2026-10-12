@@ -71,12 +71,10 @@ func resolve(deaths: Deaths) -> Array[Blast]:
 
 
 func _kill_around(blast: Blast, radius: float, deaths: Deaths) -> void:
-	var credited := _buildings.building(blast.killer)
 	for i in _enemies.living_within(blast.position, radius):
 		_enemies.kill(_enemies.ids[i])
 		deaths.add(_enemies.ids[i], _enemies.positions[i], _enemies.kinds[i], blast.killer, true)
-		if credited != null:
-			credited.kills += 1
+		_buildings.count_kill(blast.killer)
 
 
 func _hurt_structures(centre: Vector2, radius: float) -> void:

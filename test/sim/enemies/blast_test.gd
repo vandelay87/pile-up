@@ -205,6 +205,34 @@ func test_a_bloater_picked_to_tumble_has_its_fuse_out() -> void:
 	assert_int(tumbled).is_greater(0)
 
 
+func test_a_debug_killed_bloater_still_pays_its_bounty() -> void:
+	_sim.enemies.spawn(Vector2(5.5, 5.5), TOUGH, Enemies.Kind.BLOATER)
+	var gold := _sim.run_state.gold
+
+	_sim.queue_command(Commands.KillEnemies.new(1))
+	_sim.tick()
+
+	assert_int(_sim.run_state.gold - gold).is_equal(2)
+
+
+func test_a_tower_destroyed_by_the_blast_leaves_at_once_and_loses_its_combo() -> void:
+	_settings.change("towers", "hp", 30.0)
+	var tower := _idle_tower()
+	var destroyed: Array[int] = []
+	_sim.building_destroyed.connect(func(id: int) -> void: destroyed.append(id))
+	var bloater := _sim.enemies.spawn(Vector2(2.2, 9.0), TOUGH, Enemies.Kind.BLOATER)
+	var gold := _sim.run_state.gold
+
+	_pop(bloater, tower)
+
+	assert_object(_sim.buildings.building(tower)).is_null()
+	assert_array(destroyed).contains_exactly([tower])
+	assert_object(_sim.combos.combo(tower)).is_null()
+	assert_int(_sim.occupancy.building_at(Vector2i(0, 8))).is_equal(Occupancy.EMPTY)
+	# Its killer destroyed this tick, the bloater pays x1.
+	assert_int(_sim.run_state.gold - gold).is_equal(2)
+
+
 # A column of walls across the field at WALL_X, landed.
 func _wall_column() -> void:
 	var bodies := PackedVector2Array()

@@ -4,6 +4,8 @@ extends RefCounted
 enum Kind { NORMAL, BLOATER }
 
 const NONE := -1
+# A bloater's fuse once it has run out: it pops with no killer.
+const _FUSE_RAN_OUT := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
 const _PILE_LEVELS := Piles.WALL_LEVEL + 1
@@ -35,7 +37,7 @@ var progress := PackedFloat32Array()
 # 1 while the enemy tumbles over a barrier: Overflow moves it, and it doesn't walk, collide,
 # separate, attack or roll, and others don't separate from it.
 var tumbling := PackedByteArray()
-# Each bloater's fuse: the ticks left until it pops, or 0 while unlit.
+# Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
 var fuses := PackedInt32Array()
 
 var _settings: Settings
@@ -138,7 +140,7 @@ func kill(id: int) -> void:
 ## The ticks left on the fuse of the enemy with id [param id]: 0 while unlit, or not a bloater.
 func fuse(id: int) -> int:
 	var index := index_of(id)
-	return fuses[index] if index != NONE else 0
+	return maxi(fuses[index], 0) if index != NONE else 0
 
 
 func is_alive(index: int) -> bool:
@@ -333,6 +335,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 func _burn_fuse(i: int) -> void:
 	fuses[i] -= 1
 	if fuses[i] == 0:
+		fuses[i] = _FUSE_RAN_OUT
 		hp[i] = 0.0
 		last_hitters[i] = NONE
 
@@ -602,7 +605,8 @@ func remove_dead() -> Deaths:
 	var i := 0
 	while i < count:
 		if hp[i] <= 0.0:
-			deaths.add(ids[i], positions[i], kinds[i] as Kind, last_hitters[i])
+			var popped := fuses[i] == _FUSE_RAN_OUT
+			deaths.add(ids[i], positions[i], kinds[i] as Kind, last_hitters[i], false, popped)
 			_swap_remove(i)
 		else:
 			i += 1

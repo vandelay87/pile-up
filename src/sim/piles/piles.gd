@@ -48,7 +48,7 @@ func wall_hp(cell: Vector2i) -> float:
 # Every death leaves a body except a bloater's and a blast kill's.
 func queue_bodies(deaths: Deaths) -> void:
 	for k in deaths.size():
-		if deaths.kinds[k] != Enemies.Kind.BLOATER and deaths.blasts[k] == 0:
+		if deaths.leaves_body(k):
 			_queued.append(deaths.bodies[k])
 
 
