@@ -31,8 +31,10 @@ const BRANCH_TOWER := Vector2i(38, 25)
 # Grinders in the crowd's ring, halfway between its towers.
 const GRINDERS := 8
 const GRINDER_STEPS_IN := 4
-# 3x the 13.09 ms CI mean in https://github.com/vandelay87/pile-up/actions/runs/37919291329
-const BUDGET_MSEC := 39.3
+# A backstop only: CI runners differ by about 2x, so the sim-budget job gates on this run against
+# its base on the same runner (tools/sim_budget.sh). 39.3 ms (3x a 13.09 ms CI mean) fell inside
+# that noise once the bench grew; 80 ms is about 4.6x the M5's 17.4 ms.
+const BUDGET_MSEC := 80.0
 
 
 class RunResult:
