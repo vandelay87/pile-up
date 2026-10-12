@@ -170,6 +170,81 @@ const SCHEMA := {
 			"apply": Settings.Apply.LIVE,
 		},
 	},
+	"bloaters":
+	{
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 1000.0,
+			"step": 0.5,
+			"unit": "HP",
+			"apply": Settings.Apply.LIVE,
+		},
+		"speed":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.1,
+			"max": 10.0,
+			"step": 0.1,
+			"unit": "cells/s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"bounty":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 1,
+			"unit": "gold",
+			"apply": Settings.Apply.LIVE,
+		},
+		"first_wave":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 100,
+			"step": 1,
+			"unit": "wave",
+			"apply": Settings.Apply.LIVE,
+		},
+		"share":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.1,
+			"unit": "percent of the first bloater wave",
+			"apply": Settings.Apply.LIVE,
+		},
+		"share_per_wave":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 10.0,
+			"step": 0.1,
+			"unit": "percent added each wave",
+			"apply": Settings.Apply.LIVE,
+		},
+		"share_cap":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.1,
+			"unit": "percent",
+			"apply": Settings.Apply.LIVE,
+		},
+		"size":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 3.0,
+			"step": 0.1,
+			"unit": "× drawn size",
+			"apply": Settings.Apply.LIVE,
+		},
+	},
 	"piles":
 	{
 		"slow_level_1":

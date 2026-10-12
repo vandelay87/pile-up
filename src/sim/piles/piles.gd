@@ -45,8 +45,11 @@ func wall_hp(cell: Vector2i) -> float:
 	return wall_hps[_map.index_of(cell)]
 
 
+# Every death leaves a body except a bloater's.
 func queue_bodies(deaths: Deaths) -> void:
-	_queued.append_array(deaths.bodies)
+	for k in deaths.size():
+		if deaths.kinds[k] != Enemies.Kind.BLOATER:
+			_queued.append(deaths.bodies[k])
 
 
 func land() -> void:

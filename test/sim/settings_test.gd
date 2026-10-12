@@ -102,6 +102,13 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_int(settings.combo_tier_3_kills).is_equal(25)
 	assert_int(settings.combo_cap).is_equal(3)
 	assert_int(settings.value("combo", "cap")).is_equal(3)
+	assert_float(settings.bloater_hp).is_equal_approx(30.0, 1e-6)
+	assert_int(settings.bloater_bounty).is_equal(2)
+	assert_int(settings.first_bloater_wave).is_equal(5)
+	assert_float(settings.bloater_size).is_equal_approx(1.5, 1e-6)
+	assert_float(settings.bloater_share(5)).is_equal_approx(0.02, 1e-6)
+	assert_float(settings.bloater_share(6)).is_equal_approx(0.023, 1e-6)
+	assert_float(settings.bloater_share(20)).is_equal_approx(0.05, 1e-6)
 
 
 func test_converts_the_enemy_and_swarm_spread_settings_to_sim_units() -> void:

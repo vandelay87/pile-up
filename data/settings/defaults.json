@@ -19,6 +19,16 @@
 		"personal_space_push": 0.06,
 		"turn_back_angle": 90
 	},
+	"bloaters": {
+		"hp": 30,
+		"speed": 1.6,
+		"bounty": 2,
+		"first_wave": 5,
+		"share": 2,
+		"share_per_wave": 0.3,
+		"share_cap": 5,
+		"size": 1.5
+	},
 	"piles": {
 		"slow_level_1": 15,
 		"slow_level_2": 30,
