@@ -7,7 +7,9 @@
 # The PR's runs must also pass bench_sim's own checks (determinism, a surge, drones repairing,
 # grinders grinding, and its absolute backstop). The base's exit status is ignored, since an older
 # base may fail a budget this PR changes; only its tick mean is used. With no base (a push to
-# main), only the PR's runs are checked.
+# main), only the PR's runs are checked, and likewise when the bench's workload differs between
+# the two (a version's umbrella PR grows the bench), since their tick means then measure different
+# work.
 #
 # Usage: tools/sim_budget.sh <pr-dir> [<base-dir>]
 set -u
@@ -40,6 +42,18 @@ lower() {
 		awk -v a="$1" -v b="$2" 'BEGIN { print (a < b) ? a : b }'
 	fi
 }
+
+BENCH_FILES="tools/bench_sim.gd tools/bench_crowd.gd"
+
+if [ -n "$base" ]; then
+	for file in $BENCH_FILES; do
+		if ! cmp -s "$pr/$file" "$base/$file"; then
+			echo "$file differs from the base's, so the tick means aren't comparable; checking only the PR's runs" >&2
+			base=""
+			break
+		fi
+	done
+fi
 
 pr_best=""
 base_best=""
