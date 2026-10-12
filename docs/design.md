@@ -219,6 +219,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Details and art
 
 - Clicking any unit or enemy shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
+- **Graphs:** graphs of the run, such as gold gained and lost and kills, including live graphs during a wave.
 - **Dynamic portraits:** every unit and building has a portrait in its details that reacts, like Doom's face: angry while firing, resting when idle. A building's portrait changes with what it is doing and its HP.
 - **Blood:** a burst of blood when an enemy dies, and cells grow bloodier, through several levels, as more enemies die on them.
 - A landing animation for bodies, with the final art.
