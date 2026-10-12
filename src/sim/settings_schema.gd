@@ -573,6 +573,45 @@ const SCHEMA := {
 			"apply": Settings.Apply.LIVE,
 		},
 	},
+	"grinders":
+	{
+		"cost":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 1000,
+			"step": 5,
+			"unit": "gold",
+			"apply": Settings.Apply.LIVE,
+		},
+		"hp":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 1000.0,
+			"step": 1.0,
+			"unit": "HP",
+			"apply": Settings.Apply.LIVE,
+		},
+		"power_area":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 50,
+			"step": 1,
+			"unit": "cells from the footprint",
+			"apply": Settings.Apply.LIVE,
+		},
+		"damage":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 0.5,
+			"unit": "HP/s to each enemy touching it",
+			"apply": Settings.Apply.LIVE,
+		},
+	},
 	"pylons":
 	{
 		"cost":

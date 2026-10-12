@@ -208,6 +208,42 @@ func test_towers_shoot_tumblers() -> void:
 	assert_int(shot_tumbling).is_greater(0)
 
 
+func test_a_tumbler_crossing_a_grinder_straight_takes_6() -> void:
+	var losses := _losses_crossing_a_grinder()
+
+	assert_int(losses.size()).is_greater(3)
+	for lost in losses:
+		assert_float(lost).is_equal_approx(6.0, 1e-4)
+
+
+func test_an_unpowered_grinder_hurts_no_tumbler() -> void:
+	var losses := _losses_crossing_a_grinder(
+		func() -> void: _sim.queue_command(Commands.SetSetting.new("run", "base_power_area", 0))
+	)
+
+	assert_int(losses.size()).is_greater(3)
+	for lost in losses:
+		assert_float(lost).is_equal(0.0)
+
+
+func test_a_grinder_that_kills_a_tumbler_gets_the_kill_and_its_combo() -> void:
+	# 5 HP: the first grinder cell leaves 2, the second kills. No walker gets within reach of
+	# the grinder, so every kill it makes is a tumbler's.
+	_settings.change("enemies", "hp", 5.0)
+	var grinder := _grinder_in_a_block()
+	var credited := 0
+
+	for tick in 8 * Simulation.TICKS_PER_SECOND:
+		_sim.tick()
+		for killer in _sim.deaths.killers:
+			if killer == grinder.id:
+				credited += 1
+
+	assert_int(credited).is_greater(0)
+	assert_int(grinder.kills).is_equal(credited)
+	assert_object(_sim.combos.combo(grinder.id)).is_not_null()
+
+
 func test_nothing_crossed_loses_hp_or_a_level() -> void:
 	# A pylon sits in the middle of a 3-thick block. Attackers reach only its west column.
 	_settings.change("overflow", "fill_per_stalled", 10.0)
@@ -254,6 +290,48 @@ func test_switching_overflow_off_stops_launches_and_lets_tumbles_land() -> void:
 	for id in in_flight:
 		assert_bool(_sim.overflow.is_tumbling(id)).is_false()
 		assert_float(_sim.enemies.positions[_sim.enemies.index_of(id)].x).is_greater(12.0)
+
+
+# A grinder at (10, 7) sits in a 3-thick block, behind its west column, with a crowd west of
+# the block. [param after_build] runs once the grinder is built. Returns the grinder.
+func _grinder_in_a_block(after_build := Callable()) -> Buildings.Building:
+	_settings.change("overflow", "fill_per_stalled", 10.0)
+	var grinder := Vector2i(10, 7)
+	_sim.queue_command(Commands.Build.new(Buildings.GRINDER, grinder))
+	_sim.tick()
+	var built := _sim.buildings.building(_sim.occupancy.building_at(grinder))
+	assert_object(built).is_not_null()
+	if after_build.is_valid():
+		after_build.call()
+	var block := _column(9, 0, HEIGHT - 1)
+	for x: int in [10, 11]:
+		for cell in _column(x, 0, HEIGHT - 1):
+			if cell.y != 7 and cell.y != 8:
+				block.append(cell)
+	_walls(block)
+	_crowd(80, Rect2(1, 1, 7, HEIGHT - 2))
+	return built
+
+
+# Returns the HP each tumbler that crossed both the grinder's cells in one row lost on the way
+# over, once landed.
+func _losses_crossing_a_grinder(after_build := Callable()) -> Array[float]:
+	_grinder_in_a_block(after_build)
+	var at_launch := {}
+	var losses: Array[float] = []
+
+	for tick in 8 * Simulation.TICKS_PER_SECOND:
+		_sim.tick()
+		for id in _take_new_tumblers():
+			var cells := _sim.overflow.tumble(id).cells
+			for y: int in [7, 8]:
+				if Vector2i(10, y) in cells and Vector2i(11, y) in cells:
+					at_launch[id] = _sim.enemies.hp[_sim.enemies.index_of(id)]
+		for id: int in at_launch.keys():
+			if not _sim.overflow.is_tumbling(id):
+				losses.append(at_launch[id] - _sim.enemies.hp[_sim.enemies.index_of(id)])
+				at_launch.erase(id)
+	return losses
 
 
 # Ticks until a tumbler's position is between [param left] and [param right], then kills it,

@@ -165,6 +165,11 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 			lines.append("Range %s" % _number(settings.tower_range))
 			lines.append("Kills %d" % building.kills)
 			lines.append_array(_combo_stats(building))
+		Buildings.GRINDER:
+			lines.append("Damage %s HP/s" % _number(settings.grinder_damage))
+			lines.append("Touching %d" % building.touching)
+			lines.append("Kills %d" % building.kills)
+			lines.append_array(_combo_stats(building))
 		Buildings.PYLON:
 			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
@@ -183,6 +188,8 @@ func _status(building: Buildings.Building) -> String:
 			var reach := _simulation.settings.tower_range
 			var target := _simulation.enemies.nearest_to_base_in_range(building.centre, reach)
 			return "Idle" if target == Enemies.NONE else "Firing"
+		Buildings.GRINDER:
+			return "Grinding" if building.touching > 0 else "Idle"
 		Buildings.REPAIR_YARD:
 			var on_job := _simulation.repair_yards.drone(building.id).is_on_job()
 			return "Repairing" if on_job else "Idle"

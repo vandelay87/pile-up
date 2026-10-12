@@ -2,12 +2,14 @@ class_name Buildings
 extends RefCounted
 
 const TOWER := &"tower"
+const GRINDER := &"grinder"
 const PYLON := &"pylon"
 const REPAIR_YARD := &"repair_yard"
 ## Every kind of building: its footprint, and the settings group holding its cost, hp and
 ## power_area. The one per-kind lookup; add new kinds here.
 const KINDS := {
 	TOWER: {"footprint": Vector2i(2, 2), "settings": "towers"},
+	GRINDER: {"footprint": Vector2i(2, 2), "settings": "grinders"},
 	PYLON: {"footprint": Vector2i(1, 1), "settings": "pylons"},
 	REPAIR_YARD: {"footprint": Vector2i(2, 2), "settings": "repair_yards"},
 }
@@ -50,8 +52,10 @@ class Building:
 	var powered := false
 	var cooldown := 0
 	var target_id := Enemies.NONE
-	## Enemies this tower has killed this run (its shot took them to 0 HP).
+	## Enemies this tower or grinder has killed this run (it took them to 0 HP).
 	var kills := 0
+	## Enemies touching this grinder as it last ground (0 while it isn't working).
+	var touching := 0
 
 	func _init(building_id: int, building_kind: StringName, building_origin: Vector2i) -> void:
 		id = building_id
@@ -240,26 +244,62 @@ func take_destroyed() -> Array[int]:
 	return taken
 
 
-func fire(enemies: Enemies) -> Array[Shot]:
+## Step 5: each working building acts, in build order. Towers fire, returning their shots;
+## grinders hurt every enemy touching them.
+func act(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
-	for tower in built:
-		if tower.kind != TOWER or not is_working(tower.id):
-			continue
-		if tower.cooldown > 0:
-			tower.cooldown -= 1
-			if tower.cooldown > 0:
-				continue
-		var target := enemies.nearest_to_base_in_range(tower.centre, _settings.tower_range)
-		if target == Enemies.NONE:
-			continue
-		enemies.damage(target, _settings.tower_damage, tower.id)
-		var index := enemies.index_of(target)
-		if not enemies.is_alive(index):
-			tower.kills += 1
-		tower.target_id = target
-		tower.cooldown = _settings.tower_cooldown_ticks
-		shots.append(Shot.new(tower.id, target, enemies.positions[index]))
+	for acting in built:
+		if acting.kind == TOWER:
+			_fire(acting, enemies, shots)
+		elif acting.kind == GRINDER:
+			_grind(acting, enemies)
 	return shots
+
+
+## A tumbler, the enemy at [param index], has entered [param cell]: a working grinder there
+## hurts it at once by a second's worth of its damage.
+func grind_tumble(enemies: Enemies, index: int, cell: Vector2i) -> void:
+	var grinder := building(_occupancy.building_at(cell))
+	if grinder == null or grinder.kind != GRINDER or not is_working(grinder.id):
+		return
+	_hurt(grinder, enemies, index, _settings.grinder_damage)
+
+
+func _fire(tower: Building, enemies: Enemies, shots: Array[Shot]) -> void:
+	if not is_working(tower.id):
+		return
+	if tower.cooldown > 0:
+		tower.cooldown -= 1
+		if tower.cooldown > 0:
+			return
+	var target := enemies.nearest_to_base_in_range(tower.centre, _settings.tower_range)
+	if target == Enemies.NONE:
+		return
+	var index := enemies.index_of(target)
+	_hurt(tower, enemies, index, _settings.tower_damage)
+	tower.target_id = target
+	tower.cooldown = _settings.tower_cooldown_ticks
+	shots.append(Shot.new(tower.id, target, enemies.positions[index]))
+
+
+func _grind(grinder: Building, enemies: Enemies) -> void:
+	grinder.touching = 0
+	if not is_working(grinder.id):
+		return
+	var per_tick := _settings.grinder_damage / Simulation.TICKS_PER_SECOND
+	var reach := _settings.separation_radius + _settings.wall_reach
+	var area := Rect2i(grinder.origin, footprint_size(GRINDER))
+	var found := enemies.touching(area, reach)
+	grinder.touching = found.size()
+	for i in found:
+		_hurt(grinder, enemies, i, per_tick)
+
+
+# Damages the enemy at [param index] as [param by]; a kill counts towards its kills.
+func _hurt(by: Building, enemies: Enemies, index: int, amount: float) -> void:
+	enemies.damage(enemies.ids[index], amount, by.id)
+	if not enemies.is_alive(index):
+		by.kills += 1
 
 
 func _destroy(target: Building) -> void:
