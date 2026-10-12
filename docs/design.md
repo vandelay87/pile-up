@@ -172,7 +172,7 @@ Each prototype is played to answer a question, and what the playtest finds shape
 
 - **Question:** does pressure make the late game breakable, and give the player real answers to it? A crowd that stalls against a defence builds up until it tumbles over it, the bloater blows holes in piles, walls and buildings, and the grinder, per-building combos and repair as a trade-off are the player's tools.
 - **Found:** in tuning, the bloater count first grew far too fast with the waves, so it became a slow stepped count with a per-wave roll. Gold was tightened by raising starting gold and every cost by half, and pile decay was turned off because blasts now clear piles. v3 misses the 1,000-enemy target at 60 fps and was accepted as a prototype as it is.
-- **Verdict:** not yet recorded.
+- **Verdict:** yes. Pressure makes the game more of a challenge.
 
 ## Finished game direction
 
