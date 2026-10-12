@@ -187,6 +187,17 @@ var bloater_bounty: int:
 var first_bloater_wave: int:
 	get:
 		return value("bloaters", "first_wave")
+var bloater_waves_per_step: int:
+	get:
+		return value("bloaters", "waves_per_step")
+var bloater_miss_chance: float:
+	get:
+		var percent: int = value("bloaters", "miss_chance")
+		return percent / 100.0
+var bloater_extra_chance: float:
+	get:
+		var percent: int = value("bloaters", "extra_chance")
+		return percent / 100.0
 var bloater_size: float:
 	get:
 		return value("bloaters", "size")
@@ -381,17 +392,6 @@ func enemy_bounty_of(kind: Enemies.Kind) -> int:
 func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:
 	var speed := bloater_speed if kind == Enemies.Kind.BLOATER else enemy_speed
 	return speed / Simulation.TICKS_PER_SECOND
-
-
-# The share of wave [param wave]'s spawns that are bloaters: 0 before the first bloater wave,
-# then growing each wave up to the cap.
-func bloater_share(wave: int) -> float:
-	if wave < first_bloater_wave:
-		return 0.0
-	var share: float = value("bloaters", "share")
-	var per_wave: float = value("bloaters", "share_per_wave")
-	var cap: float = value("bloaters", "share_cap")
-	return minf(cap, share + per_wave * (wave - first_bloater_wave)) / 100.0
 
 
 func value(group: String, key: String) -> Variant:

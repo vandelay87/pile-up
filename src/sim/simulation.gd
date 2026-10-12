@@ -123,7 +123,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 			_system_rng("swarm"),
 		)
 	)
-	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
+	waves = Waves.new(settings, map, enemies, _system_rng("waves"), hash([_run_seed, "bloaters"]))
 	overflow = Overflow.new(
 		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
 	)

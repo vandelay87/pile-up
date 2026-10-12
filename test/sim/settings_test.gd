@@ -106,9 +106,9 @@ func test_reads_the_committed_defaults_as_typed_values() -> void:
 	assert_int(settings.bloater_bounty).is_equal(2)
 	assert_int(settings.first_bloater_wave).is_equal(5)
 	assert_float(settings.bloater_size).is_equal_approx(1.5, 1e-6)
-	assert_float(settings.bloater_share(5)).is_equal_approx(0.02, 1e-6)
-	assert_float(settings.bloater_share(6)).is_equal_approx(0.023, 1e-6)
-	assert_float(settings.bloater_share(20)).is_equal_approx(0.05, 1e-6)
+	assert_int(settings.bloater_waves_per_step).is_equal(6)
+	assert_float(settings.bloater_miss_chance).is_equal_approx(0.25, 1e-6)
+	assert_float(settings.bloater_extra_chance).is_equal_approx(0.1, 1e-6)
 
 
 func test_converts_the_enemy_and_swarm_spread_settings_to_sim_units() -> void:
