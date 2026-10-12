@@ -19,7 +19,7 @@ func before_test() -> void:
 
 
 func _waves(run_seed: int = 1) -> Waves:
-	return Waves.new(_settings, _map, _enemies, _rng(run_seed))
+	return Waves.new(_settings, _map, _enemies, _rng(run_seed), run_seed)
 
 
 func _rng(run_seed: int) -> RandomNumberGenerator:

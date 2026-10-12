@@ -36,7 +36,7 @@ func _init(
 	run_map: MapData,
 	run_enemies: Enemies,
 	rng: RandomNumberGenerator,
-	bloater_seed := 0
+	bloater_seed: int
 ) -> void:
 	_settings = run_settings
 	_map = run_map
