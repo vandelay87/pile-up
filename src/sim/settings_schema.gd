@@ -244,6 +244,33 @@ const SCHEMA := {
 			"unit": "× drawn size",
 			"apply": Settings.Apply.LIVE,
 		},
+		"fuse":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.1,
+			"max": 10.0,
+			"step": 0.1,
+			"unit": "s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"blast_radius":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.5,
+			"max": 6.0,
+			"step": 0.5,
+			"unit": "cells",
+			"apply": Settings.Apply.LIVE,
+		},
+		"blast_damage":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 1000.0,
+			"step": 5.0,
+			"unit": "HP to each building and the base",
+			"apply": Settings.Apply.LIVE,
+		},
 	},
 	"piles":
 	{

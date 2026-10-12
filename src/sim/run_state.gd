@@ -32,13 +32,15 @@ func spend(cost: int) -> void:
 
 
 # Each death, in order, pays its kind's bounty times its killer's combo tier after counting
-# that kill: x1 with no killer, or one destroyed this tick.
+# that kill: x1 with no killer, or one destroyed this tick. A bloater that blew itself up pays no
+# bounty of its own.
 func pay(deaths: Deaths, combos: Combos, tick: int) -> void:
 	payout = 0
 	payout_tier = 1
 	for i in deaths.size():
 		var tier := combos.record(deaths.killers[i], tick)
-		payout += _settings.enemy_bounty_of(deaths.kinds[i] as Enemies.Kind) * tier
+		if deaths.pays_bounty(i):
+			payout += _settings.enemy_bounty_of(deaths.kinds[i] as Enemies.Kind) * tier
 		payout_tier = maxi(payout_tier, tier)
 	kills += deaths.size()
 	gold += payout

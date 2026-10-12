@@ -46,6 +46,7 @@ func _init() -> void:
 	_draw_unpowered_icon(image)
 	_draw_enemy(image)
 	_draw_tracer(image)
+	_draw_blast_ring(image)
 	var error := image.save_png(Atlas.PATH)
 	if error != OK:
 		push_error("could not write %s: %s" % [Atlas.PATH, error_string(error)])
@@ -172,6 +173,19 @@ func _draw_tracer(image: Image) -> void:
 		for x in range(area.position.x, area.end.x):
 			var alpha := float(x - area.position.x + 1) / area.size.x
 			image.set_pixel(x, y, Color(WHITE, alpha))
+
+
+# A white ring on the ground, an ellipse filling its region, fading towards its inner edge.
+func _draw_blast_ring(image: Image) -> void:
+	var area := Atlas.BLAST_RING_REGION
+	var centre := Vector2(area.get_center())
+	var half := Vector2(area.size) / 2.0
+	var width := 0.22
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var distance := ((Vector2(x, y) + Vector2(0.5, 0.5) - centre) / half).length()
+			if distance <= 1.0 and distance > 1.0 - width:
+				image.set_pixel(x, y, Color(WHITE, (distance - (1.0 - width)) / width))
 
 
 func _draw_box(image: Image, foot: Vector2, half: Vector2, height: int, color: Color) -> void:

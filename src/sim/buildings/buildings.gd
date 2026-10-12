@@ -295,11 +295,18 @@ func _grind(grinder: Building, enemies: Enemies) -> void:
 		_hurt(grinder, enemies, i, per_tick)
 
 
+## Counts a kill towards the building with id [param id]'s kills, if it still stands.
+func count_kill(id: int) -> void:
+	var killer := building(id)
+	if killer != null:
+		killer.kills += 1
+
+
 # Damages the enemy at [param index] as [param by]; a kill counts towards its kills.
 func _hurt(by: Building, enemies: Enemies, index: int, amount: float) -> void:
 	enemies.damage(enemies.ids[index], amount, by.id)
 	if not enemies.is_alive(index):
-		by.kills += 1
+		count_kill(by.id)
 
 
 func _destroy(target: Building) -> void:

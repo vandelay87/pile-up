@@ -62,8 +62,8 @@ class Crush:
 	var centre := Vector2.ZERO
 	## Tumbles banked towards the next launch.
 	var credit := 0.0
-	## The enemies (by index) in its front rank this tick that aren't attacking, and those that
-	## are, gathered before any launch.
+	## The enemies (by index) in its front rank this tick that aren't attacking (a burning
+	## bloater among them), and those that are, gathered before any launch.
 	var front_free := PackedInt32Array()
 	var front_attacking := PackedInt32Array()
 	var _centre_sum := Vector2.ZERO
@@ -480,6 +480,7 @@ func _gather() -> void:
 	var progress := _enemies.progress
 	var tumbling := _enemies.tumbling
 	var targets := _enemies.structure_targets
+	var fuses := _enemies.fuses
 	for i in _enemies.count:
 		if not _enemies.is_alive(i) or progress[i] >= stall or tumbling[i] == 1:
 			continue
@@ -494,7 +495,8 @@ func _gather() -> void:
 		crush.add_stalled(pos)
 		if not _touches_barrier(pos, label, reach):
 			continue
-		if targets[i] == Enemies.NONE:
+		# A bloater holding with its fuse lit isn't attacking.
+		if targets[i] == Enemies.NONE or fuses[i] > 0:
 			crush.front_free.append(i)
 		else:
 			crush.front_attacking.append(i)

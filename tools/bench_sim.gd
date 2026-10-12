@@ -8,6 +8,8 @@
 # yard is built again where it can be. The crowd stalls against the towers until their crushes
 # overflow at a surge, so enemies tumble over the ring. Grinders stand in the ring between the
 # towers, under the crush, grinding the crowd pressed on them and the tumblers crossing them.
+# Every CHAIN_INTERVAL ticks a wall is raised in the crowd and a chain of bloaters set off beside
+# it, blowing through the crowd and erasing the wall.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
@@ -21,6 +23,10 @@ const BODY_INTERVAL := 15
 const DECAY_INTERVAL := 200
 const PYLON_INTERVAL := 100
 const REBUILD_INTERVAL := 60
+const CHAIN_INTERVAL := 90
+# Bloaters in each chain, in a line out from the wall, each in the last one's reach.
+const CHAIN_BLOATERS := 5
+const CHAIN_SPACING := 1.5
 # A late wave: its size keeps it out of the wave tail for the whole run, with a trickle of spawns.
 const WAVE := 20
 # Two yards beside the base, with the crowd's towers in their repair areas.
@@ -48,6 +54,9 @@ class RunResult:
 	var tumbles := 0
 	## Grinder-ticks spent grinding at least one enemy, summed over the grinders.
 	var grinding_ticks := 0
+	## Bloaters blown up, and walls the chains erased.
+	var blasts := 0
+	var walls_erased := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -74,6 +83,7 @@ func _init() -> void:
 	print("Drones spent %d drone-ticks repairing" % first.repair_ticks)
 	print("A crush surged for %d ticks; %d enemies tumbled" % [first.surge_ticks, first.tumbles])
 	print("Grinders spent %d grinder-ticks grinding" % first.grinding_ticks)
+	print("%d bloaters blew up; chains erased %d walls" % [first.blasts, first.walls_erased])
 
 	var failed := false
 	if first.repair_ticks == 0:
@@ -84,6 +94,9 @@ func _init() -> void:
 		failed = true
 	if first.grinding_ticks == 0:
 		printerr("No grinder ground anything")
+		failed = true
+	if first.walls_erased == 0:
+		printerr("No bloater chain erased a wall")
 		failed = true
 	if first.digest != second.digest:
 		printerr("Two runs with the same seed ended in different states")
@@ -103,6 +116,10 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	sim.queue_command(Commands.JumpToWave.new(WAVE))
 	var result := RunResult.new()
 	var tumbling: Dictionary[int, bool] = {}
+	var chain_wall := Vector2i(-1, -1)
+	sim.blasts.connect(
+		func(went_off: Array[Blasts.Blast]) -> void: result.blasts += went_off.size()
+	)
 	for t in WARMUP_TICKS + MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
 		if t % PYLON_INTERVAL == PYLON_INTERVAL - 1:
@@ -113,6 +130,12 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 			crowd.drop_body()
 		if t % DECAY_INTERVAL == DECAY_INTERVAL - 1:
 			sim.decay_piles()
+		if t % CHAIN_INTERVAL == 0:
+			chain_wall = crowd.raise_wall()
+		elif t % CHAIN_INTERVAL == 1 and sim.piles.level(chain_wall) == Piles.WALL_LEVEL:
+			_set_off_chain(sim, chain_wall)
+		else:
+			chain_wall = Vector2i(-1, -1)
 		var started := Time.get_ticks_usec()
 		sim.tick()
 		if t >= WARMUP_TICKS:
@@ -124,6 +147,8 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 			if building.touching > 0:
 				result.grinding_ticks += 1
 		_count_overflow(sim, result, tumbling)
+		if t % CHAIN_INTERVAL == 1 and chain_wall.x >= 0 and sim.piles.level(chain_wall) == 0:
+			result.walls_erased += 1
 	result.digest = hash(
 		[
 			BenchCrowd.digest(sim),
@@ -150,6 +175,23 @@ func _count_overflow(sim: Simulation, result: RunResult, tumbling: Dictionary[in
 				result.tumbles += 1
 	tumbling.clear()
 	tumbling.merge(now)
+
+
+# Spawns a line of bloaters out from [param wall] and kills the first, beside the wall: the chain
+# runs down the line.
+func _set_off_chain(sim: Simulation, wall: Vector2i) -> void:
+	var start := Vector2(wall) + Vector2(0.5, 0.5)
+	var outwards := (start - Vector2(sim.map.base.get_center())).normalized()
+	var first := Enemies.NONE
+	for k in CHAIN_BLOATERS:
+		var pos := start + outwards * CHAIN_SPACING * (k + 1)
+		var cell := Vector2i(pos.floor())
+		if not sim.map.in_bounds(cell):
+			break
+		var id := sim.enemies.spawn(pos, sim.settings.bloater_hp, Enemies.Kind.BLOATER)
+		if first == Enemies.NONE:
+			first = id
+	sim.enemies.kill(first)
 
 
 func _build_yards(sim: Simulation) -> void:
