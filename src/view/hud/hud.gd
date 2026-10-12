@@ -1,34 +1,64 @@
 class_name Hud
 extends CanvasLayer
+## The StarCraft-style console: one full-width bar across the bottom, built in UiRoot units.
+## Status on the left, the selection's details in the middle (always there), and a command
+## card of square buttons on the right. Toasts sit just above the bar; game over is centred.
 
 signal build_requested(kind: StringName)
 
+const BAR_HEIGHT := 150.0
 const MARGIN := 8.0
 const TOAST_HOLD_SECONDS := 1.5
 const TOAST_FADE_SECONDS := 0.5
-const COMBO_PULSE_SECONDS := 0.25
-const COMBO_FADE_SECONDS := 0.6
-const COMBO_TIER_UP_SCALE := 1.4
-const COMBO_BEAT_SECONDS := 0.15
-const COMBO_BEAT_SCALE := 1.12
 const GOLD_FLASH_SECONDS := 0.35
 const GOLD_FLASH_COLOUR := Color(1.0, 0.85, 0.2)
+## Gold is already drawn gold, so a payout flashes it brighter.
+const GOLD_FLASH_BRIGHTNESS := Color(1.8, 1.8, 1.8)
+const BASE_COLOUR := Color(1.0, 0.5, 0.45)
+const NAME_COLOUR := Color(0.7, 0.7, 0.72)
+const PANEL_BG := Color(0.08, 0.09, 0.11, 0.92)
+const PANEL_EDGE := Color(0.45, 0.4, 0.3)
+const PORTRAIT_COLOUR := Color(0.2, 0.22, 0.26)
+const UNAFFORDABLE_COLOUR := Color(1.0, 0.6, 0.6)
+const COMBO_RING_SIZE := 96.0
+const COMMAND_SIZE := Vector2(72, 56)
+const COMMAND_COLUMNS := 3
+## The command card's slots in grid order: a building kind, or an empty slot.
+const COMMANDS: Array[StringName] = [
+	Buildings.TOWER, Buildings.GRINDER, Buildings.PYLON, Buildings.REPAIR_YARD, &""
+]
+const COMMAND_LABELS := {
+	Buildings.TOWER: ["Tower", "T"],
+	Buildings.GRINDER: ["Grinder", "G"],
+	Buildings.PYLON: ["Pylon", "P"],
+	Buildings.REPAIR_YARD: ["Repair", "R"],
+}
+## A tower's targeting toggle, in button order.
+const TARGETING_NAMES := {
+	Enemies.BLOATERS_FIRST: "Bloaters first",
+	Enemies.CLOSEST_TO_BASE: "Closest to base",
+}
 
 var _simulation: Simulation
+var _bar: PanelContainer
+var _selection: Selection
 var _gold := Label.new()
 var _base_hp := Label.new()
 var _wave := Label.new()
 var _enemies_left := Label.new()
 var _kills := Label.new()
-var _combo := Label.new()
-var _combo_tween: Tween
-var _combo_rising := false
 var _gold_tween: Tween
-var _shown_tier := 1
+var _combo_view: ComboView
+var _combo_ring := ComboRing.new()
+var _details_title := Label.new()
+var _details_lines := VFlowContainer.new()
+var _yard_controls := HBoxContainer.new()
+var _assign := Button.new()
+var _threshold_buttons: Dictionary[int, Button] = {}
+var _tower_controls := HBoxContainer.new()
+var _targeting_buttons: Dictionary[StringName, Button] = {}
 var _next_wave := Button.new()
-var _tower := Button.new()
-var _pylon := Button.new()
-var _repair_yard := Button.new()
+var _build_buttons: Dictionary[StringName, Button] = {}
 var _toast := Label.new()
 var _toast_tween: Tween
 var _game_over := PanelContainer.new()
@@ -36,8 +66,21 @@ var _reached := Label.new()
 var _run_kills := Label.new()
 
 
-func setup(simulation: Simulation) -> void:
+## The selected building's combo ring, drawn large in the details.
+class ComboRing:
+	extends Control
+
+	var ring: ComboView.Ring
+
+	func _draw() -> void:
+		if ring != null:
+			ComboView.draw_ring(self, size / 2.0, ring, size.y / 36.0, true)
+
+
+func setup(simulation: Simulation, selection: Selection, combo_view: ComboView) -> void:
 	_simulation = simulation
+	_selection = selection
+	_combo_view = combo_view
 	_simulation.gold_changed.connect(_show_gold)
 	_simulation.base_hp_changed.connect(_show_base_hp)
 	_simulation.phase_changed.connect(_show_phase)
@@ -45,61 +88,29 @@ func setup(simulation: Simulation) -> void:
 	_simulation.command_rejected.connect(_show_toast)
 	_simulation.enemies_left_changed.connect(_show_enemies_left)
 	_simulation.kills_changed.connect(_show_kills)
-	_simulation.combo_changed.connect(_show_combo)
 	_simulation.payout.connect(_flash_gold)
-	_simulation.payout.connect(_beat_combo)
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_base_hp(run_state.base_hp)
 	_show_enemies_left(_simulation.enemies_left)
 	_show_kills(run_state.kills)
-	_shown_tier = 1
-	_combo.modulate.a = 0.0
 	_show_phase(_simulation.waves.phase)
 	_game_over.visible = false
 
 
 func _ready() -> void:
 	var ui := UiRoot.add_to(self)
-	# Readouts and buttons sit on separate rows so large numbers don't push the bar
-	# past the window's edges.
-	var readouts := HBoxContainer.new()
-	readouts.add_theme_constant_override("separation", 24)
-	readouts.alignment = BoxContainer.ALIGNMENT_CENTER
-	for label: Label in [_gold, _base_hp, _wave, _enemies_left, _kills]:
-		label.add_theme_constant_override("outline_size", 4)
-		label.add_theme_color_override("font_outline_color", Color.BLACK)
-		readouts.add_child(label)
-	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 12)
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
-	_next_wave.text = "Next wave"
-	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
-	actions.add_child(_next_wave)
-	_tower.pressed.connect(build_requested.emit.bind(Buildings.TOWER))
-	_pylon.pressed.connect(build_requested.emit.bind(Buildings.PYLON))
-	_repair_yard.pressed.connect(build_requested.emit.bind(Buildings.REPAIR_YARD))
-	for button: Button in [_tower, _pylon, _repair_yard]:
-		button.focus_mode = Control.FOCUS_NONE
-		actions.add_child(button)
-	var bar := VBoxContainer.new()
-	bar.add_child(readouts)
-	bar.add_child(actions)
-	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
-	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	bar.position.y += MARGIN
-	ui.add_child(bar)
-
-	_combo.add_theme_constant_override("outline_size", 6)
-	_combo.add_theme_color_override("font_outline_color", Color.BLACK)
-	_combo.add_theme_color_override("font_color", GOLD_FLASH_COLOUR)
-	_combo.add_theme_font_size_override("font_size", 28)
-	_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_combo.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
-	_combo.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_combo.position.y += bar.get_combined_minimum_size().y + MARGIN * 2
-	_combo.modulate.a = 0.0
-	ui.add_child(_combo)
+	_bar = _panel(0)
+	_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_bar.offset_top = -BAR_HEIGHT
+	ui.add_child(_bar)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.add_child(_status_panel())
+	row.add_child(_details_panel())
+	row.add_child(_command_card())
+	_bar.add_child(row)
 
 	var box := VBoxContainer.new()
 	var title := Label.new()
@@ -130,89 +141,180 @@ func _ready() -> void:
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE)
 	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_toast.position.y -= MARGIN * 6
 	_toast.modulate.a = 0.0
 	ui.add_child(_toast)
 
 
+# Gold, Base HP, Wave, Enemies left and Kills as a two-column table.
+func _status_panel() -> PanelContainer:
+	var status := _panel()
+	# Wide enough for six-digit values, so the details don't shift as Gold grows.
+	status.custom_minimum_size.x = 230
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 0)
+	var rows := [
+		["Gold", _gold, 18, GOLD_FLASH_COLOUR],
+		["Base HP", _base_hp, 18, BASE_COLOUR],
+		["Wave", _wave, 15, Color.WHITE],
+		["Enemies left", _enemies_left, 15, Color.WHITE],
+		["Kills", _kills, 15, Color.WHITE],
+	]
+	for entry: Array in rows:
+		var name_label := Label.new()
+		name_label.text = entry[0]
+		name_label.add_theme_font_size_override("font_size", 15)
+		name_label.add_theme_color_override("font_color", NAME_COLOUR)
+		grid.add_child(name_label)
+		var value: Label = entry[1]
+		var font_size: int = entry[2]
+		var colour: Color = entry[3]
+		value.add_theme_font_size_override("font_size", font_size)
+		value.add_theme_color_override("font_color", colour)
+		value.add_theme_constant_override("outline_size", 4)
+		value.add_theme_color_override("font_outline_color", Color.BLACK)
+		grid.add_child(value)
+	status.add_child(grid)
+	return status
+
+
+# A portrait placeholder, the selection's title and stats wrapping into columns, then its combo
+# ring when it can hold one.
+func _details_panel() -> PanelContainer:
+	var details := _panel()
+	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var details_row := HBoxContainer.new()
+	details_row.add_theme_constant_override("separation", 12)
+	var portrait := ColorRect.new()
+	portrait.color = PORTRAIT_COLOUR
+	portrait.custom_minimum_size = Vector2(96, 96)
+	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	details_row.add_child(portrait)
+	var text_column := VBoxContainer.new()
+	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_column.add_theme_constant_override("separation", 2)
+	_details_title.add_theme_font_size_override("font_size", 17)
+	text_column.add_child(_details_title)
+	_details_lines.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_details_lines.add_theme_constant_override("h_separation", 24)
+	_details_lines.add_theme_constant_override("v_separation", 0)
+	text_column.add_child(_details_lines)
+	_assign.text = "Assign"
+	_assign.toggle_mode = true
+	_assign.toggled.connect(func(on: bool) -> void: _selection.set_assigning(on))
+	var clear := Button.new()
+	clear.text = "Clear"
+	clear.pressed.connect(func() -> void: _selection.clear_assignment())
+	for button: Button in [_assign, clear]:
+		button.focus_mode = Control.FOCUS_NONE
+		_yard_controls.add_child(button)
+	var threshold_label := Label.new()
+	threshold_label.text = "  Threshold"
+	threshold_label.add_theme_font_size_override("font_size", 14)
+	threshold_label.add_theme_color_override("font_color", NAME_COLOUR)
+	_yard_controls.add_child(threshold_label)
+	var thresholds := ButtonGroup.new()
+	for percent in RepairYards.THRESHOLDS:
+		var button := Button.new()
+		button.text = "%d%%" % percent
+		button.toggle_mode = true
+		button.button_group = thresholds
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(func() -> void: _selection.set_yard_threshold(percent))
+		_threshold_buttons[percent] = button
+		_yard_controls.add_child(button)
+	text_column.add_child(_yard_controls)
+	var targeting := ButtonGroup.new()
+	for mode: StringName in TARGETING_NAMES:
+		var button := Button.new()
+		button.text = TARGETING_NAMES[mode]
+		button.toggle_mode = true
+		button.button_group = targeting
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(func() -> void: _selection.set_tower_targeting(mode))
+		_targeting_buttons[mode] = button
+		_tower_controls.add_child(button)
+	text_column.add_child(_tower_controls)
+	details_row.add_child(text_column)
+	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
+	_combo_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	details_row.add_child(_combo_ring)
+	details.add_child(details_row)
+	return details
+
+
+# Square build buttons with cost and hotkey, then Next wave; empty slots are kept.
+func _command_card() -> PanelContainer:
+	var card := _panel()
+	var commands := GridContainer.new()
+	commands.columns = COMMAND_COLUMNS
+	for kind: StringName in COMMANDS:
+		if kind.is_empty():
+			commands.add_child(Control.new())
+			continue
+		var button := Button.new()
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = COMMAND_SIZE
+		button.pressed.connect(build_requested.emit.bind(kind))
+		_build_buttons[kind] = button
+		commands.add_child(button)
+	_next_wave.text = "Next\nwave"
+	_next_wave.focus_mode = Control.FOCUS_NONE
+	_next_wave.custom_minimum_size = COMMAND_SIZE
+	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
+	commands.add_child(_next_wave)
+	card.add_child(commands)
+	return card
+
+
+func _panel(radius := 4) -> PanelContainer:
+	var style := StyleBoxFlat.new()
+	style.bg_color = PANEL_BG
+	style.border_color = PANEL_EDGE
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(radius)
+	style.set_content_margin_all(6)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", style)
+	return panel
+
+
 func _show_gold(gold: int) -> void:
-	_gold.text = "Gold %d" % gold
-	_tower.text = "Tower (%d gold) [T]" % _simulation.settings.tower_cost
-	_pylon.text = "Pylon (%d gold) [P]" % _simulation.settings.pylon_cost
-	_repair_yard.text = "Repair yard (%d gold) [R]" % _simulation.settings.repair_yard_cost
+	_gold.text = str(gold)
+	for kind: StringName in _build_buttons:
+		var cost := _simulation.buildings.cost_of(kind)
+		var label: Array = COMMAND_LABELS[kind]
+		var button := _build_buttons[kind]
+		button.text = "%s\n%d [%s]" % [label[0], cost, label[1]]
+		button.modulate = Color.WHITE if gold >= cost else UNAFFORDABLE_COLOUR
 
 
+# In the build phase, the next wave's size and its bloaters, like "120 enemies · 3 bloaters".
 func _show_enemies_left(left: int) -> void:
-	_enemies_left.text = "Enemies left %d" % left
+	if _simulation.waves.phase == Waves.Phase.WAVE:
+		_enemies_left.text = str(left)
+		return
+	_enemies_left.text = "%d enemies" % left
+	var bloaters := _simulation.next_wave_bloaters
+	if bloaters > 0:
+		_enemies_left.text += " · %d bloater%s" % [bloaters, "" if bloaters == 1 else "s"]
 
 
 func _show_kills(kills: int) -> void:
-	_kills.text = "Kills %d" % kills
-
-
-# Hidden at x1; pulses and grows on each tier-up, fades as the tier falls.
-func _show_combo(tier: int) -> void:
-	var rising := tier > _shown_tier
-	_shown_tier = tier
-	_combo_rising = rising
-	if _combo_tween != null:
-		_combo_tween.kill()
-	_combo_tween = create_tween()
-	if tier <= 1:
-		_combo_tween.tween_property(_combo, "modulate:a", 0.0, COMBO_FADE_SECONDS)
-		return
-	_combo.text = "Combo x%d" % tier
-	_combo.pivot_offset = _combo.get_combined_minimum_size() / 2.0
-	var grown := _combo_scale(tier)
-	if rising:
-		_combo.modulate.a = 1.0
-		_combo.scale = Vector2.ONE * grown * COMBO_TIER_UP_SCALE
-		(
-			_combo_tween
-			. tween_property(_combo, "scale", Vector2.ONE * grown, COMBO_PULSE_SECONDS)
-			. set_trans(Tween.TRANS_BACK)
-			. set_ease(Tween.EASE_OUT)
-		)
-	else:
-		_combo_tween.set_parallel()
-		_combo_tween.tween_property(_combo, "modulate:a", 0.6, COMBO_FADE_SECONDS)
-		_combo_tween.tween_property(_combo, "scale", Vector2.ONE * grown, COMBO_FADE_SECONDS)
-
-
-# A held tier beats on each multiplied payout, so a long combo visibly reacts to new
-# kills. A tier-up's own pulse is left to finish: the simulation reports the tier change
-# before the same tick's payout.
-func _beat_combo(_amount: int, _tier: int) -> void:
-	if _shown_tier <= 1:
-		return
-	if _combo_tween != null:
-		if _combo_rising and _combo_tween.is_running():
-			return
-		_combo_tween.kill()
-	_combo_rising = false
-	var grown := _combo_scale(_shown_tier)
-	_combo.modulate.a = 1.0
-	_combo.scale = Vector2.ONE * grown * COMBO_BEAT_SCALE
-	_combo_tween = create_tween()
-	_combo_tween.tween_property(_combo, "scale", Vector2.ONE * grown, COMBO_BEAT_SECONDS).set_ease(
-		Tween.EASE_OUT
-	)
-
-
-func _combo_scale(tier: int) -> float:
-	return 1.0 + 0.25 * (tier - 1)
+	_kills.text = str(kills)
 
 
 func _flash_gold(_amount: int, _tier: int) -> void:
 	if _gold_tween != null:
 		_gold_tween.kill()
-	_gold.modulate = GOLD_FLASH_COLOUR * 1.3
+	_gold.modulate = GOLD_FLASH_BRIGHTNESS
 	_gold_tween = create_tween()
 	_gold_tween.tween_property(_gold, "modulate", Color.WHITE, GOLD_FLASH_SECONDS)
 
 
 func _show_base_hp(hp: float) -> void:
-	_base_hp.text = "Base %d HP" % ceili(hp)
+	_base_hp.text = "%d / %d" % [ceili(hp), ceili(_simulation.settings.base_hp)]
 
 
 func _process(_delta: float) -> void:
@@ -223,10 +325,55 @@ func _process(_delta: float) -> void:
 		or _simulation.is_decay_rebuild_in_flight()
 		or _simulation.run_state.is_game_over
 	)
+	_show_details()
+
+
+func _show_details() -> void:
+	var lines := _selection.details()
+	if lines.is_empty():
+		lines = ["Nothing selected", "Click a building or the base."]
+	_details_title.text = lines[0]
+	var stats := lines.slice(1)
+	for i in stats.size():
+		if i == _details_lines.get_child_count():
+			var line := Label.new()
+			line.add_theme_font_size_override("font_size", 14)
+			_details_lines.add_child(line)
+		var label := _details_lines.get_child(i) as Label
+		label.text = stats[i]
+		label.visible = true
+	for i in range(stats.size(), _details_lines.get_child_count()):
+		(_details_lines.get_child(i) as Label).visible = false
+	_show_combo_ring()
+	_yard_controls.visible = _selection.is_yard_selected()
+	_assign.set_pressed_no_signal(_selection.is_assigning())
+	var threshold := _selection.yard_threshold()
+	for percent in _threshold_buttons:
+		_threshold_buttons[percent].set_pressed_no_signal(percent == threshold)
+	_tower_controls.visible = _selection.is_tower_selected()
+	var mode := _selection.tower_targeting()
+	for each: StringName in _targeting_buttons:
+		_targeting_buttons[each].set_pressed_no_signal(each == mode)
+
+
+# A tower's or grinder's ring, in pale gold at x1 rather than hidden, so its progress towards
+# x2 shows.
+func _show_combo_ring() -> void:
+	var building := _selection.selected_building()
+	_combo_ring.visible = (
+		building != null and building.kind in [Buildings.TOWER, Buildings.GRINDER]
+	)
+	if not _combo_ring.visible:
+		return
+	_combo_ring.ring = _combo_view.ring_of(building.id)
+	if _combo_ring.ring == null:
+		_combo_ring.ring = ComboView.Ring.new()
+	_combo_ring.queue_redraw()
 
 
 func _show_phase(_phase: Waves.Phase) -> void:
-	_wave.text = "Wave %d" % _simulation.run_state.wave
+	_wave.text = str(_simulation.run_state.wave)
+	_show_enemies_left(_simulation.enemies_left)
 
 
 func _show_game_over() -> void:
@@ -237,6 +384,8 @@ func _show_game_over() -> void:
 
 func _show_toast(reason: String) -> void:
 	_toast.text = reason[0].to_upper() + reason.substr(1)
+	# The bar can grow a little past BAR_HEIGHT with its content, so sit above its real top.
+	_toast.position.y = _bar.position.y - _toast.get_combined_minimum_size().y - MARGIN
 	if _toast_tween != null:
 		_toast_tween.kill()
 	_toast.modulate.a = 1.0

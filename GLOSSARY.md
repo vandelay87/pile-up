@@ -21,6 +21,10 @@ _Avoid_: Obstacle, blocked cell, wall
 **Spawn edge**:
 A map edge that enemies enter from during the current wave.
 
+**No-build cell**:
+Clear ground that enemies walk on but nothing can be built on. The map marks a margin of them along each spawn edge.
+_Avoid_: Buffer zone, safe zone
+
 ### Structures
 
 **Structure**:
@@ -103,8 +107,12 @@ The default route enemies follow, where piles and walls cost what they really co
 The alternative route where piles are cheap and walls are worth breaking; an enemy that rolls into it commits until it is past the obstacle.
 _Avoid_: Reckless, personality
 
+**Barrier**:
+A connected stretch of walls and buildings, touching side to side or corner to corner. Piles below a wall, rock and the base are never part of one.
+_Avoid_: Run (a run is one game), wall line, cluster
+
 **Crush**:
-A dense, stalled crowd of living enemies pressed against a wall or building, one per connected run of them. The base never has one: enemies there have arrived. "Mob" and "swarm" are informal words for enemies, not for a crush.
+A dense, stalled crowd of living enemies pressed against a barrier, one per barrier. The base never has one: enemies there have arrived. "Mob" and "swarm" are informal words for enemies, not for a crush.
 _Avoid_: Pile up, jam, clump (piles are bodies; a crush is alive)
 
 **Pressure**:
@@ -133,6 +141,10 @@ _Avoid_: Bomber, kamikaze, creeper, exploding enemy
 One game, from the first wave until the base is destroyed. A restart begins a new run.
 _Avoid_: Game, match, session
 
+**Tuning session**:
+One launch of the game from the editor, across however many runs it spans. Its settings are saved to its own file in `data/settings/tuning-sessions/` whenever they change.
+_Avoid_: Playtest (a playtest is the human playing, not the file)
+
 **Wave**:
 One spawned group of enemies, from pressing "next wave" until the last of them dies.
 _Avoid_: Round, level
@@ -142,7 +154,7 @@ The time between waves.
 _Avoid_: Intermission
 
 **Enemies left**:
-The enemies in the current wave not yet killed, including those not yet spawned.
+The enemies in the current wave not yet killed, including those not yet spawned. Between waves, the next wave's size and how many of them are bloaters.
 
 **Wave tail**:
 The end of a wave, once Enemies left falls to a set count, which grows with the wave number.

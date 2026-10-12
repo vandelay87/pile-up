@@ -6,8 +6,14 @@ const INVALID := Color(0.95, 0.3, 0.25)
 const FILL_ALPHA := 0.35
 const RANGE_ALPHA := 0.5
 const GRID_TINT := Color(0.45, 0.75, 1.0, 0.12)
+const NO_BUILD_TINT := Color(1.0, 0.3, 0.2, 0.18)
 const REPAIR_AREA_TINT := Color(0.35, 0.95, 0.45, 0.12)
-const KEYS := {KEY_T: Buildings.TOWER, KEY_P: Buildings.PYLON, KEY_R: Buildings.REPAIR_YARD}
+const KEYS := {
+	KEY_T: Buildings.TOWER,
+	KEY_G: Buildings.GRINDER,
+	KEY_P: Buildings.PYLON,
+	KEY_R: Buildings.REPAIR_YARD,
+}
 
 var active := false
 var kind := Buildings.TOWER
@@ -70,6 +76,7 @@ func _draw() -> void:
 	if not active or _simulation == null:
 		return
 	PowerGridDrawing.tint_grid(self, _simulation.power_grid, _simulation.map, GRID_TINT)
+	PowerGridDrawing.tint_cells(self, _simulation.map.no_build, _simulation.map, NO_BUILD_TINT)
 	if kind == Buildings.REPAIR_YARD:
 		var repair_area := RepairYards.repair_area_of(_origin, _simulation.settings.repair_area)
 		PowerGridDrawing.tint_area(self, repair_area, _simulation.map, REPAIR_AREA_TINT)

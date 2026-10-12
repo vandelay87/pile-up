@@ -4,16 +4,23 @@ extends RefCounted
 ## Drawing helpers for the power grid, shared by placement and the debug overlay.
 
 
-## Tints every cell on the grid, one polygon per run of grid cells in a row.
+## Tints every cell on the grid.
 static func tint_grid(canvas: CanvasItem, grid: PowerGrid, map: MapData, colour: Color) -> void:
+	tint_cells(canvas, grid.cells, map, colour)
+
+
+## Tints every cell marked 1 in a row-major mask, one polygon per run of marked cells in a row.
+static func tint_cells(
+	canvas: CanvasItem, cells: PackedByteArray, map: MapData, colour: Color
+) -> void:
 	for y in map.height:
 		var row := y * map.width
 		var start := -1
 		for x in map.width + 1:
-			var on_grid := x < map.width and grid.cells[row + x] == 1
-			if on_grid and start < 0:
+			var marked := x < map.width and cells[row + x] == 1
+			if marked and start < 0:
 				start = x
-			elif not on_grid and start >= 0:
+			elif not marked and start >= 0:
 				canvas.draw_colored_polygon(_corners(Rect2(start, y, x - start, 1)), colour)
 				start = -1
 

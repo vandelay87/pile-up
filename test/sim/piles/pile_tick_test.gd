@@ -12,7 +12,7 @@ func before_test() -> void:
 func test_a_killed_enemys_body_lands_at_step_1_of_the_next_tick() -> void:
 	var sim := _sim()
 	var id := sim.enemies.spawn(Vector2(2.5, 2.5), _settings.enemy_hp)
-	sim.enemies.damage(id, 100.0)
+	sim.enemies.damage(id, 100.0, Enemies.NONE)
 	sim.tick()
 	assert_int(sim.piles.level(Vector2i(2, 2))).is_equal(0)
 	var seen: Array[int] = []
@@ -28,7 +28,9 @@ func test_a_killed_enemys_body_lands_at_step_1_of_the_next_tick() -> void:
 
 func test_both_fields_include_a_new_pile_on_the_tick_it_lands() -> void:
 	var sim := _sim()
-	sim.piles.queue_bodies(PackedVector2Array([Vector2(2.5, 2.5), Vector2(2.5, 2.5)]))
+	sim.piles.queue_bodies(
+		Deaths.bodies_at(PackedVector2Array([Vector2(2.5, 2.5), Vector2(2.5, 2.5)]))
+	)
 
 	sim.tick()
 
@@ -47,7 +49,7 @@ func test_no_pile_signal_or_field_change_on_a_tick_without_bodies() -> void:
 
 func test_changing_a_pile_slow_rebuilds_the_fields() -> void:
 	var sim := _sim()
-	sim.piles.queue_bodies(PackedVector2Array([Vector2(2.5, 2.5)]))
+	sim.piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(2.5, 2.5)])))
 	sim.tick()
 	_events.clear()
 

@@ -88,6 +88,47 @@ class ClearAssignment:
 		sim.clear_assignment(_yard_id)
 
 
+class SetRepairThreshold:
+	extends Commands.Play
+
+	const LABEL := "repair threshold"
+
+	var _yard_id: int
+	var _percent: int
+
+	func _init(yard_id: int, percent: int) -> void:
+		_yard_id = yard_id
+		_percent = percent
+
+	func label() -> String:
+		return LABEL
+
+	func apply(sim: Simulation) -> void:
+		sim.set_repair_threshold(_yard_id, _percent)
+
+
+class SetTargeting:
+	extends Commands.Play
+
+	const LABEL := "targeting"
+
+	var _tower_id: int
+	var _mode: StringName
+
+	func _init(tower_id: int, mode: StringName) -> void:
+		_tower_id = tower_id
+		_mode = mode
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Buildings: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.buildings.set_targeting(_tower_id, _mode)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
 class Restart:
 	extends Commands.Command
 

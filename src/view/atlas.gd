@@ -17,6 +17,8 @@ const TOWER := Vector2i(1, 3)
 const TOWER_SIZE := Vector2i(2, 4)
 const PYLON := Vector2i(3, 4)
 const PYLON_SIZE := Vector2i(1, 3)
+const GRINDER := Vector2i(5, 1)
+const GRINDER_SIZE := Vector2i(2, 3)
 const REPAIR_YARD := Vector2i(5, 4)
 const REPAIR_YARD_SIZE := Vector2i(2, 3)
 const DRONE_REGION := Rect2i(320, 0, 20, 12)
@@ -24,6 +26,12 @@ const REPAIR_EFFECT_REGION := Rect2i(352, 0, 16, 16)
 const UNPOWERED_REGION := Rect2i(128, 0, 16, 16)
 const ENEMY_REGION := Rect2i(192, 96, 16, 24)
 const TRACER_REGION := Rect2i(256, 96, 16, 4)
+## A ring on the ground, one cell's radius across its widest diagonal when drawn at
+## [constant BLAST_RING_SCALE] per cell of radius.
+const BLAST_RING_REGION := Rect2i(256, 160, 64, 32)
+## The scale that draws the blast ring at a radius of one cell: its half-width, 32 pixels, is
+## a cell's radius on screen along the ground's x axis, sqrt(2) × 32.
+const BLAST_RING_SCALE := sqrt(2.0)
 
 
 static func pile(level: int) -> Vector2i:

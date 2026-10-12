@@ -32,6 +32,17 @@ func test_open_field_values_are_octile_distances_to_the_base() -> void:
 		)
 
 
+func test_enemies_route_over_no_build_cells_as_over_clear_ground() -> void:
+	var routing := _routing([":::::", ":::::", "....."], Rect2i(0, 0, 1, 1))
+
+	for route: Routing.Route in [SENSIBLE, DIRECT]:
+		assert_float(routing.value(route, Vector2i(1, 1))).is_equal_approx(DIAGONAL, 1e-6)
+		assert_float(routing.value(route, Vector2i(4, 0))).is_equal_approx(4.0, 1e-6)
+		assert_float(routing.value(route, Vector2i(4, 2))).is_equal_approx(
+			2.0 + 2.0 * DIAGONAL, 1e-6
+		)
+
+
 func test_no_diagonal_step_cuts_a_rock_corner() -> void:
 	var routing := _routing([".#..", "....", "...."], Rect2i(0, 0, 1, 1))
 

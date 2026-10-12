@@ -1,10 +1,22 @@
 class_name Enemies
 extends RefCounted
 
+enum Kind { NORMAL, BLOATER }
+
+## A tower's targeting modes, for [method target_in_range].
+const BLOATERS_FIRST := &"bloaters_first"
+const CLOSEST_TO_BASE := &"closest_to_base"
+const TARGETINGS: Array[StringName] = [BLOATERS_FIRST, CLOSEST_TO_BASE]
+
 const NONE := -1
+# A bloater's fuse once it has run out: it pops with no killer.
+const _FUSE_RAN_OUT := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
+const _PILE_LEVELS := Piles.WALL_LEVEL + 1
 const _PROGRESS := 0.02
+# The weight of this tick's progress in its exponential average.
+const _PROGRESS_SMOOTHING := 0.05
 const _ROLL_STEPS := 40
 # Single-precision headings put an exact reversal a hair either side of pi, so a turn must
 # beat the turn-back angle by this much to count.
@@ -15,12 +27,23 @@ var count := 0
 var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
+var kinds := PackedByteArray()
+# The building that last damaged each enemy, or NONE: the killer if it dies.
+var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
 var structure_targets := PackedInt32Array()
 var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
 var pace_rolls := PackedFloat32Array()
 var wander_phases := PackedFloat32Array()
+# Each enemy's progress inside a crush band: the smoothed share of a full step at its pace
+# that its route field's value dropped by each tick. 1 outside a band.
+var progress := PackedFloat32Array()
+# 1 while the enemy tumbles over a barrier: Overflow moves it, and it doesn't walk, collide,
+# separate, attack or roll, and others don't separate from it.
+var tumbling := PackedByteArray()
+# Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
+var fuses := PackedInt32Array()
 
 var _settings: Settings
 var _map: MapData
@@ -37,6 +60,7 @@ var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
+var _last_values := PackedFloat64Array()
 var _ticks := 0
 
 
@@ -66,7 +90,7 @@ func _init(
 	_bucket_starts.resize(_map.width * _map.height + 1)
 
 
-func spawn(pos: Vector2, start_hp: float) -> int:
+func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	if count == ids.size():
 		_grow()
 	var id := _next_id
@@ -74,6 +98,8 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	ids[count] = id
 	positions[count] = pos
 	hp[count] = start_hp
+	kinds[count] = kind
+	last_hitters[count] = NONE
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	structure_targets[count] = NONE
 	routes[count] = Routing.Route.SENSIBLE
@@ -82,6 +108,10 @@ func spawn(pos: Vector2, start_hp: float) -> int:
 	wander_phases[count] = _swarm_rng.randf_range(0.0, TAU)
 	_best_values[count] = INF
 	_stuck_ticks[count] = 0
+	progress[count] = 1.0
+	_last_values[count] = INF
+	tumbling[count] = 0
+	fuses[count] = 0
 	_index_by_id[id] = count
 	count += 1
 	return id
@@ -96,28 +126,43 @@ func index_of(id: int) -> int:
 	return _index_by_id.get(id, NONE)
 
 
-func damage(id: int, amount: float) -> void:
+# Damage from the building with id [param by], or from NONE.
+func damage(id: int, amount: float, by: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
 		hp[index] -= amount
+		last_hitters[index] = by
 
 
+# A debug kill: no building gets the credit.
 func kill(id: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
 		hp[index] = minf(hp[index], 0.0)
+		last_hitters[index] = NONE
+
+
+## The ticks left on the fuse of the enemy with id [param id]: 0 while unlit, or not a bloater.
+func fuse(id: int) -> int:
+	var index := index_of(id)
+	return maxi(fuses[index], 0) if index != NONE else 0
 
 
 func is_alive(index: int) -> bool:
 	return hp[index] > 0.0
 
 
-func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
+## The id of the living enemy within [param reach] of [param pos] closest to the base (lowest
+## sensible-field value, ties to the lowest id), or [constant NONE]. With [param mode]
+## [constant BLOATERS_FIRST], a bloater in reach wins over any normal enemy; tumbling ones count.
+func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
+	var bloaters_first := mode == BLOATERS_FIRST
 	var low := Vector2i((pos - Vector2(reach, reach)).floor()) - Vector2i.ONE * _HASH_MARGIN
 	var high := Vector2i((pos + Vector2(reach, reach)).floor()) + Vector2i.ONE * _HASH_MARGIN
 	var reach_squared := reach * reach
 	var best_id := NONE
 	var best_value := INF
+	var best_outranks := false
 	for y in range(maxi(low.y, 0), mini(high.y + 1, _map.height)):
 		var row := y * _map.width
 		for x in range(maxi(low.x, 0), mini(high.x + 1, _map.width)):
@@ -125,14 +170,81 @@ func nearest_to_base_in_range(pos: Vector2, reach: float) -> int:
 				var i := _bucket_enemies[slot]
 				if hp[i] <= 0.0:
 					continue
+				var outranks_normal := bloaters_first and kinds[i] == Kind.BLOATER
+				if best_outranks and not outranks_normal:
+					continue
 				if positions[i].distance_squared_to(pos) > reach_squared:
 					continue
 				var field_value := _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
 				var ties_lower := field_value == best_value and ids[i] < best_id
-				if best_id == NONE or field_value < best_value or ties_lower:
+				var outranks := outranks_normal and not best_outranks
+				if best_id == NONE or outranks or field_value < best_value or ties_lower:
 					best_value = field_value
 					best_id = ids[i]
+					best_outranks = outranks_normal
 	return best_id
+
+
+## The indices of the living, walking enemies within [param reach] of one of the squares in
+## [param area], from this tick's spatial hash: those touching a building with that footprint.
+func touching(area: Rect2i, reach: float) -> PackedInt32Array:
+	var found := PackedInt32Array()
+	var margin := ceili(reach) + _HASH_MARGIN
+	var low := area.position - Vector2i.ONE * margin
+	var high := area.end + Vector2i.ONE * margin
+	var square := Rect2(area)
+	for y in range(maxi(low.y, 0), mini(high.y, _map.height)):
+		var row := y * _map.width
+		for x in range(maxi(low.x, 0), mini(high.x, _map.width)):
+			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
+				var i := _bucket_enemies[slot]
+				if hp[i] <= 0.0 or tumbling[i] == 1:
+					continue
+				var pos := positions[i]
+				if pos.distance_to(pos.clamp(square.position, square.end)) <= reach:
+					found.append(i)
+	return found
+
+
+## The indices of the living enemies within [param radius] of [param pos], from the spatial hash.
+func living_within(pos: Vector2, radius: float) -> PackedInt32Array:
+	var found := PackedInt32Array()
+	var low := Vector2i((pos - Vector2(radius, radius)).floor()) - Vector2i.ONE * _HASH_MARGIN
+	var high := Vector2i((pos + Vector2(radius, radius)).floor()) + Vector2i.ONE * _HASH_MARGIN
+	var radius_squared := radius * radius
+	for y in range(maxi(low.y, 0), mini(high.y + 1, _map.height)):
+		var row := y * _map.width
+		for x in range(maxi(low.x, 0), mini(high.x + 1, _map.width)):
+			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
+				var i := _bucket_enemies[slot]
+				if hp[i] > 0.0 and positions[i].distance_squared_to(pos) <= radius_squared:
+					found.append(i)
+	return found
+
+
+## The enemies in the cell at [param cell_index], from this tick's spatial hash.
+func count_in_cell(cell_index: int) -> int:
+	return _bucket_starts[cell_index + 1] - _bucket_starts[cell_index]
+
+
+## The enemy at [param index] starts a tumble: it stops attacking and counts towards no crush.
+## A bloater's fuse goes out.
+func start_tumble(index: int) -> void:
+	tumbling[index] = 1
+	fuses[index] = 0
+	structure_targets[index] = NONE
+	progress[index] = 1.0
+	_last_values[index] = INF
+
+
+## The enemy at [param index] has landed: it walks the sensible field again, its route-roll and
+## jam state reset.
+func land(index: int) -> void:
+	tumbling[index] = 0
+	routes[index] = Routing.Route.SENSIBLE
+	last_rolled_cells[index] = NONE
+	_best_values[index] = INF
+	_stuck_ticks[index] = 0
 
 
 func rebuild_spatial_hash() -> void:
@@ -150,16 +262,20 @@ func rebuild_spatial_hash() -> void:
 
 
 # In the wave tail, sensible-route enemies that a sensible field change turns back push
-# through on the direct route instead.
-func move(in_wave_tail := false) -> void:
+# through on the direct route instead. Progress is tracked for enemies on cells marked 1 in
+# [param band_mask].
+func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	var sensible_before := _routing.take_sensible_before()
 	if count == 0:
 		return
-	var step := _settings.enemy_speed_per_tick
-	var steps := PackedFloat64Array([step])
-	for level in range(1, Piles.WALL_LEVEL):
-		steps.append(step * (1.0 - _settings.pile_slow(level)))
-	steps.append(step)
+	# The step for each kind on each pile level, at kind * _PILE_LEVELS + level.
+	var steps := PackedFloat64Array()
+	for kind: Kind in Kind.values():
+		var kind_step := _settings.enemy_speed_per_tick_of(kind)
+		steps.append(kind_step)
+		for level in range(1, Piles.WALL_LEVEL):
+			steps.append(kind_step * (1.0 - _settings.pile_slow(level)))
+		steps.append(kind_step)
 	var levels := _piles.levels
 	var radius := _settings.separation_radius
 	var push := _settings.separation_push
@@ -178,13 +294,19 @@ func move(in_wave_tail := false) -> void:
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
 	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
-	# still and attacks nothing, as if it had died before moving.
+	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
+	var fuse_ticks := _settings.fuse_ticks
 	for i in count:
-		structure_targets[i] = NONE if hp[i] <= 0.0 else _structure_target(i, reach, jam_ticks)
+		if fuses[i] > 0 and hp[i] > 0.0:
+			_burn_fuse(i)
+		var idle := hp[i] <= 0.0 or tumbling[i] == 1
+		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
+		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
+			fuses[i] = fuse_ticks
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
-		if hp[i] <= 0.0:
+		if hp[i] <= 0.0 or tumbling[i] == 1:
 			_moved[i] = pos
 			continue
 		var separation := _separation(i, radius, push, cap).limit_length(radius)
@@ -192,15 +314,17 @@ func move(in_wave_tail := false) -> void:
 			_moved[i] = pos + separation
 			continue
 		if spreads:
-			separation += _personal_space(i, space_radius, space_push).limit_length(step)
+			var clear_step := steps[kinds[i] * _PILE_LEVELS]
+			separation += _personal_space(i, space_radius, space_push).limit_length(clear_step)
 		var turn := heading_offsets[i]
 		if wander > 0.0:
 			turn += wander * sin(wander_phases[i] + wander_angle)
 		var heading := _routing.sample_direction(routes[i], pos).rotated(turn)
-		var pace_step := steps[levels[_cell_index(pos)]] * (1.0 + pace_rolls[i] * variety)
+		var kind_level := kinds[i] * _PILE_LEVELS + levels[_cell_index(pos)]
+		var pace_step := steps[kind_level] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
-		if hp[i] <= 0.0:
+		if hp[i] <= 0.0 or tumbling[i] == 1:
 			continue
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:
@@ -213,10 +337,35 @@ func move(in_wave_tail := false) -> void:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
 		elif _is_past_obstacle(i, pos):
 			routes[i] = Routing.Route.SENSIBLE
+		_track_progress(
+			i, pos, band_mask, steps[kinds[i] * _PILE_LEVELS] * (1.0 + pace_rolls[i] * variety)
+		)
 	var damage_per_tick := _settings.structure_damage_per_tick
 	for i in count:
-		if structure_targets[i] != NONE:
+		if structure_targets[i] != NONE and kinds[i] != Kind.BLOATER:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+
+
+# A lit fuse burns down a tick; one that runs out pops its bloater, with no killer.
+func _burn_fuse(i: int) -> void:
+	fuses[i] -= 1
+	if fuses[i] == 0:
+		fuses[i] = _FUSE_RAN_OUT
+		hp[i] = 0.0
+		last_hitters[i] = NONE
+
+
+func _track_progress(i: int, pos: Vector2, band_mask: PackedByteArray, full_step: float) -> void:
+	if band_mask.is_empty() or band_mask[_cell_index(pos)] == 0:
+		progress[i] = 1.0
+		_last_values[i] = INF
+		return
+	var field_value := _routing.sample_value(routes[i] as Routing.Route, pos)
+	var gained := 1.0
+	if _last_values[i] != INF and field_value != INF:
+		gained = clampf((_last_values[i] - field_value) / full_step, -1.0, 2.0)
+	_last_values[i] = field_value
+	progress[i] = lerpf(progress[i], gained, _PROGRESS_SMOOTHING)
 
 
 func _roll_route(
@@ -244,7 +393,7 @@ func _push_through_turned_back(
 	var turn_back := _settings.turn_back_radians
 	var whole_chain := _map.width * _map.height
 	for i in count:
-		if routes[i] != Routing.Route.SENSIBLE:
+		if routes[i] != Routing.Route.SENSIBLE or tumbling[i] == 1:
 			continue
 		var pos := positions[i]
 		var before := _routing.sample_field_direction(sensible_before, pos)
@@ -362,7 +511,7 @@ func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i:
+				if j == i or tumbling[j] == 1:
 					continue
 				if cap > 0 and checked == cap:
 					return _separation_total(from_peers, peers, from_attackers)
@@ -402,7 +551,7 @@ func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i or structure_targets[j] != NONE:
+				if j == i or structure_targets[j] != NONE or tumbling[j] == 1:
 					continue
 				var away := pos - positions[j]
 				if away.length_squared() >= radius_squared:
@@ -465,13 +614,14 @@ func _tie_break(i: int, j: int) -> Vector2:
 	return Vector2.RIGHT if ids[i] > ids[j] else Vector2.LEFT
 
 
-# Removes the dead and returns where they died.
-func remove_dead() -> PackedVector2Array:
-	var deaths := PackedVector2Array()
+# Removes the dead and returns their deaths, in removal order.
+func remove_dead() -> Deaths:
+	var deaths := Deaths.new()
 	var i := 0
 	while i < count:
 		if hp[i] <= 0.0:
-			deaths.append(positions[i])
+			var popped := fuses[i] == _FUSE_RAN_OUT
+			deaths.add(ids[i], positions[i], kinds[i] as Kind, last_hitters[i], false, popped)
 			_swap_remove(i)
 		else:
 			i += 1
@@ -490,6 +640,8 @@ func _swap_remove(index: int) -> void:
 	ids[index] = ids[count]
 	positions[index] = positions[count]
 	hp[index] = hp[count]
+	kinds[index] = kinds[count]
+	last_hitters[index] = last_hitters[count]
 	heading_offsets[index] = heading_offsets[count]
 	structure_targets[index] = structure_targets[count]
 	routes[index] = routes[count]
@@ -498,6 +650,10 @@ func _swap_remove(index: int) -> void:
 	wander_phases[index] = wander_phases[count]
 	_best_values[index] = _best_values[count]
 	_stuck_ticks[index] = _stuck_ticks[count]
+	progress[index] = progress[count]
+	_last_values[index] = _last_values[count]
+	tumbling[index] = tumbling[count]
+	fuses[index] = fuses[count]
 	_index_by_id[ids[index]] = index
 
 
@@ -506,6 +662,8 @@ func _grow() -> void:
 	ids.resize(capacity)
 	positions.resize(capacity)
 	hp.resize(capacity)
+	kinds.resize(capacity)
+	last_hitters.resize(capacity)
 	heading_offsets.resize(capacity)
 	structure_targets.resize(capacity)
 	routes.resize(capacity)
@@ -514,3 +672,7 @@ func _grow() -> void:
 	wander_phases.resize(capacity)
 	_best_values.resize(capacity)
 	_stuck_ticks.resize(capacity)
+	progress.resize(capacity)
+	_last_values.resize(capacity)
+	tumbling.resize(capacity)
+	fuses.resize(capacity)

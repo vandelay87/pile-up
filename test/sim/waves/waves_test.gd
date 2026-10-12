@@ -19,7 +19,7 @@ func before_test() -> void:
 
 
 func _waves(run_seed: int = 1) -> Waves:
-	return Waves.new(_settings, _map, _enemies, _rng(run_seed))
+	return Waves.new(_settings, _map, _enemies, _rng(run_seed), run_seed)
 
 
 func _rng(run_seed: int) -> RandomNumberGenerator:
@@ -32,8 +32,10 @@ func test_wave_size_and_hp_follow_the_growth_formulas() -> void:
 	var waves := _waves()
 
 	assert_int(waves.size(1)).is_equal(20)
-	assert_int(waves.size(2)).is_equal(26)
-	assert_int(waves.size(20)).is_equal(2924)
+	assert_int(waves.size(2)).is_equal(25)
+	assert_int(waves.size(10)).is_equal(149)
+	assert_int(waves.size(15)).is_equal(455)
+	assert_int(waves.size(20)).is_equal(1388)
 	assert_float(waves.enemy_hp(1)).is_equal_approx(10.0, 1e-6)
 	assert_float(waves.enemy_hp(20)).is_equal_approx(10.0 * pow(1.05, 19), 1e-4)
 

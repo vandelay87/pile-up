@@ -8,12 +8,13 @@ signal gold_changed(gold: int)
 signal base_hp_changed(hp: float)
 signal kills_changed(kills: int)
 signal enemies_left_changed(left: int)
-signal combo_changed(tier: int)
+signal combo_events(events: Array[Combos.Event])
 signal payout(amount: int, tier: int)
 signal building_placed(id: int)
 signal building_destroyed(id: int)
 signal power_changed
 signal shots_fired(shots: Array[Buildings.Shot])
+signal blasts(went_off: Array[Blasts.Blast])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
 signal game_over
@@ -25,7 +26,7 @@ enum Step {
 	SPAWN_ENEMIES,
 	REBUILD_SPATIAL_HASH,
 	MOVE_ENEMIES,
-	FIRE_TOWERS,
+	BUILDINGS_ACT,
 	REPAIR_BUILDINGS,
 	REMOVE_DEAD,
 	CHECK_WAVE_END,
@@ -38,6 +39,7 @@ const DECAY_REBUILD_TICKS := 12
 const POWER_AREA_SETTINGS := [
 	["run", "base_power_area"],
 	["towers", "power_area"],
+	["grinders", "power_area"],
 	["pylons", "power_area"],
 	["repair_yards", "power_area"],
 ]
@@ -51,20 +53,26 @@ var enemies: Enemies
 var waves: Waves
 var buildings: Buildings
 var run_state: RunState
+var combos: Combos
 var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
+var overflow: Overflow
+var bloater_blasts: Blasts
 var step_observer := Callable()
 var tick_count := 0
 var paused := false
 var speed := 1
 var tick_cost := TickCost.new()
-var combo_tier: int:
-	get:
-		return run_state.combo_tier
+## The deaths the last removal step took, read-only.
+var deaths := Deaths.new()
 var enemies_left: int:
 	get:
 		return waves.enemies_left
+## How many bloaters the next wave brings.
+var next_wave_bloaters: int:
+	get:
+		return waves.bloater_count(run_state.wave + 1)
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
@@ -74,6 +82,7 @@ var _decay_due := false
 var _rebuild_swap_tick := 0
 var _placed: Array[int] = []
 var _shots: Array[Buildings.Shot] = []
+var _blasts: Array[Blasts.Blast] = []
 var _run_seed: int
 var _pending_steps := 0
 var _wave_started := false
@@ -81,7 +90,6 @@ var _restart_requested := false
 var _reported_gold: int
 var _reported_base_hp: float
 var _reported_kills := 0
-var _reported_combo_tier := 1
 var _payout_was_multiplied := false
 var _reported_enemies_left: int
 var _wave_ended := false
@@ -96,6 +104,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
 	run_state = RunState.new(settings)
+	combos = Combos.new(settings)
 	power_grid = PowerGrid.new(settings, map)
 	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
 	repair_yards = RepairYards.new(settings, buildings)
@@ -114,7 +123,11 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 			_system_rng("swarm"),
 		)
 	)
-	waves = Waves.new(settings, map, enemies, _system_rng("waves"))
+	waves = Waves.new(settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"))
+	overflow = Overflow.new(
+		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
+	)
+	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -138,6 +151,8 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 	var costs_walls := group == "enemies" and key in ["speed", "structure_damage"]
 	if (group in ["routing", "piles"] or costs_walls) and routing.rebuild():
 		_fields_changed = true
+	if [group, key] == ["overflow", "band"]:
+		overflow.relabel()
 
 
 func next_wave() -> void:
@@ -196,6 +211,12 @@ func clear_assignment(yard_id: int) -> void:
 	var error := repair_yards.clear(yard_id)
 	if not error.is_empty():
 		reject_command("%s: %s" % [Commands.ClearAssignment.LABEL, error])
+
+
+func set_repair_threshold(yard_id: int, percent: int) -> void:
+	var error := repair_yards.set_threshold(yard_id, percent)
+	if not error.is_empty():
+		reject_command("%s: %s" % [Commands.SetRepairThreshold.LABEL, error])
 
 
 func add_gold(amount: int) -> void:
@@ -262,7 +283,7 @@ func tick() -> void:
 	_spawn_enemies()
 	_rebuild_spatial_hash()
 	_move_enemies()
-	_fire_towers()
+	_buildings_act()
 	_repair_buildings()
 	_remove_dead()
 	_check_wave_end()
@@ -281,9 +302,9 @@ func _emit_signals() -> void:
 		_reported_kills = run_state.kills
 		kills_changed.emit(_reported_kills)
 	_emit_enemies_left()
-	if run_state.combo_tier != _reported_combo_tier:
-		_reported_combo_tier = run_state.combo_tier
-		combo_changed.emit(_reported_combo_tier)
+	var events := combos.take_events()
+	if not events.is_empty():
+		combo_events.emit(events)
 	if _payout_was_multiplied:
 		_payout_was_multiplied = false
 		payout.emit(run_state.payout, run_state.payout_tier)
@@ -301,6 +322,10 @@ func _emit_signals() -> void:
 		var shots := _shots
 		_shots = []
 		shots_fired.emit(shots)
+	if not _blasts.is_empty():
+		var went_off := _blasts
+		_blasts = []
+		blasts.emit(went_off)
 	if waves.phase != _reported_phase:
 		_reported_phase = waves.phase
 		phase_changed.emit(_reported_phase)
@@ -365,6 +390,7 @@ func _land_bodies_and_update_fields() -> void:
 		_decay_due = false
 		_changed_cells.clear()
 		piles.decay()
+		overflow.relabel()
 		routing.start_rebuild()
 		_rebuild_swap_tick = tick_count + DECAY_REBUILD_TICKS
 	elif routing.is_rebuilding() and tick_count >= _rebuild_swap_tick:
@@ -377,6 +403,7 @@ func _land_bodies_and_update_fields() -> void:
 		_changed_cells = []
 		if routing.update(cells):
 			_fields_changed = true
+		overflow.update(cells)
 
 
 func _spawn_enemies() -> void:
@@ -391,24 +418,31 @@ func _rebuild_spatial_hash() -> void:
 
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
-	enemies.move(waves.in_wave_tail())
+	enemies.move(waves.in_wave_tail(), overflow.band_mask)
+	overflow.step()
 
 
-func _fire_towers() -> void:
-	_observe(Step.FIRE_TOWERS)
-	_shots = buildings.fire(enemies)
+func _buildings_act() -> void:
+	_observe(Step.BUILDINGS_ACT)
+	_shots = buildings.act(enemies)
 
 
 func _repair_buildings() -> void:
 	_observe(Step.REPAIR_BUILDINGS)
 	repair_yards.step(waves.phase == Waves.Phase.WAVE)
+	buildings.under_repair = repair_yards.under_repair()
 
 
 func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
-	var deaths := enemies.remove_dead()
+	deaths = enemies.remove_dead()
+	_blasts.append_array(bloater_blasts.resolve(deaths))
+	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
-	run_state.record_kills(deaths.size(), tick_count)
+	for id in buildings.pending_destroyed():
+		combos.remove(id)
+	combos.expire(tick_count)
+	run_state.pay(deaths, combos, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
 	waves.record_kills(deaths.size())
 
@@ -437,8 +471,12 @@ func _start_wave(wave: int, label: String) -> void:
 
 func _system_rng(system: String) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([_run_seed, system])
+	rng.seed = _system_seed(system)
 	return rng
+
+
+func _system_seed(system: String) -> int:
+	return hash([_run_seed, system])
 
 
 func _observe(step: Step) -> void:

@@ -54,7 +54,7 @@ func test_a_pylon_at_the_grids_edge_extends_it() -> void:
 	_sim.tick()
 
 	assert_array(_events).contains_exactly(["power changed"])
-	assert_int(_sim.run_state.gold).is_equal(1000 - 20)
+	assert_int(_sim.run_state.gold).is_equal(1000 - 30)
 	var pylon := _sim.buildings.built[0]
 	assert_float(pylon.hp).is_equal(20.0)
 	assert_bool(pylon.powered).is_true()

@@ -18,6 +18,11 @@ const PAD := Color(0.45, 0.42, 0.38)
 const DRONE := Color(0.95, 0.95, 0.95)
 const ROTOR := Color(0.25, 0.25, 0.28)
 const REPAIR := Color(0.35, 0.95, 0.45)
+const GRINDER := Color(0.62, 0.6, 0.58)
+const GRINDER_HEIGHT := 20
+const GRINDER_MAW := Color(0.18, 0.16, 0.16)
+const TOOTH := Color(0.85, 0.4, 0.2)
+const TOOTH_HEIGHT := 5
 
 
 func _init() -> void:
@@ -34,12 +39,14 @@ func _init() -> void:
 	_draw_box_tile(image, Atlas.region(Atlas.BASE, Atlas.BASE_SIZE), BASE_HEIGHT, BASE)
 	_draw_box_tile(image, Atlas.region(Atlas.TOWER, Atlas.TOWER_SIZE), TOWER_HEIGHT, WHITE)
 	_draw_pylon(image)
+	_draw_grinder(image)
 	_draw_repair_yard(image)
 	_draw_drone(image)
 	_draw_repair_effect(image)
 	_draw_unpowered_icon(image)
 	_draw_enemy(image)
 	_draw_tracer(image)
+	_draw_blast_ring(image)
 	var error := image.save_png(Atlas.PATH)
 	if error != OK:
 		push_error("could not write %s: %s" % [Atlas.PATH, error_string(error)])
@@ -77,6 +84,23 @@ func _draw_pylon(image: Image) -> void:
 	_draw_box(image, foot, Vector2(8, 4), PYLON_HEIGHT, WHITE)
 	var head := foot - Vector2(0, PYLON_HEIGHT - PYLON_HEAD_HEIGHT)
 	_draw_box(image, head, Vector2(16, 8), PYLON_HEAD_HEIGHT, WHITE)
+
+
+# A squat block with a dark maw on top, two rows of teeth across it.
+func _draw_grinder(image: Image) -> void:
+	var area := Atlas.region(Atlas.GRINDER, Atlas.GRINDER_SIZE)
+	_draw_box_tile(image, area, GRINDER_HEIGHT, GRINDER)
+	var footprint := Vector2(area.size.x, area.size.x / 2.0)
+	var top := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0 - GRINDER_HEIGHT)
+	var maw := footprint / 2.0 * 0.7
+	_fill_diamond(image, top, maw, GRINDER_MAW)
+	# Each row runs along the top's down-right axis, either side of its centre.
+	var along := Vector2(maw.x, maw.y) / 2.0
+	var across := Vector2(maw.x, -maw.y) / 4.0
+	for row: float in [-1.0, 1.0]:
+		for step: float in [-1.5, -0.5, 0.5, 1.5]:
+			var foot := top + across * row + along * step / 2.0 + Vector2(0, TOOTH_HEIGHT / 2.0)
+			_draw_box(image, foot, Vector2(5, 2.5), TOOTH_HEIGHT, TOOTH)
 
 
 # A low platform with a dark landing pad on top.
@@ -149,6 +173,19 @@ func _draw_tracer(image: Image) -> void:
 		for x in range(area.position.x, area.end.x):
 			var alpha := float(x - area.position.x + 1) / area.size.x
 			image.set_pixel(x, y, Color(WHITE, alpha))
+
+
+# A white ring on the ground, an ellipse filling its region, fading towards its inner edge.
+func _draw_blast_ring(image: Image) -> void:
+	var area := Atlas.BLAST_RING_REGION
+	var centre := Vector2(area.get_center())
+	var half := Vector2(area.size) / 2.0
+	var width := 0.22
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var distance := ((Vector2(x, y) + Vector2(0.5, 0.5) - centre) / half).length()
+			if distance <= 1.0 and distance > 1.0 - width:
+				image.set_pixel(x, y, Color(WHITE, (distance - (1.0 - width)) / width))
 
 
 func _draw_box(image: Image, foot: Vector2, half: Vector2, height: int, color: Color) -> void:

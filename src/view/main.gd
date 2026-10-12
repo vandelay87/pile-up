@@ -1,12 +1,18 @@
 class_name Main
 extends Node
 
+# Each tuning session (an editor launch) keeps its settings as they change, so the
+# values tried are kept without saving over defaults.json.
+const _SESSIONS_DIR := "res://data/settings/tuning-sessions"
+
 var simulation: Simulation:
 	get:
 		return _simulation
 
 var _simulation: Simulation
 var _map: MapData
+var _session_path := ""
+var _last_saved_json := ""
 
 @onready var _terrain: TileMapLayer = $Terrain
 @onready var _base: TileMapLayer = $World/Base
@@ -21,12 +27,15 @@ var _map: MapData
 @onready var _edge_highlight: EdgeHighlight = $EdgeHighlight
 @onready var _tower_view: TowerView = $TowerView
 @onready var _tracers: Tracers = $Tracers
+@onready var _blast_rings: BlastRings = $BlastRings
 @onready var _drone_view: DroneView = $DroneView
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
+@onready var _combo_view: ComboView = $ComboView
+@onready var _overflow_view: OverflowView = $OverflowView
 
 
 func _ready() -> void:
@@ -57,6 +66,28 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	if _simulation != null:
 		_simulation.run_frame()
+		if Engine.get_physics_frames() % Simulation.TICKS_PER_SECOND == 0:
+			_record_session()
+
+
+func _record_session() -> void:
+	if not OS.has_feature("editor"):
+		return
+	var json := _simulation.settings.for_next_run().to_json()
+	if json == _last_saved_json:
+		return
+	if _session_path.is_empty():
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_SESSIONS_DIR))
+		var stamp := Time.get_datetime_string_from_system().replace(":", "-")
+		_session_path = "%s/%s.json" % [_SESSIONS_DIR, stamp]
+	var file := FileAccess.open(_session_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Session save failed: %s" % error_string(FileAccess.get_open_error()))
+		return
+	file.store_string(json)
+	file.close()
+	_last_saved_json = json
+	print("Session settings saved to %s" % _session_path)
 
 
 func _start_run(simulation: Simulation) -> void:
@@ -70,9 +101,12 @@ func _start_run(simulation: Simulation) -> void:
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
-	_hud.setup(_simulation)
+	_combo_view.setup(_simulation)
+	_overflow_view.setup(_simulation)
+	_hud.setup(_simulation, _selection, _combo_view)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
+	_blast_rings.setup(_simulation)
 	_drone_view.setup(_simulation)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)
@@ -112,6 +146,7 @@ func _add_overlays() -> void:
 	_debug_panel.add_overlay("Enemy route tint", _enemy_renderer.show_route_tint)
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 	_debug_panel.add_overlay("Power grid", _power_overlay.show_grid)
+	_debug_panel.add_overlay("Overflow", _overflow_view.show_debug)
 
 
 func _draw_map(map: MapData) -> void:

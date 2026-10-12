@@ -308,7 +308,7 @@ func _add_bodies(cell: Vector2i, bodies: int) -> void:
 	var positions := PackedVector2Array()
 	for n in bodies:
 		positions.append(Vector2(cell) + Vector2(0.5, 0.5))
-	_piles.queue_bodies(positions)
+	_piles.queue_bodies(Deaths.bodies_at(positions))
 	_piles.land()
 	_routing.update(_piles.take_field_changes())
 

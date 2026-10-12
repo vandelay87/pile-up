@@ -5,585 +5,8 @@ enum Apply { LIVE, RESTART }
 
 const DEFAULTS_PATH := "res://data/settings/defaults.json"
 
-const SCHEMA := {
-	"enemies":
-	{
-		"hp":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 1000.0,
-			"step": 0.5,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-		"bounty":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 1,
-			"unit": "gold",
-			"apply": Apply.LIVE,
-		},
-		"separation_radius":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.05,
-			"max": 1.0,
-			"step": 0.05,
-			"unit": "cells",
-			"apply": Apply.LIVE,
-		},
-		"separation_push":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 1.0,
-			"step": 0.05,
-			"unit": "overlap/tick",
-			"apply": Apply.LIVE,
-		},
-		"neighbour_cap":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 64,
-			"step": 1,
-			"unit": "neighbours (0 = off)",
-			"apply": Apply.LIVE,
-		},
-		"heading_offset":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 45.0,
-			"step": 1.0,
-			"unit": "degrees",
-			"apply": Apply.LIVE,
-		},
-		"speed":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.1,
-			"max": 10.0,
-			"step": 0.1,
-			"unit": "cells/s",
-			"apply": Apply.LIVE,
-		},
-		"structure_damage":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.1,
-			"max": 100.0,
-			"step": 0.1,
-			"unit": "HP/s",
-			"apply": Apply.LIVE,
-		},
-		"wall_reach":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 1.0,
-			"step": 0.05,
-			"unit": "cells",
-			"apply": Apply.LIVE,
-		},
-		"jam_seconds":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.05,
-			"max": 10.0,
-			"step": 0.05,
-			"unit": "s",
-			"apply": Apply.LIVE,
-		},
-		"pile_roll_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 1,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"wall_roll_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 1,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"speed_variety":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "± percent pace, rolled at spawn",
-			"apply": Apply.LIVE,
-		},
-		"wander":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 90.0,
-			"step": 1.0,
-			"unit": "± degrees of weave",
-			"apply": Apply.LIVE,
-		},
-		"wander_period":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 20.0,
-			"step": 0.5,
-			"unit": "s per weave",
-			"apply": Apply.LIVE,
-		},
-		"personal_space_radius":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 3.0,
-			"step": 0.05,
-			"unit": "cells, 0 = off",
-			"apply": Apply.LIVE,
-		},
-		"personal_space_push":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 1.0,
-			"step": 0.01,
-			"unit": "push per neighbour per tick",
-			"apply": Apply.LIVE,
-		},
-		"turn_back_angle":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 180.0,
-			"step": 5.0,
-			"unit": "degrees of turn that push through in the wave tail",
-			"apply": Apply.LIVE,
-		},
-	},
-	"piles":
-	{
-		"slow_level_1":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 95,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"slow_level_2":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 95,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"slow_level_3":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 95,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"slow_level_4":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 95,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"wall_hp":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 1000.0,
-			"step": 1.0,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-		"decay_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"wall_decay_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-	},
-	"routing":
-	{
-		"sensible_pile_weight":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 5.0,
-			"step": 0.05,
-			"unit": "weight",
-			"apply": Apply.LIVE,
-		},
-		"sensible_wall_weight":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 5.0,
-			"step": 0.05,
-			"unit": "weight",
-			"apply": Apply.LIVE,
-		},
-		"direct_pile_weight":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 5.0,
-			"step": 0.05,
-			"unit": "weight",
-			"apply": Apply.LIVE,
-		},
-		"direct_wall_weight":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 5.0,
-			"step": 0.05,
-			"unit": "weight",
-			"apply": Apply.LIVE,
-		},
-		"wall_hp_bucket":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 100.0,
-			"step": 1.0,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-	},
-	"waves":
-	{
-		"wave_1_size":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "enemies",
-			"apply": Apply.RESTART,
-		},
-		"growth":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 2.0,
-			"step": 0.01,
-			"unit": "× enemies per wave",
-			"apply": Apply.LIVE,
-		},
-		"hp_growth":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 2.0,
-			"step": 0.01,
-			"unit": "× HP per wave",
-			"apply": Apply.LIVE,
-		},
-		"spawn_rate":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 120.0,
-			"step": 0.5,
-			"unit": "enemies/s",
-			"apply": Apply.LIVE,
-		},
-		"second_edge_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 5,
-			"unit": "percent",
-			"apply": Apply.LIVE,
-		},
-		"clump_size":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 50,
-			"step": 1,
-			"unit": "enemies per spawn burst",
-			"apply": Apply.LIVE,
-		},
-		"wave_tail":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 500,
-			"step": 1,
-			"unit": "enemies left when the wave tail starts",
-			"apply": Apply.LIVE,
-		},
-		"wave_tail_per_wave":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "more wave-tail enemies per wave",
-			"apply": Apply.LIVE,
-		},
-	},
-	"towers":
-	{
-		"damage":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 100.0,
-			"step": 0.5,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-		"fire_rate":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.1,
-			"max": 20.0,
-			"step": 0.1,
-			"unit": "shots/s",
-			"apply": Apply.LIVE,
-		},
-		"range":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 30.0,
-			"step": 0.5,
-			"unit": "cells",
-			"apply": Apply.LIVE,
-		},
-		"cost":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 1000,
-			"step": 5,
-			"unit": "gold",
-			"apply": Apply.LIVE,
-		},
-		"hp":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 1000.0,
-			"step": 1.0,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-		"power_area":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "cells from the footprint",
-			"apply": Apply.LIVE,
-		},
-	},
-	"pylons":
-	{
-		"cost":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 1000,
-			"step": 5,
-			"unit": "gold",
-			"apply": Apply.LIVE,
-		},
-		"hp":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 1000.0,
-			"step": 1.0,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-		"power_area":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "cells from the footprint",
-			"apply": Apply.LIVE,
-		},
-	},
-	"repair_yards":
-	{
-		"cost":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 1000,
-			"step": 5,
-			"unit": "gold",
-			"apply": Apply.LIVE,
-		},
-		"hp":
-		{
-			"type": TYPE_FLOAT,
-			"min": 1.0,
-			"max": 1000.0,
-			"step": 1.0,
-			"unit": "HP",
-			"apply": Apply.LIVE,
-		},
-		"power_area":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "cells from the footprint",
-			"apply": Apply.LIVE,
-		},
-		"repair_area":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "cells from the footprint",
-			"apply": Apply.LIVE,
-		},
-		"drone_speed":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 60.0,
-			"step": 0.5,
-			"unit": "cells/s",
-			"apply": Apply.LIVE,
-		},
-		"repair_rate":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 100.0,
-			"step": 0.5,
-			"unit": "HP/s",
-			"apply": Apply.LIVE,
-		},
-	},
-	"run":
-	{
-		"base_hp":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 10000,
-			"step": 10,
-			"unit": "HP",
-			"apply": Apply.RESTART,
-		},
-		"starting_gold":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 10000,
-			"step": 10,
-			"unit": "gold",
-			"apply": Apply.RESTART,
-		},
-		"base_power_area":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 50,
-			"step": 1,
-			"unit": "cells from the base",
-			"apply": Apply.LIVE,
-		},
-		"combo_window":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 10.0,
-			"step": 0.5,
-			"unit": "s of kills counted",
-			"apply": Apply.LIVE,
-		},
-		"combo_tier_2_kills":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in the window for x2",
-			"apply": Apply.LIVE,
-		},
-		"combo_tier_3_kills":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in the window for x3",
-			"apply": Apply.LIVE,
-		},
-		"combo_cap":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 3,
-			"step": 1,
-			"unit": "highest combo tier",
-			"apply": Apply.LIVE,
-		},
-		"map_path": {"type": TYPE_STRING, "unit": "path", "apply": Apply.RESTART},
-	},
-	"view":
-	{
-		"tracer_speed":
-		{
-			"type": TYPE_FLOAT,
-			"min": 5.0,
-			"max": 200.0,
-			"step": 5.0,
-			"unit": "cells/s",
-			"apply": Apply.LIVE,
-		},
-	},
-}
+## The schema table: every setting's type, range, step, unit and when a change applies.
+const SCHEMA := SettingsSchema.SCHEMA
 
 var enemy_hp: float:
 	get:
@@ -688,6 +111,106 @@ var direct_pile_weight: float:
 var direct_wall_weight: float:
 	get:
 		return value("routing", "direct_wall_weight")
+var overflow_enabled: bool:
+	get:
+		var on: int = value("overflow", "enabled")
+		return on == 1
+var overflow_band: int:
+	get:
+		return value("overflow", "band")
+var stall_progress: float:
+	get:
+		var percent: int = value("overflow", "stall_progress")
+		return percent / 100.0
+var fill_per_stalled: float:
+	get:
+		return value("overflow", "fill_per_stalled")
+var overflow_leak: float:
+	get:
+		return value("overflow", "leak")
+var crush_start: float:
+	get:
+		return value("overflow", "crush_start")
+var crush_end: float:
+	get:
+		return value("overflow", "crush_end")
+var trickle_at: float:
+	get:
+		return value("overflow", "trickle_at")
+var stream_at: float:
+	get:
+		return value("overflow", "stream_at")
+var surge_at: float:
+	get:
+		return value("overflow", "surge_at")
+var gauge_max: float:
+	get:
+		return value("overflow", "gauge_max")
+var trickle_rate: float:
+	get:
+		return value("overflow", "trickle_rate")
+var stream_rate: float:
+	get:
+		return value("overflow", "stream_rate")
+var surge_rate: float:
+	get:
+		return value("overflow", "surge_rate")
+var tumble_relief: float:
+	get:
+		return value("overflow", "relief")
+var tumble_speed: float:
+	get:
+		var percent: int = value("overflow", "tumble_speed")
+		return percent / 100.0
+var landing_crowd: int:
+	get:
+		return value("overflow", "landing_crowd")
+## Whether a body of an enemy killed mid-tumble or just after landing lands where its tumble
+## started.
+var bodies_fall_back: bool:
+	get:
+		var on: int = value("overflow", "bodies_fall_back")
+		return on == 1
+var fall_back_window_ticks: int:
+	get:
+		var seconds: float = value("overflow", "fall_back_window")
+		return roundi(seconds * Simulation.TICKS_PER_SECOND)
+var bloater_hp: float:
+	get:
+		return value("bloaters", "hp")
+var bloater_speed: float:
+	get:
+		return value("bloaters", "speed")
+var bloater_bounty: int:
+	get:
+		return value("bloaters", "bounty")
+var first_bloater_wave: int:
+	get:
+		return value("bloaters", "first_wave")
+var bloater_waves_per_step: int:
+	get:
+		return value("bloaters", "waves_per_step")
+var bloater_miss_chance: float:
+	get:
+		var percent: int = value("bloaters", "miss_chance")
+		return percent / 100.0
+var bloater_extra_chance: float:
+	get:
+		var percent: int = value("bloaters", "extra_chance")
+		return percent / 100.0
+var bloater_size: float:
+	get:
+		return value("bloaters", "size")
+var fuse_ticks: int:
+	get:
+		var seconds: float = value("bloaters", "fuse")
+		return ticks_from_seconds(seconds)
+var blast_radius: float:
+	get:
+		return value("bloaters", "blast_radius")
+var blast_damage: float:
+	get:
+		return value("bloaters", "blast_damage")
 var wave_1_size: int:
 	get:
 		return value("waves", "wave_1_size")
@@ -704,19 +227,19 @@ var second_edge_chance: float:
 	get:
 		var percent: int = value("waves", "second_edge_chance")
 		return percent / 100.0
-var combo_window_ticks: int:
+var combo_timer_ticks: int:
 	get:
-		var seconds: float = value("run", "combo_window")
+		var seconds: float = value("combo", "timer")
 		return ticks_from_seconds(seconds)
 var combo_tier_2_kills: int:
 	get:
-		return value("run", "combo_tier_2_kills")
+		return value("combo", "tier_2_kills")
 var combo_tier_3_kills: int:
 	get:
-		return value("run", "combo_tier_3_kills")
+		return value("combo", "tier_3_kills")
 var combo_cap: int:
 	get:
-		return value("run", "combo_cap")
+		return value("combo", "cap")
 var tower_damage: float:
 	get:
 		return value("towers", "damage")
@@ -733,6 +256,11 @@ var tower_cost: int:
 var tower_hp: float:
 	get:
 		return value("towers", "hp")
+## HP a second a grinder deals to each enemy touching it, and at once to a tumbler entering one of
+## its cells.
+var grinder_damage: float:
+	get:
+		return value("grinders", "damage")
 var pylon_cost: int:
 	get:
 		return value("pylons", "cost")
@@ -850,6 +378,20 @@ static func interval_ticks(per_second: float) -> int:
 func pile_slow(level: int) -> float:
 	var percent: int = value("piles", "slow_level_%d" % level)
 	return percent / 100.0
+
+
+# Kind-specific enemy numbers.
+func enemy_hp_of(kind: Enemies.Kind) -> float:
+	return bloater_hp if kind == Enemies.Kind.BLOATER else enemy_hp
+
+
+func enemy_bounty_of(kind: Enemies.Kind) -> int:
+	return bloater_bounty if kind == Enemies.Kind.BLOATER else enemy_bounty
+
+
+func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:
+	var speed := bloater_speed if kind == Enemies.Kind.BLOATER else enemy_speed
+	return speed / Simulation.TICKS_PER_SECOND
 
 
 func value(group: String, key: String) -> Variant:

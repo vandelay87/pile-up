@@ -45,8 +45,11 @@ func wall_hp(cell: Vector2i) -> float:
 	return wall_hps[_map.index_of(cell)]
 
 
-func queue_bodies(positions: PackedVector2Array) -> void:
-	_queued.append_array(positions)
+# Every death leaves a body except a bloater's and a blast kill's.
+func queue_bodies(deaths: Deaths) -> void:
+	for k in deaths.size():
+		if deaths.leaves_body(k):
+			_queued.append(deaths.bodies[k])
 
 
 func land() -> void:
@@ -76,6 +79,19 @@ func damage_wall(cell: Vector2i, amount: float) -> void:
 		_count_wall(cell, -1)
 	elif _bucket(wall_hps[index]) == bucket:
 		return
+	_mark_changed(cell)
+	_field_changes.append(cell)
+
+
+## Clears the pile or wall on [param cell], of any level, at once: only a blast erases.
+func erase(cell: Vector2i) -> void:
+	var index := _map.index_of(cell)
+	if levels[index] == 0:
+		return
+	if levels[index] == WALL_LEVEL:
+		_count_wall(cell, -1)
+	levels[index] = 0
+	wall_hps[index] = 0.0
 	_mark_changed(cell)
 	_field_changes.append(cell)
 

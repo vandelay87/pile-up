@@ -69,6 +69,7 @@ func test_at_0_percent_a_pile_survives_even_the_lowest_roll() -> void:
 
 
 func test_over_many_piles_the_loss_rate_is_near_each_chance() -> void:
+	_set_chances(50, 25)
 	var map := TestMaps.from_rows(_rows(40, 40), Rect2i(39, 39, 1, 1))
 	var piles := Piles.new(_settings, map, Occupancy.new(map.width, map.height), _rng(3))
 	var cells := 0
@@ -113,7 +114,7 @@ func test_a_wall_rebuilt_from_level_4_has_full_hp() -> void:
 	piles.damage_wall(WALL, 10.0)
 	piles.decay()
 
-	piles.queue_bodies(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)]))
+	piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(WALL) + Vector2(0.5, 0.5)])))
 	piles.land()
 
 	assert_int(piles.level(WALL)).is_equal(Piles.WALL_LEVEL)
@@ -132,6 +133,7 @@ func test_a_fallen_wall_rolls_like_any_other_pile() -> void:
 
 
 func test_the_same_seed_gives_the_same_decay() -> void:
+	_set_chances(50, 25)
 	var first := _random_piles(_rng(11))
 	var second := _random_piles(_rng(11))
 
@@ -143,6 +145,7 @@ func test_the_same_seed_gives_the_same_decay() -> void:
 
 
 func test_the_run_seed_seeds_the_decay_rolls() -> void:
+	_set_chances(50, 25)
 	var first := _decayed_sim(5)
 	var second := _decayed_sim(5)
 	var other := _decayed_sim(6)
@@ -200,7 +203,7 @@ func _set_chances(pile_percent: int, wall_percent: int) -> void:
 # Raises the cell to level 4, then lands the body that makes it a wall at full HP.
 func _build_wall(piles: Piles, cell: Vector2i) -> void:
 	_set_level(piles, cell, Piles.WALL_LEVEL - 1)
-	piles.queue_bodies(PackedVector2Array([Vector2(cell) + Vector2(0.5, 0.5)]))
+	piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([Vector2(cell) + Vector2(0.5, 0.5)])))
 	piles.land()
 	piles.take_changes()
 	piles.take_field_changes()

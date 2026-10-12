@@ -50,7 +50,18 @@ func top_up(target: int) -> void:
 
 
 func drop_body() -> void:
-	_sim.piles.queue_bodies(PackedVector2Array([_free_spot()]))
+	_sim.piles.queue_bodies(Deaths.bodies_at(PackedVector2Array([_free_spot()])))
+
+
+## Queues a wall's worth of bodies on a free spot in the crowd, returning its cell. They land
+## next tick, unless the cell is taken.
+func raise_wall() -> Vector2i:
+	var spot := _free_spot()
+	var bodies := PackedVector2Array()
+	for n in Piles.WALL_LEVEL:
+		bodies.append(spot)
+	_sim.piles.queue_bodies(Deaths.bodies_at(bodies))
+	return Vector2i(spot.floor())
 
 
 func _free_spot() -> Vector2:
