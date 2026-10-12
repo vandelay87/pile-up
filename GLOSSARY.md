@@ -48,7 +48,7 @@ Restoring HP to a damaged building. Only buildings are repaired.
 _Avoid_: Heal
 
 **Drone**:
-A repair yard's unit that flies out to one damaged building, repairs it to full and flies back.
+A repair yard's machine that flies out to one damaged building, repairs it to full and flies back.
 
 **Assignment**:
 A building the player has chosen for a repair yard's drone to repair first whenever it is damaged. Without one, the drone picks for itself.
@@ -134,6 +134,24 @@ _Avoid_: Stage, phase
 **Bloater**:
 A second type of enemy that blows up when it dies, or by itself after a short fuse once it reaches a structure in its way. Its blast kills enemies, damages buildings and erases piles and walls, and it leaves no body.
 _Avoid_: Bomber, kamikaze, creeper, exploding enemy
+
+### Units
+
+**Unit**:
+Anything the player trains and gives orders to. Each one is selected and ordered on its own or as part of a selection. A repair yard's drone is not a unit.
+_Avoid_: Troop, minion
+
+**Soldier**:
+The one kind of unit in v4: it shoots enemies in range like a tower, and only moves when ordered.
+_Avoid_: Fire squad (nothing groups soldiers except the player's selection), marine, trooper
+
+**Order**:
+An instruction the player gives to the selected units, such as move or stop. Units can be given orders during a wave, in the build phase and while paused.
+_Avoid_: Command (reserved for the simulation's input)
+
+**Control group**:
+A selection of units the player has saved under a number key, to select again with one key.
+_Avoid_: Squad, team
 
 ### Flow of play
 

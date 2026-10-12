@@ -135,6 +135,15 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
 - A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and a **status**. The status is one word: Unpowered, else Under repair, else what it is doing (a tower Firing or Idle, a grinder Grinding or Idle, a repair yard Repairing or Idle, a pylon Powering). The base has no status. A tower adds damage, shots/s, range, its kills this run and its targeting toggle. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it), its repair threshold (with a control to change it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
 
+## Units (v4)
+
+- **Soldier:** v4's one unit. It shoots enemies in range like a tower and only moves when ordered; it never chases. Each soldier has the towers' targeting toggle, Bloaters first (the default for a newly trained soldier) or Closest to base.
+- **Selecting:** clicking a soldier selects it alone. Dragging a box selects every soldier inside it, never buildings. Shift-click or shift-drag adds soldiers to the selection or takes them out. Buildings and soldiers are never selected together: clicking a building clears the selected soldiers. Esc or a click on empty ground clears the selection.
+- **Orders:** right-click on the ground, or on an enemy, moves the selected soldiers there; **Stop** cancels the move. There is no hold, attack-move, focus fire or waypoint queue. Orders can be given during a wave and in the build phase.
+- **Targeting a selection:** the toggle sets every selected soldier at once, and shows Mixed while their modes differ.
+- **Control groups:** Ctrl+1–9 saves the selected soldiers as a group, 1–9 selects it again, and pressing the number twice centres the camera on it.
+- **Pause:** Space pauses the game. Pausing stops the clock and nothing else: the player can still select, give orders, build and change settings, and orders play out on resume. The pause is what keeps v4 a lite RTS.
+
 ## Towers and economy
 
 - One tower type: single-target, aimed at the enemy closest to the base. From v3, a tower prefers a bloater in its range by default, so long reach ahead of the walls pops bloaters in the open; each tower has a toggle in its details to aim at the closest enemy to the base instead. 5 damage, 3.5 shots/s, range 8 cells, 60 HP, costs 120 gold.
@@ -211,7 +220,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Units
 
 - Prompted by a playtest: a few enemies got behind the base and attacked it, and the only answer was a turret the player didn't want there. Units would be selected and directed like StarCraft's, in feel and action.
-- **First unit:** a fire squad with machine fire like a turret, perhaps trained in groups of about 10 in a new building (an armoury, or a better name). Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
+- **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in a new building (an armoury, or a better name). Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
 - **High ground:** a unit gets a bonus when it stands higher than its attacker, perhaps on a pile.
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
