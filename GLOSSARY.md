@@ -132,7 +132,7 @@ How hard a crush is overflowing, read from its pressure: a **trickle** (one enem
 _Avoid_: Stage, phase
 
 **Bloater**:
-A second type of enemy that blows up when it dies, or by itself after a short fuse once it reaches a structure in its way. Its blast kills enemies, damages buildings and erases piles and walls, and it leaves no body.
+A second type of enemy that blows up when it dies, or by itself after a short fuse once it reaches a structure or a soldier in its way. Its blast kills enemies, damages buildings and soldiers, and erases piles and walls, and it leaves no body.
 _Avoid_: Bomber, kamikaze, creeper, exploding enemy
 
 ### Units
@@ -142,7 +142,7 @@ Anything the player trains and gives orders to. Each one is selected and ordered
 _Avoid_: Troop, minion
 
 **Soldier**:
-The one kind of unit in v4: it shoots enemies in range like a tower, and only moves when ordered.
+The one kind of unit in v4: it shoots enemies in range like a tower, and only moves when ordered. Enemies attack it when it is in their way, as they do a structure, but it is not one.
 _Avoid_: Fire squad (nothing groups soldiers except the player's selection), marine, trooper
 
 **Order**:
