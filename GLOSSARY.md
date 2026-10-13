@@ -32,7 +32,7 @@ Anything with HP that enemies attack when it is in their way: a wall, a building
 _Avoid_: Target, obstacle
 
 **Building**:
-Anything the player builds: a tower, a pylon, a repair yard or a grinder.
+Anything the player builds: a tower, a pylon, a repair yard, a grinder or a barracks.
 _Avoid_: Structure (which also covers walls and the base)
 
 **Repair yard**:
@@ -148,6 +148,18 @@ _Avoid_: Fire squad (nothing groups soldiers except the player's selection), mar
 **Order**:
 An instruction the player gives to the selected units, such as move or stop. Units can be given orders during a wave, in the build phase and while paused.
 _Avoid_: Command (reserved for the simulation's input)
+
+**Barracks**:
+The building that trains soldiers. Each one adds to the player's capacity.
+_Avoid_: Armoury, garrison (soldiers don't go inside it)
+
+**Capacity**:
+How many units the player can have at once: the sum of what every barracks they own adds. Each soldier takes up one, including soldiers still waiting to be trained.
+_Avoid_: Supply, population, soldier cap
+
+**Rally point**:
+The place a barracks sends each soldier it trains. Without one, a new soldier stands beside the barracks.
+_Avoid_: Waypoint, spawn point
 
 **Control group**:
 A selection of units the player has saved under a number key, to select again with one key.
