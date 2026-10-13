@@ -11,7 +11,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **v1**: corpse loop
   - **v2**: power, plus a rework of v1 after playtesting
   - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (specified in `docs/specs/v3.md`)
-  - **v4**: units, a fire squad the player directs (lite RTS, never an RTS), with high ground tying units to piles; it starts with a performance pass towards the 1,000-enemy target ([#150](https://github.com/vandelay87/pile-up/issues/150)). Planned in [Map: prototype v4 spec](https://github.com/vandelay87/pile-up/issues/156)
+  - **v4**: units, a fire squad the player directs (lite RTS, never an RTS), with elevation tying units to piles; it starts with a performance pass towards the 1,000-enemy target ([#150](https://github.com/vandelay87/pile-up/issues/150)). Planned in [Map: prototype v4 spec](https://github.com/vandelay87/pile-up/issues/156)
   - Later prototypes are not set in stone. Power-ups and wildcards come when they are ready to be fleshed out
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
@@ -163,8 +163,18 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **On the move:** a soldier under a Move order fires at any enemy in range, and walks at half speed while it does. With nothing in range it walks at full speed, so crossing open ground is quick and pushing through a crowd is slow but fought the whole way.
 - **Enemies attack soldiers** by the structure rule: only when a soldier is in their way, jammed against it and held up, at the same 2 damage per second. Enemies never leave their route to go for a soldier.
 - **Bloaters:** a soldier in a bloater's way lights its fuse, just as a structure does. Its blast hits every soldier inside it once, and two blasts kill a soldier: a soldier's HP sits above one blast's damage and at or below two.
-- **Grinders** never hurt soldiers. **Tumbling enemies** ignore soldiers, which don't count towards a full landing cell; one that lands against a soldier attacks it like any enemy in its way. Soldiers shoot tumbling enemies like any other.
+- **Grinders** never hurt soldiers. **Tumbling enemies** don't count soldiers towards a full landing cell, and one that lands against a soldier attacks it like any enemy in its way. A tumble over a wall a soldier stands on knocks the soldier off (see Elevation). Soldiers shoot tumbling enemies like any other.
 - **Building on soldiers:** placing a building over soldiers pushes them to the nearest free cell, by the same rule that places a new soldier.
+
+### Elevation
+
+- **Elevation:** a soldier's elevation is the level of the cell it stands on: 0 on the ground, 1–4 on a pile, 5 on a wall. Buildings are solid to soldiers, so they give none. It changes whenever the soldier's cell does: walking, a pile growing under it, a blast erasing the pile (back to 0), or a wall destroyed under it (down to 3).
+- **Range bonus:** each level of elevation adds the same extra fire range, so a wall gives five steps' worth. It depends only on the soldier's own elevation, never the target's, so a soldier has one range at a time. It is the only bonus: damage and fire rate stay the same, and there is still no line of sight. The range per level comes with the v4 numbers, aiming for piles worth standing on without making them a must.
+- **Walking over piles:** range follows elevation as the soldier moves or is lifted. A step down that leaves the current target out of range drops it, and the soldier picks again by its targeting toggle, as a tower does when an enemy walks out of range.
+- **Reading it:** a pile's stacked blocks show how high a soldier stands, and a selected soldier shows its range, as a selected tower does, at its current elevation. There is no other marker.
+- **Safe on a wall:** enemies on the ground can't attack a soldier standing on a wall, since an enemy jammed against the wall is held up by the wall, not the soldier. Blasts still hit it, and a wall destroyed under it drops it to level 3.
+- **Knock-off:** a tumble over the wall cell a soldier stands on knocks that soldier down to the landing side, onto the nearest free ground cell. It lands at elevation 0 among the enemies that came over, in their way, and a standing soldier climbs back to its spot if it survives. Only the soldier on the crossed cell is knocked off; soldiers further along the wall are not.
+- **Enemies** get nothing from height: they only attack what is in their way.
 
 ### Barracks
 
@@ -255,7 +265,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - Prompted by a playtest: a few enemies got behind the base and attacked it, and the only answer was a turret the player didn't want there. Units would be selected and directed like StarCraft's, in feel and action.
 - **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in the barracks. Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
-- **High ground:** a unit gets a bonus when it stands higher than its attacker, perhaps on a pile.
+- **Line of sight from elevation:** walls blocking a soldier's fire at lower elevation, so standing on a pile lets it see over a wall. Left out of v4, since a soldier holding fire has to show why, and soldiers behind their own wall line would go quiet.
 - **Units on buildings:** soldiers, or a later kind of unit, standing on buildings. In v4 buildings are solid to soldiers.
 - **More formations:** shapes beyond v4's cluster and line, such as a wedge or a ring, if play asks for them.
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.

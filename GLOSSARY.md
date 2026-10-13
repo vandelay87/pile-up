@@ -165,6 +165,10 @@ _Avoid_: Waypoint, spawn point
 The shape that soldiers given a Move order take where they arrive: a cluster around the point, or a line across their direction of travel. One setting covers the whole army.
 _Avoid_: Stance, squad (nothing groups soldiers except the player's selection)
 
+**Elevation**:
+The level of the cell a soldier stands on: 0 on the ground, up to 5 on a wall. The higher a soldier's elevation, the further it fires.
+_Avoid_: High ground (every level counts, not only the top), height
+
 **Control group**:
 A selection of units the player has saved under a number key, to select again with one key.
 _Avoid_: Squad, team
