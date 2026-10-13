@@ -121,8 +121,8 @@ From v3, a building that hurts enemies by touch, so the player can plan for a cr
 From v3, a second enemy type that blows up, so a crowd can be broken from inside and a defence from outside. Where it pops decides which.
 
 - **Bloater**: 3× a normal enemy's HP (30) and 0.8× its speed (1.6 cells/s), so it drifts back into the crowd behind it. Bounty 2 gold. It grows with the waves' HP like any enemy. It is drawn in its own colour, 1.5× the size of a normal enemy, and pulses faster and faster while its fuse burns.
-- **Fuse:** when a bloater reaches a structure in its way (the moment a normal enemy would start attacking), it lights a 1 s fuse and blows up when it runs out. It never attacks. Killing it during the fuse still blows it up there.
-- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within 2 cells of its centre dies, leaving no body, every building and the base within it takes 30 damage once (half a tower's HP), and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body either, so a blast leaves a clear crater.
+- **Fuse:** when a bloater reaches a structure, or from v4 a soldier, in its way (the moment a normal enemy would start attacking), it lights a 1 s fuse and blows up when it runs out. It never attacks. Killing it during the fuse still blows it up there.
+- **Blast:** whenever a bloater dies, by any cause, it blows up: every enemy within 2 cells of its centre dies, leaving no body, every building and the base within it takes 30 damage once (half a tower's HP), every soldier within it takes the blast's damage once (from v4, under Fighting), and every pile and wall within it is erased, leaving nothing. The edge is hard: inside takes the full effect, outside takes nothing. A bloater leaves no body either, so a blast leaves a clear crater.
 - **Chains:** a blast that kills another bloater sets it off too.
 - **Grinders** hurt a bloater like any enemy, so one that dies against a grinder blows up there and damages it.
 - **Crush:** blasts need no special rule. The enemies they kill leave the crush smaller, and a wall they erase is a hole the crowd walks through, not an overflow.
@@ -156,6 +156,15 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Solid:** buildings, rock and the base. Soldiers route around them and never stand on them. The no-build margin is open ground to soldiers.
 - **Pathing:** each Move order, a rally point's included, plans the quickest path to its target over the grid: piles cost their slow, walls cost the climb, and buildings and rock can't be crossed. The path is planned again only when a cell on it changes. A target a soldier can't stand on or reach becomes the nearest reachable spot. The enemies' flow fields lead only to the base and are never used. This fixes the control prototype's soldiers getting stuck behind a wall's corner ([#161](https://github.com/vandelay87/pile-up/issues/161)).
 - **Formation:** the command card for selected soldiers has a Formation setting, **Cluster** (the default) or **Line**. It is one setting for the whole army, kept until changed, and every Move order uses it. Cluster packs slots around the clicked point, about one soldier per cell and skipping cells a soldier can't stand on, and each soldier takes the nearest free slot. Line centres on the clicked point, set across the direction of travel (from the selection's centre to the click), one soldier per cell, shoulder to shoulder, so soldiers sent at a breach line up across it. Each soldier walks its own path to its slot; the shape forms on arrival, not on the march.
+
+### Fighting
+
+- **Firing:** a soldier fires by the tower's rules: one target at a time, instant hits, no line of sight, a cooldown, and the targeting toggle. Its damage, fire rate and range are its own settings, aiming for a shorter range than a tower's and far less damage per second, so one soldier is cheap and weak and a handful hold a breach. They come with the v4 numbers.
+- **On the move:** a soldier under a Move order fires at any enemy in range, and walks at half speed while it does. With nothing in range it walks at full speed, so crossing open ground is quick and pushing through a crowd is slow but fought the whole way.
+- **Enemies attack soldiers** by the structure rule: only when a soldier is in their way, jammed against it and held up, at the same 2 damage per second. Enemies never leave their route to go for a soldier.
+- **Bloaters:** a soldier in a bloater's way lights its fuse, just as a structure does. Its blast hits every soldier inside it once, and two blasts kill a soldier: a soldier's HP sits above one blast's damage and at or below two.
+- **Grinders** never hurt soldiers. **Tumbling enemies** ignore soldiers, which don't count towards a full landing cell; one that lands against a soldier attacks it like any enemy in its way. Soldiers shoot tumbling enemies like any other.
+- **Building on soldiers:** placing a building over soldiers pushes them to the nearest free cell, by the same rule that places a new soldier.
 
 ### Barracks
 
@@ -226,7 +235,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Enemies
 
 - Brutes that always break walls, and enemies that chase.
-- **Seekers:** enemies that seek out buildings even when they are not in the way. One that gets inside the defence goes for other buildings before the base, which gives it a chance to reach a generator and blow it up.
+- **Seekers:** enemies that seek out buildings even when they are not in the way. One that gets inside the defence goes for other buildings before the base, which gives it a chance to reach a generator and blow it up. Seekers go for units too.
 - **Climbing buildings:** a line of towers can exploit overflow. Enemies could get on top of buildings, perhaps only by an overflow tumble, with a limit per building set by its space. On top they attack the building, and perhaps walk along linked buildings to spread the attack. With a hit-chance system, enemies on top could be harder to hit.
 - **Jumper:** an enemy that jumps over walls, and over or onto buildings.
 - **Small enemies:** die in about one shot, are faster and come in greater numbers: perhaps 2 count as 1 normal enemy in a wave's size. They pass through walls. They first appear on their own at the spawn edges.
