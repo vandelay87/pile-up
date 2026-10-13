@@ -142,6 +142,8 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Orders:** right-click on the ground, or on an enemy, moves the selected soldiers there; **Stop** cancels the move. There is no hold, attack-move, focus fire or waypoint queue. Orders can be given during a wave and in the build phase.
 - **Targeting a selection:** the toggle sets every selected soldier at once, and shows Mixed while their modes differ.
 - **Control groups:** Ctrl+1–9 saves the selected soldiers as a group, 1–9 selects it again, and pressing the number twice centres the camera on it.
+- **Feedback:** a selected soldier's marker is drawn on top of everything, so piles and the crowd never hide it; the final art sets its shape. A Move order flashes a marker where it lands. Tested in the control prototype ([#161](https://github.com/vandelay87/pile-up/issues/161)).
+- **Camera with units:** a left-drag is the selection box, so it no longer pans the camera. Panning is a middle-drag, a two-finger trackpad drag or the arrow keys.
 - **Pause:** Space pauses the game. Pausing stops the clock and nothing else: the player can still select, give orders, build and change settings, and orders play out on resume. The pause is what keeps v4 a lite RTS.
 
 ## Towers and economy
