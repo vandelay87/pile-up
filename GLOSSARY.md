@@ -81,7 +81,7 @@ A building whose only job is to extend the power grid, much further than other b
 ### Bodies
 
 **Body**:
-What one killed enemy adds to the world; the single unit a pile is made of. "Corpse" is an accepted synonym in player-facing text.
+What one killed enemy or dead soldier adds to the world; the single unit a pile is made of. "Corpse" is an accepted synonym in player-facing text.
 
 **Pile**:
 The stack of bodies on one cell, described by its level from 1 to 5.
@@ -168,6 +168,10 @@ _Avoid_: Stance, squad (nothing groups soldiers except the player's selection)
 **Elevation**:
 The level of the cell a soldier stands on: 0 on the ground, up to 5 on a wall. The higher a soldier's elevation, the further it fires.
 _Avoid_: High ground (every level counts, not only the top), height
+
+**Recover**:
+A soldier returning to full HP at the end of a wave. Nothing heals a soldier during one.
+_Avoid_: Heal, repair (only buildings are repaired)
 
 **Control group**:
 A selection of units the player has saved under a number key, to select again with one key.
