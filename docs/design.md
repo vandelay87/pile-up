@@ -146,6 +146,17 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Camera with units:** a left-drag is the selection box, so it no longer pans the camera. Panning is a middle-drag, a two-finger trackpad drag or the arrow keys.
 - **Pause:** Space pauses the game. Pausing stops the clock and nothing else: the player can still select, give orders, build and change settings, and orders play out on resume. The pause is what keeps v4 a lite RTS.
 
+### Moving units
+
+- **Among enemies:** soldiers and enemies push each other softly, and a soldier is much heavier than an enemy, so a thin stream barely moves it. A standing soldier that is pushed off its spot walks back to it as soon as it can, so standing still means holding that spot. A soldier under a Move order shoulders through the crowd, slowed by how packed it is. A soldier line holds against a trickle, bends under a stream and gives way to a surge: a speed bump and a firing position, never a wall. The mass and the push-back speed come with the v4 numbers.
+- Soldiers are never part of the flow fields, so they never cause a field repair, and never part of a barrier, so enemies held up by them form no crush and fill no pressure gauge. A tumbling enemy ignores soldiers as it ignores the crowd.
+- **Among soldiers:** soldiers keep the same soft personal space as enemies (0.7 cells) from each other, so moving soldiers slide past one another and never stack, and they don't shove a standing soldier off its spot.
+- **Piles:** levels 1–4 slow a soldier exactly as they slow an enemy. A pile that grows under a standing soldier lifts it on top; a blast that erases the pile drops it to the ground.
+- **Walls:** a soldier can climb onto a wall and over it, at a heavier slow than a level-4 pile, and can stand on top. A wall that forms under a soldier lifts it on top, and a wall destroyed under one drops to level 3 with the soldier still on it. Enemies still need an overflow to cross a wall.
+- **Solid:** buildings, rock and the base. Soldiers route around them and never stand on them. The no-build margin is open ground to soldiers.
+- **Pathing:** each Move order, a rally point's included, plans the quickest path to its target over the grid: piles cost their slow, walls cost the climb, and buildings and rock can't be crossed. The path is planned again only when a cell on it changes. A target a soldier can't stand on or reach becomes the nearest reachable spot. The enemies' flow fields lead only to the base and are never used. This fixes the control prototype's soldiers getting stuck behind a wall's corner ([#161](https://github.com/vandelay87/pile-up/issues/161)).
+- **Formation:** the command card for selected soldiers has a Formation setting, **Cluster** (the default) or **Line**. It is one setting for the whole army, kept until changed, and every Move order uses it. Cluster packs slots around the clicked point, about one soldier per cell and skipping cells a soldier can't stand on, and each soldier takes the nearest free slot. Line centres on the clicked point, set across the direction of travel (from the selection's centre to the click), one soldier per cell, shoulder to shoulder, so soldiers sent at a breach line up across it. Each soldier walks its own path to its slot; the shape forms on arrival, not on the march.
+
 ### Barracks
 
 - **Barracks**: 2×2, the building that trains soldiers. It follows every building rule: it must be built on the power grid and powers a small area of its own, enemies attack it when it is in their way, it joins a barrier, repair yards repair it, and a destroyed barracks leaves nothing behind. HP, power area and cost come with the v4 numbers.
@@ -236,6 +247,8 @@ Not built in the prototypes, but decisions should leave room for it.
 - **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in the barracks. Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
 - **High ground:** a unit gets a bonus when it stands higher than its attacker, perhaps on a pile.
+- **Units on buildings:** soldiers, or a later kind of unit, standing on buildings. In v4 buildings are solid to soldiers.
+- **More formations:** shapes beyond v4's cluster and line, such as a wedge or a ring, if play asks for them.
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
 
 ### Details and art
