@@ -74,7 +74,7 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 
 ## Structures
 
-- Walls, buildings (towers, pylons, repair yards and grinders) and the base are all structures, and one rule covers them all.
+- Walls, buildings (towers, pylons, repair yards, grinders and, from v4, barracks) and the base are all structures, and one rule covers them all.
 - An enemy attacks a structure only when it is in the way: it is jammed against it, or its route crosses it. Enemies passing a structure that is not in their way ignore it.
 - Every attacker deals 2 damage per second to any structure, with no limit on attackers beyond space around it.
 - Enemies killed at a structure die in front of it, so defending a structure builds a pile in front of it.
@@ -133,7 +133,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 ## Selecting buildings
 
 - Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
-- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and a **status**. The status is one word: Unpowered, else Under repair, else what it is doing (a tower Firing or Idle, a grinder Grinding or Idle, a repair yard Repairing or Idle, a pylon Powering). The base has no status. A tower adds damage, shots/s, range, its kills this run and its targeting toggle. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it), its repair threshold (with a control to change it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
+- A selected building shows its range (a tower's fire range, a repair yard's repair area, a pylon's or the base's power area) and a stats panel: HP and max HP, and a **status**. The status is one word: Unpowered, else Under repair, else what it is doing (a tower Firing or Idle, a grinder Grinding or Idle, a repair yard Repairing or Idle, a pylon Powering, a barracks Training or Idle). The base has no status. A tower adds damage, shots/s, range, its kills this run and its targeting toggle. A repair yard adds its repair rate, auto or its assignment (with controls to assign a building or clear it), its repair threshold (with a control to change it) and the HP it has repaired this run. A pylon adds its power area. A grinder adds its damage per second, the enemies touching it now and its kills this run.
 
 ## Units (v4)
 
@@ -145,6 +145,17 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Feedback:** a selected soldier's marker is drawn on top of everything, so piles and the crowd never hide it; the final art sets its shape. A Move order flashes a marker where it lands. Tested in the control prototype ([#161](https://github.com/vandelay87/pile-up/issues/161)).
 - **Camera with units:** a left-drag is the selection box, so it no longer pans the camera. Panning is a middle-drag, a two-finger trackpad drag or the arrow keys.
 - **Pause:** Space pauses the game. Pausing stops the clock and nothing else: the player can still select, give orders, build and change settings, and orders play out on resume. The pause is what keeps v4 a lite RTS.
+
+### Barracks
+
+- **Barracks**: 2×2, the building that trains soldiers. It follows every building rule: it must be built on the power grid and powers a small area of its own, enemies attack it when it is in their way, it joins a barrier, repair yards repair it, and a destroyed barracks leaves nothing behind. HP, power area and cost come with the v4 numbers.
+- **Barracks limit:** at most N barracks, with N a tuning setting starting at 6. The build menu shows the count (for example, "6/6") and greys the barracks out at the limit; a destroyed barracks frees its place. Whether gold alone holds the army down, so the limit can go, is a playtest question.
+- **Capacity:** each barracks adds about 8 to the player's capacity, so 6 barracks field about 48 soldiers. Each soldier takes up one, queued soldiers included. Soldiers don't belong to the barracks that trained them: a destroyed barracks only lowers capacity, and no soldier dies with it. An unpowered barracks still counts. A player over capacity keeps every soldier but can't train until under it again. The HUD shows **Capacity 12/48** beside gold from the first barracks on.
+- **Training:** a soldier costs gold only, well under a tower. Each barracks trains one at a time from a queue of up to 5; shift-click on Train queues 5 at once. Gold is paid on queuing and refunded on cancel. In the build phase training is instant; during a wave each soldier takes a few seconds, so a soldier needed against a leak arrives late, and planning ahead pays.
+- **Interruptions:** while unpowered or under repair, the barracks' timer pauses and resumes where it left off. A destroyed barracks refunds every soldier in its queue; only the building's own gold is lost.
+- **New soldiers:** a trained soldier appears on the free cell beside the barracks facing most towards the base, or the nearest free cell outward if those are blocked.
+- **Rally point:** with a barracks selected, a right-click on the ground sets its rally point, during a wave, in the build phase or while paused. Each new soldier gets a Move order to it and can be stopped or re-ordered like any Move. Without one, a new soldier stands beside the barracks. It is ground only, shown as a flag and line while the barracks is selected, and cleared from its details.
+- **Details:** the barracks' status (Unpowered, else Under repair, else Training or Idle), its queue (click a slot to cancel and refund), **Train soldier** (greyed out when capacity or the queue is full or gold is short, with the reason on hover) and **Clear rally point**.
 
 ## Towers and economy
 
@@ -222,7 +233,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Units
 
 - Prompted by a playtest: a few enemies got behind the base and attacked it, and the only answer was a turret the player didn't want there. Units would be selected and directed like StarCraft's, in feel and action.
-- **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in a new building (an armoury, or a better name). Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
+- **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in the barracks. Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
 - **High ground:** a unit gets a bonus when it stands higher than its attacker, perhaps on a pile.
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
@@ -231,6 +242,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 - Clicking any unit or enemy shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
 - **Graphs:** graphs of the run, such as gold gained and lost and kills, including live graphs during a wave.
+- **Soldiers drawn as a group:** a soldier drawn as several figures that thin out as it loses HP, so 48 soldiers look like an army (Total War, Bad North). It is more than art: losing a figure looks like a death (does it drop a body?), it hints at a squad that can't be split, and it multiplies sprites on screen. v4 draws one figure per soldier.
 - **Dynamic portraits:** every unit and building has a portrait in its details that reacts, like Doom's face: angry while firing, resting when idle. A building's portrait changes with what it is doing and its HP.
 - **Blood:** a burst of blood when an enemy dies, and cells grow bloodier, through several levels, as more enemies die on them.
 - A landing animation for bodies, with the final art.
