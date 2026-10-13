@@ -161,6 +161,10 @@ _Avoid_: Supply, population, soldier cap
 The place a barracks sends each soldier it trains. Without one, a new soldier stands beside the barracks.
 _Avoid_: Waypoint, spawn point
 
+**Formation**:
+The shape that soldiers given a Move order take where they arrive: a cluster around the point, or a line across their direction of travel. One setting covers the whole army.
+_Avoid_: Stance, squad (nothing groups soldiers except the player's selection)
+
 **Control group**:
 A selection of units the player has saved under a number key, to select again with one key.
 _Avoid_: Squad, team
