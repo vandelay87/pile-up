@@ -58,6 +58,7 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 - A killed enemy's body lands on the cell it died on, adding a level to the pile there or starting a new one.
 - If that cell cannot take a body (a wall, rock, the base or a building's cell), the body goes to the nearest cell that can, measured from where the enemy died, so it stays on the side the enemy was on. No body is ever lost.
 - A body appears on its cell at once, with no landing animation in v2.
+- From v4, a dead soldier leaves a body by the same rule, and once it lands it is a body like any other (see Death and recovery under Units).
 - Levels:
 
   | Level | Effect |
@@ -176,6 +177,13 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Knock-off:** a tumble over the wall cell a soldier stands on knocks that soldier down to the landing side, onto the nearest free ground cell. It lands at elevation 0 among the enemies that came over, in their way, and a standing soldier climbs back to its spot if it survives. Only the soldier on the crossed cell is knocked off; soldiers further along the wall are not.
 - **Enemies** get nothing from height: they only attack what is in their way.
 
+### Death and recovery
+
+- **Recovery:** every living soldier recovers to full HP the moment the wave's last enemy dies, when repair yard drones fly home. Nothing heals a soldier during a wave, so the build phase always starts with the army at full HP, and a newly trained soldier starts at full HP. Repair stays for buildings only.
+- **Death:** a soldier at 0 HP is lost. Its gold is gone, its place in capacity is freed at once, and nothing replaces it: the player trains another by hand. It drops out of the selection and every control group.
+- **Body:** a dead soldier leaves one body by the body pile rule, landing on its cell or the nearest one that can take it, and adding a level. Once it lands it is a body like any other, with nothing to tell it from an enemy's. A soldier killed by a blast leaves no body, as an enemy doesn't, so the crater stays clear.
+- **Feedback:** a brief death effect where the soldier falls; the final art sets its look. There is no alert: the capacity readout shows the loss.
+
 ### Barracks
 
 - **Barracks**: 2×2, the building that trains soldiers. It follows every building rule: it must be built on the power grid and powers a small area of its own, enemies attack it when it is in their way, it joins a barrier, repair yards repair it, and a destroyed barracks leaves nothing behind. HP, power area and cost come with the v4 numbers.
@@ -263,7 +271,8 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Units
 
 - Prompted by a playtest: a few enemies got behind the base and attacked it, and the only answer was a turret the player didn't want there. Units would be selected and directed like StarCraft's, in feel and action.
-- **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in the barracks. Open: whether units can be repaired or healed, and whether their bodies pile like enemies'. Wary of adding them, as they change the game.
+- **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in the barracks. Wary of adding them, as they change the game.
+- **Healing near a barracks:** an idle soldier within a few cells of a barracks slowly regains HP during a wave, so pulling a worn soldier back is a choice. v4 only recovers soldiers at a wave's end.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
 - **Line of sight from elevation:** walls blocking a soldier's fire at lower elevation, so standing on a pile lets it see over a wall. Left out of v4, since a soldier holding fire has to show why, and soldiers behind their own wall line would go quiet.
 - **Units on buildings:** soldiers, or a later kind of unit, standing on buildings. In v4 buildings are solid to soldiers.
@@ -273,8 +282,9 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Details and art
 
 - Clicking any unit or enemy shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
+- **Game log:** a running log of text alerts, such as a soldier dying off screen. v4 shows a soldier's death only where it falls.
 - **Graphs:** graphs of the run, such as gold gained and lost and kills, including live graphs during a wave.
-- **Soldiers drawn as a group:** a soldier drawn as several figures that thin out as it loses HP, so 48 soldiers look like an army (Total War, Bad North). It is more than art: losing a figure looks like a death (does it drop a body?), it hints at a squad that can't be split, and it multiplies sprites on screen. v4 draws one figure per soldier.
+- **Soldiers drawn as a group:** a soldier drawn as several figures that thin out as it loses HP, so 48 soldiers look like an army (Total War, Bad North). It is more than art: losing a figure looks like a death, though only a dead soldier drops a body, it hints at a squad that can't be split, and it multiplies sprites on screen. v4 draws one figure per soldier.
 - **Dynamic portraits:** every unit and building has a portrait in its details that reacts, like Doom's face: angry while firing, resting when idle. A building's portrait changes with what it is doing and its HP.
 - **Blood:** a burst of blood when an enemy dies, and cells grow bloodier, through several levels, as more enemies die on them.
 - A landing animation for bodies, with the final art.
