@@ -208,5 +208,5 @@ _Avoid_: Endgame, stragglers
 The gold one kill pays before any combo.
 
 **Combo**:
-A building's own multiplier on the bounty of its kills, set by how many kills that building made in an unbroken run. It breaks back to nothing when the building goes too long without a kill. Each building has its own; there is no combo for the whole defence.
+A building's or soldier's own multiplier on the bounty of its kills, set by how many kills it made in an unbroken run. It breaks back to nothing when it goes too long without a kill. Each building and each soldier has its own; there is no combo for the whole defence.
 _Avoid_: Streak, chain, global combo
