@@ -141,7 +141,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Soldier:** v4's one unit. It shoots enemies in range like a tower and only moves when ordered; it never chases. Each soldier has the towers' targeting toggle, Bloaters first (the default for a newly trained soldier) or Closest to base.
 - **Selecting:** clicking a soldier selects it alone. Dragging a box selects every soldier inside it, never buildings. Shift-click or shift-drag adds soldiers to the selection or takes them out. Buildings and soldiers are never selected together: clicking a building clears the selected soldiers. Esc or a click on empty ground clears the selection.
 - **Orders:** right-click on the ground, or on an enemy, moves the selected soldiers there; **Stop** cancels the move. There is no hold, attack-move, focus fire or waypoint queue. Orders can be given during a wave and in the build phase.
-- **Targeting a selection:** the toggle sets every selected soldier at once, and shows Mixed while their modes differ.
+- **Targeting a selection:** the toggle sets every selected soldier at once, and shows Mixed while their modes differ (see The unit in the HUD).
 - **Control groups:** Ctrl+1–9 saves the selected soldiers as a group, 1–9 selects it again, and pressing the number twice centres the camera on it.
 - **Feedback:** a selected soldier's marker is drawn on top of everything, so piles and the crowd never hide it; the final art sets its shape. A Move order flashes a marker where it lands. Tested in the control prototype ([#161](https://github.com/vandelay87/pile-up/issues/161)).
 - **Camera with units:** a left-drag is the selection box, so it no longer pans the camera. Panning is a middle-drag, a two-finger trackpad drag or the arrow keys.
@@ -156,7 +156,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Walls:** a soldier can climb onto a wall and over it, at a heavier slow than a level-4 pile, and can stand on top. A wall that forms under a soldier lifts it on top, and a wall destroyed under one drops to level 3 with the soldier still on it. Enemies still need an overflow to cross a wall.
 - **Solid:** buildings, rock and the base. Soldiers route around them and never stand on them. The no-build margin is open ground to soldiers.
 - **Pathing:** each Move order, a rally point's included, plans the quickest path to its target over the grid: piles cost their slow, walls cost the climb, and buildings and rock can't be crossed. The path is planned again only when a cell on it changes. A target a soldier can't stand on or reach becomes the nearest reachable spot. The enemies' flow fields lead only to the base and are never used. This fixes the control prototype's soldiers getting stuck behind a wall's corner ([#161](https://github.com/vandelay87/pile-up/issues/161)).
-- **Formation:** the command card for selected soldiers has a Formation setting, **Cluster** (the default) or **Line**. It is one setting for the whole army, kept until changed, and every Move order uses it. Cluster packs slots around the clicked point, about one soldier per cell and skipping cells a soldier can't stand on, and each soldier takes the nearest free slot. Line centres on the clicked point, set across the direction of travel (from the selection's centre to the click), one soldier per cell, shoulder to shoulder, so soldiers sent at a breach line up across it. Each soldier walks its own path to its slot; the shape forms on arrival, not on the march.
+- **Formation:** the command card for selected soldiers has a Formation setting, **Cluster** (the default) or **Line**. It is one setting for the whole army, kept until changed, and each Move order takes it as it stands when the order is given: soldiers already sent keep their shape, so one group can be sent in a line and the next in a cluster. Cluster packs slots around the clicked point, about one soldier per cell and skipping cells a soldier can't stand on, and each soldier takes the nearest free slot. Line centres on the clicked point, set across the direction of travel (from the selection's centre to the click), one soldier per cell, shoulder to shoulder, so soldiers sent at a breach line up across it. Each soldier walks its own path to its slot; the shape forms on arrival, not on the march.
 
 ### Fighting
 
@@ -172,7 +172,7 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Elevation:** a soldier's elevation is the level of the cell it stands on: 0 on the ground, 1–4 on a pile, 5 on a wall. Buildings are solid to soldiers, so they give none. It changes whenever the soldier's cell does: walking, a pile growing under it, a blast erasing the pile (back to 0), or a wall destroyed under it (down to 3).
 - **Range bonus:** each level of elevation adds the same extra fire range, so a wall gives five steps' worth. It depends only on the soldier's own elevation, never the target's, so a soldier has one range at a time. It is the only bonus: damage and fire rate stay the same, and there is still no line of sight. The range per level comes with the v4 numbers, aiming for piles worth standing on without making them a must.
 - **Walking over piles:** range follows elevation as the soldier moves or is lifted. A step down that leaves the current target out of range drops it, and the soldier picks again by its targeting toggle, as a tower does when an enemy walks out of range.
-- **Reading it:** a pile's stacked blocks show how high a soldier stands, and a selected soldier shows its range, as a selected tower does, at its current elevation. There is no other marker.
+- **Reading it:** a pile's stacked blocks show how high a soldier stands, and selected soldiers show their range, as a selected tower does, each at its current elevation (see The unit in the HUD). There is no other marker.
 - **Safe on a wall:** enemies on the ground can't attack a soldier standing on a wall, since an enemy jammed against the wall is held up by the wall, not the soldier. Blasts still hit it, and a wall destroyed under it drops it to level 3.
 - **Knock-off:** a tumble over the wall cell a soldier stands on knocks that soldier down to the landing side, onto the nearest free ground cell. It lands at elevation 0 among the enemies that came over, in their way, and a standing soldier climbs back to its spot if it survives. Only the soldier on the crossed cell is knocked off; soldiers further along the wall are not.
 - **Enemies** get nothing from height: they only attack what is in their way.
@@ -194,6 +194,15 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **New soldiers:** a trained soldier appears on the free cell beside the barracks facing most towards the base, or the nearest free cell outward if those are blocked.
 - **Rally point:** with a barracks selected, a right-click on the ground sets its rally point, during a wave, in the build phase or while paused. Each new soldier gets a Move order to it and can be stopped or re-ordered like any Move. Without one, a new soldier stands beside the barracks. It is ground only, shown as a flag and line while the barracks is selected, and cleared from its details.
 - **Details:** the barracks' status (Unpowered, else Under repair, else Training or Idle), its queue (click a slot to cancel and refund), **Train soldier** (greyed out when capacity or the queue is full or gold is short, with the reason on hover) and **Clear rally point**.
+
+### The unit in the HUD
+
+- **Command card:** while soldiers are selected, the command card swaps from the build menu to the soldier's commands, and swaps back when the selection clears. **Stop** (S), **targeting** (A) and **Formation** (F) fill the top row; **Next wave** keeps its slot. Targeting and Formation are each one button that flips between their two states and shows the current one. When the selected soldiers' modes differ, targeting shows **Mixed** with neither state pressed, and a click or A sets every one of them, from Mixed to Bloaters first. The build hotkeys still work with soldiers selected, and using one clears the selection, since buildings and soldiers are never selected together.
+- **One soldier's details:** HP and max HP, a status (**Moving** while under a Move order, else Firing or Idle), damage, shots/s, range with its high-ground bonus shown apart (for example, "Range 6 (+2 high ground)") and its kills this run.
+- **Several soldiers' details:** a title with the count ("8 soldiers"), their kills this run added up, and a grid of small tiles, one per soldier in selection order and coloured by its HP. Clicking a tile selects that soldier alone; shift-click takes it out of the selection.
+- **Combo:** only if soldiers get a combo of their own, one soldier's details show the same ring as a selected building's; several show none.
+- **Range:** the selected soldiers' ranges, each at its own elevation, are drawn as one merged shape, a faint fill with a single outline, in the colour of a tower's range circle. It follows the soldiers as they move and climb. One selected soldier is the one-circle case.
+- Buildings keep their controls in their details in v4, so a tower's targeting toggle stays there while a soldier's is on the card.
 
 ## Towers and economy
 
@@ -277,12 +286,14 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Line of sight from elevation:** walls blocking a soldier's fire at lower elevation, so standing on a pile lets it see over a wall. Left out of v4, since a soldier holding fire has to show why, and soldiers behind their own wall line would go quiet.
 - **Units on buildings:** soldiers, or a later kind of unit, standing on buildings. In v4 buildings are solid to soldiers.
 - **More formations:** shapes beyond v4's cluster and line, such as a wedge or a ring, if play asks for them.
+- **Drawn lines:** a right-drag draws a line formation, its width and facing set by the drag, as in Total War or Company of Heroes, so the shape is part of the order. v4 reads one Formation setting at order time.
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
 
 ### Details and art
 
 - Clicking any unit or enemy shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
 - **Game log:** a running log of text alerts, such as a soldier dying off screen. v4 shows a soldier's death only where it falls.
+- **Building controls on the command card:** a tower's targeting toggle, a barracks' Train and a repair yard's Assign moving from the details to the command card, as the soldier's commands are in v4. To revisit after the v4 playtest.
 - **Graphs:** graphs of the run, such as gold gained and lost and kills, including live graphs during a wave.
 - **Soldiers drawn as a group:** a soldier drawn as several figures that thin out as it loses HP, so 48 soldiers look like an army (Total War, Bad North). It is more than art: losing a figure looks like a death, though only a dead soldier drops a body, it hints at a squad that can't be split, and it multiplies sprites on screen. v4 draws one figure per soldier.
 - **Dynamic portraits:** every unit and building has a portrait in its details that reacts, like Doom's face: angry while firing, resting when idle. A building's portrait changes with what it is doing and its HP.
