@@ -206,7 +206,7 @@ func _row(y: int, left: int, right: int) -> Array[Vector2i]:
 	return cells
 
 
-# Lands a pile of [param level] on each cell at step 1 of the next tick.
+# Lands a pile of [param level] on each cell as bodies land on the next tick.
 func _piles(cells: Array[Vector2i], level: int) -> void:
 	var bodies := PackedVector2Array()
 	for cell in cells:
@@ -216,7 +216,7 @@ func _piles(cells: Array[Vector2i], level: int) -> void:
 	_sim.tick()
 
 
-# Lands a wall on each cell at step 1 of the next tick.
+# Lands a wall on each cell as bodies land on the next tick.
 func _walls(cells: Array[Vector2i]) -> void:
 	_piles(cells, Piles.WALL_LEVEL)
 

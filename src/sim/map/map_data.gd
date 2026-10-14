@@ -159,6 +159,11 @@ func cell_of(index: int) -> Vector2i:
 	return Vector2i(index % _width, index / _width)
 
 
+## The position at the centre of [param cell].
+static func centre_of(cell: Vector2i) -> Vector2:
+	return Vector2(cell) + Vector2(0.5, 0.5)
+
+
 ## The cell and its 8 neighbours, clipped to the map.
 func neighbourhood(cell: Vector2i) -> Rect2i:
 	return Rect2i(cell - Vector2i.ONE, Vector2i(3, 3)).intersection(Rect2i(0, 0, _width, _height))

@@ -233,7 +233,7 @@ func _wait(ticks: int) -> void:
 		_sim.tick()
 
 
-# Kills n enemies credited to a tower, removed at the next tick's step 9.
+# Kills n enemies credited to a tower, removed at the next tick's REMOVE_DEAD.
 func _kill(tower: int, n: int) -> void:
 	_credit(tower, n)
 	_sim.tick()

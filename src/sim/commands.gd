@@ -251,9 +251,5 @@ class AddSoldiers:
 		if _count < 1:
 			sim.reject_command("%s: the count must be at least 1" % LABEL)
 			return
-		for n in _count:
-			var cell := sim.soldiers.free_cell_beside(sim.map.base)
-			if cell == Soldiers.NO_CELL:
-				sim.reject_command("%s: no free cell beside the base" % LABEL)
-				return
-			sim.soldiers.add(cell)
+		if sim.soldiers.add_beside(sim.map.base, _count) < _count:
+			sim.reject_command("%s: no free cell beside the base" % LABEL)

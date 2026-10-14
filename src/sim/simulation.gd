@@ -133,7 +133,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
 	)
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
-	soldiers = Soldiers.new(settings, map, occupancy, piles, ids)
+	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -172,8 +172,8 @@ func jump_to_wave(wave: int) -> void:
 	_start_wave(wave, Commands.JumpToWave.LABEL)
 
 
-## Kills the first [param count] living enemies on the field. They are removed at step 9 like
-## any kill: they count, pay and leave bodies.
+## Kills the first [param count] living enemies on the field. They are removed at
+## [constant Step.REMOVE_DEAD] like any kill: they count, pay and leave bodies.
 func kill_enemies(count: int) -> void:
 	if count < 1:
 		reject_command("%s: the count must be at least 1" % Commands.KillEnemies.LABEL)

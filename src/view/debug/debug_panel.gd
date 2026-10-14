@@ -213,14 +213,14 @@ func _add_cheats() -> void:
 	for control: Control in [victims, kill]:
 		kill_row.add_child(control)
 	_box.add_child(kill_row)
-	var recruits := _number_field(1, 100, 1, 10)
+	var soldier_count := _number_field(1, 100, 1, 10)
 	var add_soldiers := Button.new()
 	add_soldiers.text = "Add soldiers"
 	add_soldiers.pressed.connect(
-		func() -> void: _send(Commands.AddSoldiers.new(roundi(recruits.value)))
+		func() -> void: _send(Commands.AddSoldiers.new(roundi(soldier_count.value)))
 	)
 	var soldier_row := HBoxContainer.new()
-	for control: Control in [recruits, add_soldiers]:
+	for control: Control in [soldier_count, add_soldiers]:
 		soldier_row.add_child(control)
 	_box.add_child(soldier_row)
 

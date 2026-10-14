@@ -260,8 +260,8 @@ func take_destroyed() -> Array[int]:
 	return taken
 
 
-## Step 6: each working building acts, in build order. Towers fire, returning their shots;
-## grinders hurt every enemy touching them.
+## At [constant Simulation.Step.BUILDINGS_ACT], each working building acts, in build order.
+## Towers fire, returning their shots; grinders hurt every enemy touching them.
 func act(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for acting in built:

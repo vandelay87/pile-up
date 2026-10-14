@@ -147,7 +147,7 @@ func test_a_soldier_on_a_wall_stands_at_elevation_5() -> void:
 	assert_int(_sim.soldiers.elevation(0)).is_equal(5)
 
 
-# Lands [param level] bodies on [param cell] at step 1 of the next tick.
+# Lands [param level] bodies on [param cell] as bodies land on the next tick.
 func _land_bodies(cell: Vector2i, level: int) -> void:
 	var bodies := PackedVector2Array()
 	for n in level:

@@ -21,7 +21,6 @@ const _ROLL_STEPS := 40
 # Single-precision headings put an exact reversal a hair either side of pi, so a turn must
 # beat the turn-back angle by this much to count.
 const _TURN_SLACK := 1e-4
-const _FACES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 
 var count := 0
 var ids := PackedInt32Array()
@@ -51,6 +50,7 @@ var _occupancy: Occupancy
 var _piles: Piles
 var _routing: Routing
 var _structures: Structures
+var _solids: Solids
 var _rng: RandomNumberGenerator
 var _swarm_rng: RandomNumberGenerator
 var _next_id := 0
@@ -82,6 +82,7 @@ func _init(
 	_piles = run_piles
 	_routing = run_routing
 	_structures = run_structures
+	_solids = Solids.new(_map, _occupancy, _piles, _structures, true)
 	_rng = rng
 	# The swarm spread rolls draw from their own stream so the heading offsets and route
 	# rolls stay as they were without it.
@@ -295,7 +296,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	_ticks += 1
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
-	# Only a debug kill at step 0 leaves an enemy dead before removal at step 9; it stands
+	# Only a debug kill as commands drain leaves an enemy dead before REMOVE_DEAD; it stands
 	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
 	var fuse_ticks := _settings.fuse_ticks
 	for i in count:
@@ -333,7 +334,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 			continue
 		var pos := _moved[i]
 		for _pass in _COLLISION_PASSES:
-			var resolved := _resolve_collision(pos, radius)
+			var resolved := _solids.resolve(pos, radius)
 			if resolved == pos:
 				break
 			pos = resolved
@@ -579,54 +580,6 @@ func _neighbour_pushes(
 
 func _separation_total(from_peers: Vector2, peers: int, from_attackers: Vector2) -> Vector2:
 	return from_peers / maxi(peers, 1) + from_attackers
-
-
-func _resolve_collision(pos: Vector2, radius: float) -> Vector2:
-	var margin := Vector2(radius, radius)
-	pos = pos.clamp(margin, Vector2(_map.width, _map.height) - margin)
-	var low := Vector2i((pos - margin).floor())
-	var high := Vector2i((pos + margin).floor())
-	for y in range(low.y, high.y + 1):
-		for x in range(low.x, high.x + 1):
-			var blocked := Vector2i(x, y)
-			if not _is_impassable(blocked):
-				continue
-			var closest := pos.clamp(Vector2(blocked), Vector2(blocked + Vector2i.ONE))
-			var away := pos - closest
-			var distance := away.length()
-			if distance >= radius:
-				continue
-			if distance > 1e-6:
-				pos = closest + away / distance * radius
-			else:
-				pos = _leave_through_nearest_open_face(pos, blocked, radius)
-	return pos
-
-
-func _leave_through_nearest_open_face(pos: Vector2, cell: Vector2i, radius: float) -> Vector2:
-	var inside := pos - Vector2(cell)
-	var face_distances: Array[float] = [inside.x, 1.0 - inside.x, inside.y, 1.0 - inside.y]
-	var best_face := Vector2i.ZERO
-	var best_distance := INF
-	for k in _FACES.size():
-		if not _is_impassable(cell + _FACES[k]) and face_distances[k] < best_distance:
-			best_distance = face_distances[k]
-			best_face = _FACES[k]
-	if best_face == Vector2i.ZERO:
-		return pos
-	return pos + Vector2(best_face) * (best_distance + radius)
-
-
-func _is_impassable(cell: Vector2i) -> bool:
-	if not _map.in_bounds(cell):
-		return true
-	var index := _map.index_of(cell)
-	return (
-		_map.rock[index] == 1
-		or _structures.is_base(index)
-		or _occupancy.building_ids[index] != Occupancy.EMPTY
-		or _piles.levels[index] == Piles.WALL_LEVEL
-	)
 
 
 func _tie_break(i: int, j: int) -> Vector2:

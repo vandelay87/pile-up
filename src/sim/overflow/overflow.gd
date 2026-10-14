@@ -101,7 +101,7 @@ class Tumble:
 
 	func add(cell: Vector2i) -> void:
 		cells.append(cell)
-		path.append(Vector2(cell) + Vector2(0.5, 0.5))
+		path.append(MapData.centre_of(cell))
 
 	## The cell it lands on.
 	func landing() -> Vector2i:
@@ -245,9 +245,10 @@ func step() -> void:
 	_move_tumblers()
 
 
-## Step 9: the body of each enemy in [param deaths] that died mid-tumble, or within the
-## fall-back window of landing, lands where its tumble started instead, back the way it came,
-## so the overflow's dead don't build its barrier out ahead of it.
+## At [constant Simulation.Step.REMOVE_DEAD], the body of each enemy in [param deaths] that
+## died mid-tumble, or within the fall-back window of landing, lands where its tumble started
+## instead, back the way it came, so the overflow's dead don't build its barrier out ahead of
+## it.
 func fall_back(deaths: Deaths) -> void:
 	if not _settings.bodies_fall_back:
 		return
