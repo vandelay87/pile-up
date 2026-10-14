@@ -260,6 +260,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Setting
 
 - The base is a drilling rig mining precious minerals, and the enemies attack to stop it. The tone is Starship Troopers: the player's side is the intrusive, militaristic, authoritarian species, stealing the planet's minerals and wrecking it. Towers may be renamed turrets to fit.
+- **Start drill:** a cleared wave is the drill recharging, and the next wave starts when the drill starts again, so **Next wave** could become **Start drill**.
 
 ### Enemies
 
@@ -269,12 +270,16 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Jumper:** an enemy that jumps over walls, and over or onto buildings.
 - **Small enemies:** die in about one shot, are faster and come in greater numbers: perhaps 2 count as 1 normal enemy in a wave's size. They pass through walls. They first appear on their own at the spawn edges.
 - **Carrier:** a bloated flying enemy full of small enemies. It drifts slowly towards the base and, close to it, releases them all. Shot down before then, it dies and releases them where it fell. Only towers can hurt it. Open: whether small enemies collide with each other or share space; either way they must look good in the final art.
+- **Boss:** a massive enemy in a level's last wave that walks slowly and destroys everything in its path. Its art changes as it takes damage, as its portrait would (see Dynamic portraits).
+- **Bunched late waves:** later waves spawn bigger and more tightly packed, rather than spread out, so they look more menacing.
 
 ### Buildings
 
 - A splash/area tower.
+- **Build time:** buildings take time to build instead of appearing at once, perhaps dropped in from the sky like StarCraft's Terran buildings.
+- **Base turret:** an upgrade that arms the base with a turret of its own.
 - **Building upgrades:** towers with a higher fire rate, more damage or longer range; more drones per repair yard (perhaps with power-ups).
-- **One-sided walls:** walls that can only be attacked from one side, to encourage overflow to build up. Perhaps bloaters damage them too, and units (if added) walk through them both ways. Unsure: they may undercut the hook of piles building up.
+- **One-sided walls:** walls that can only be attacked from one side, to encourage overflow to build up. Perhaps bloaters damage them too, and units (if added) walk through them both ways. Unsure: they may undercut the hook of piles building up. Perhaps the player can raise and lower them, like StarCraft's supply depots.
 - **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
 - **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
 - A ranked queue of assignments for a repair yard.
@@ -282,6 +287,7 @@ Not built in the prototypes, but decisions should leave room for it.
 ### Units
 
 - Prompted by a playtest: a few enemies got behind the base and attacked it, and the only answer was a turret the player didn't want there. Units would be selected and directed like StarCraft's, in feel and action.
+- **Hero:** the run starts with a hero, such as a giant mech, and different heroes bring different abilities or modifiers.
 - **First unit:** the soldier, under Units (v4): machine fire like a turret, selected and ordered one by one or as a box, trained in the barracks. Wary of adding them, as they change the game.
 - **Healing near a barracks:** an idle soldier within a few cells of a barracks slowly regains HP during a wave, so pulling a worn soldier back is a choice. v4 only recovers soldiers at a wave's end.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
@@ -293,13 +299,15 @@ Not built in the prototypes, but decisions should leave room for it.
 
 ### Details and art
 
-- Clicking any unit or enemy shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
+- Clicking anything, any unit, enemy or building, shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
+- **Connection lost:** when the subject of an open portrait dies, the portrait shows its death (an explosion, a blood splatter), then static and a "connection lost" message.
 - **Game log:** a running log of text alerts, such as a soldier dying off screen. v4 shows a soldier's death only where it falls.
-- **Building controls on the command card:** a tower's targeting toggle, a barracks' Train and a repair yard's Assign moving from the details to the command card, as the soldier's commands are in v4. To revisit after the v4 playtest.
+- **Building controls on the command card:** a tower's targeting toggle, a barracks' Train and a repair yard's Assign moving from the details to the command card, as the soldier's commands are in v4. To revisit after the v4 playtest. With it, hotkeys get a tidy-up: B opens the build menu, and the card is contextual to what is selected, as the soldier's commands are.
 - **Graphs:** graphs of the run, such as gold gained and lost and kills, including live graphs during a wave.
 - **Soldiers drawn as a group:** a soldier drawn as several figures that thin out as it loses HP, so 50 soldiers look like an army (Total War, Bad North). It is more than art: losing a figure looks like a death, though only a dead soldier drops a body, it hints at a squad that can't be split, and it multiplies sprites on screen. v4 draws one figure per soldier.
 - **Dynamic portraits:** every unit and building has a portrait in its details that reacts, like Doom's face: angry while firing, resting when idle. A building's portrait changes with what it is doing and its HP.
 - **Blood:** a burst of blood when an enemy dies, and cells grow bloodier, through several levels, as more enemies die on them.
+- **A horde like liquid:** the swarm should read as a flow rather than one mass: pouring over in an overflow, spilling into pockets, smooth to watch. Some of this may already be there and only need the final art, with animations for enemies pressing together, tumbling and fighting.
 - A landing animation for bodies, with the final art.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
 
@@ -311,10 +319,12 @@ Not built in the prototypes, but decisions should leave room for it.
   - A crashed ship of the player's side, with tight corridors and malfunctioning or burning electronics.
   - An alien hive, slimy, where slime cells slow walking right down.
   - Open to more.
+- **Destructible rock:** blasts break rock, opening new routes for the enemies.
 
 ### Runs
 
 - Power-ups, including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
+- **Overworld map:** a map for choosing levels, perhaps with purchases between them and, later, saving. Open: how detailed it is, whether it holds a management layer, and whether what it holds lasts between runs or only within one.
 - Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters. Further on, waves that mutate into a random mix of enemy types.
 - Wildcards: rule changes for the rest of a run, such as towers firing twice as fast, buildings with more HP or lower enemy counts, and rarer, wilder ones, such as every enemy having a small chance to blow up like a bloater. Perhaps trade-offs: more enemies for a strong power-up. In the story, the drill could strike something extraordinary that grants one at random. How the player gets one is left to a later prototype. They sit close to power-ups, so they may end up as one system.
