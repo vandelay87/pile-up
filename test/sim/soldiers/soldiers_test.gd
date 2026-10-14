@@ -80,7 +80,7 @@ func test_killer_ids_from_buildings_and_soldiers_never_collide() -> void:
 	assert_int(killers.size()).is_equal(4)
 
 
-func test_a_soldier_displaced_a_little_walks_back_to_its_spot_at_its_speed() -> void:
+func test_a_soldier_displaced_a_little_walks_all_the_way_back_to_its_spot_at_its_speed() -> void:
 	_add_one_and_tick()
 	_sim.soldiers.positions[0] = Vector2(4.0, 2.5)
 
@@ -89,7 +89,9 @@ func test_a_soldier_displaced_a_little_walks_back_to_its_spot_at_its_speed() -> 
 
 	for tick in 30:
 		_sim.tick()
-	assert_float(_sim.soldiers.positions[0].distance_to(Vector2(3.5, 2.5))).is_less_equal(0.1)
+	assert_vector(_sim.soldiers.positions[0]).is_equal_approx(
+		Vector2(3.5, 2.5), Vector2(1e-5, 1e-5)
+	)
 
 
 func test_a_soldier_nudged_within_a_tenth_of_a_cell_stays_put() -> void:

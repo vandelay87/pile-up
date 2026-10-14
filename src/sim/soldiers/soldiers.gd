@@ -10,8 +10,8 @@ const SPEED := 2.5
 ## A new soldier's targeting: the index of [constant Enemies.BLOATERS_FIRST] in
 ## [constant Enemies.TARGETINGS].
 const DEFAULT_TARGETING := 0
-## How far a standing soldier can be pushed off its spot before it walks back, and how far it
-## walks back on its own; further than that it will plan a path back (#190).
+## How far a standing soldier can be pushed off its spot before it walks all the way back, and
+## how far it walks back on its own; further than that it will plan a path back (#190).
 const SPOT_SLACK := 0.1
 const WALK_BACK_REACH := 1.0
 const _NO_CELL := Vector2i(-1, -1)
@@ -53,6 +53,8 @@ var _index_by_id := {}
 # The soldier id holding each cell as its spot, or NONE.
 var _spot_holders := PackedInt32Array()
 var _added := PackedInt32Array()
+# 1 for a standing soldier walking back to its spot, until it gets there.
+var _walking_back := PackedByteArray()
 
 
 func _init(
@@ -100,6 +102,7 @@ func add(cell: Vector2i) -> int:
 	targets[count] = Enemies.NONE
 	kills[count] = 0
 	blast_killed[count] = 0
+	_walking_back[count] = 0
 	_spot_holders[spot] = id
 	_index_by_id[id] = count
 	_added.append(id)
@@ -130,8 +133,14 @@ func step() -> void:
 		if orders[i] == NONE:
 			var home := MapData.centre_of(_map.cell_of(spots[i]))
 			var off := positions[i].distance_to(home)
-			if off > SPOT_SLACK and off <= WALK_BACK_REACH:
+			if off > WALK_BACK_REACH:
+				_walking_back[i] = 0
+			elif off > SPOT_SLACK:
+				_walking_back[i] = 1
+			if _walking_back[i] == 1:
 				positions[i] = positions[i].move_toward(home, step_length)
+				if positions[i] == home:
+					_walking_back[i] = 0
 		positions[i] = _solids.resolve(positions[i], radius)
 
 
@@ -221,3 +230,4 @@ func _grow() -> void:
 	targets.resize(capacity)
 	kills.resize(capacity)
 	blast_killed.resize(capacity)
+	_walking_back.resize(capacity)
