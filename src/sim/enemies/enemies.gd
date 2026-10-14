@@ -59,7 +59,7 @@ var _bucket_starts := PackedInt32Array()
 var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
 # The personal-space push from the last _neighbour_pushes.
-var _space_push := Vector2.ZERO
+var _last_space_push := Vector2.ZERO
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
 var _last_values := PackedFloat64Array()
@@ -320,7 +320,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 			continue
 		if spaces:
 			var clear_step := steps[kinds[i] * _PILE_LEVELS]
-			separation += _space_push.limit_length(clear_step)
+			separation += _last_space_push.limit_length(clear_step)
 		var turn := heading_offsets[i]
 		if wander > 0.0:
 			turn += wander * sin(wander_phases[i] + wander_angle)
@@ -498,7 +498,7 @@ func _distance_to_cell(pos: Vector2, index: int) -> float:
 
 
 # Separation and personal space from one scan of the buckets around enemy i: returns the
-# separation push, and leaves the personal-space push in _space_push when [param spaces].
+# separation push, and leaves the personal-space push in _last_space_push when [param spaces].
 #
 # Separation pushes from overlapping peers are averaged: summed, they overcorrect in a packed
 # crowd and the enemy steps back and forth every tick. A walker takes the doubled push of each
@@ -518,10 +518,11 @@ func _neighbour_pushes(
 	space_radius: float,
 	space_push: float
 ) -> Vector2:
+	_last_space_push = Vector2.ZERO
 	var spacing := 2.0 * radius
 	var spacing_squared := spacing * spacing
 	var space_squared := space_radius * space_radius
-	var reach := maxi(ceili(space_radius), 1) if spaces else 1
+	var reach := ceili(space_radius) if spaces else 1
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
@@ -554,7 +555,7 @@ func _neighbour_pushes(
 						checked += 1
 						separates = (
 							distance_squared < spacing_squared
-							and not (attacking and not other_attacking)
+							and (other_attacking or not attacking)
 						)
 				var keeps_space := (
 					spaces and not other_attacking and distance_squared < space_squared
@@ -572,7 +573,7 @@ func _neighbour_pushes(
 						peers += 1
 				if keeps_space:
 					from_space += direction * (1.0 - distance / space_radius) * space_push
-	_space_push = from_space
+	_last_space_push = from_space
 	return _separation_total(from_peers, peers, from_attackers)
 
 
