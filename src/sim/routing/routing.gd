@@ -22,6 +22,7 @@ const _NO_OFFSET := 8
 const _REGION := 1
 const _INVALID := 2
 const _RESHAPED := 4
+const _UNBUDGETED := -1
 
 static var _dxs := PackedInt32Array()
 static var _dys := PackedInt32Array()
@@ -66,7 +67,7 @@ class _Repair:
 	var field := Field.new()
 	var heap := _Heap.new(64)
 	var changed := PackedInt32Array()
-	var touched := false
+	var reseeded := false
 
 	func _init(live: Field) -> void:
 		field.values = live.values.duplicate()
@@ -198,7 +199,7 @@ func _swap_in_repairs() -> void:
 		var field := repair.field
 		for cell in repair.changed:
 			field.directions[cell] = _directions[field.parent_offsets[cell]]
-	if _repairs[Route.SENSIBLE].touched:
+	if _repairs[Route.SENSIBLE].reseeded:
 		_keep_sensible_before()
 	_fields = [_repairs[Route.SENSIBLE].field, _repairs[Route.DIRECT].field]
 	_repairs.clear()
@@ -329,7 +330,7 @@ func _repair(route: Route, cells: Array[Vector2i]) -> void:
 	if _repairs.is_empty():
 		_repairs = [_Repair.new(_fields[Route.SENSIBLE]), _Repair.new(_fields[Route.DIRECT])]
 	var repair := _repairs[route]
-	repair.touched = true
+	repair.reseeded = true
 	var field := repair.field
 	var invalid := _invalidate(field, factors, region)
 	repair.changed.append_array(invalid)
@@ -530,14 +531,14 @@ static func _build_field(
 		var base_index := map.index_of(cell)
 		field.values[base_index] = 0.0
 		heap.push(0.0, base_index)
-	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array(), -1)
+	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array(), _UNBUDGETED)
 
 	for cell in count:
 		field.directions[cell] = _directions[field.parent_offsets[cell]]
 	return field
 
 
-# Settles up to [param budget] cells from [param heap], or all of them for a budget of -1, and
+# Settles up to [param budget] cells from [param heap], or all of them when _UNBUDGETED, and
 # returns how many it settled.
 static func _settle(
 	width: int,

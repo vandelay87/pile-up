@@ -51,13 +51,13 @@ func _init() -> void:
 		_levels_before = _sim.piles.levels.duplicate()
 		_sim.tick()
 		var routing := _sim.routing
-		var update_msec := routing.last_update_msec + routing.last_step_msec
+		var field_msec := routing.last_update_msec + routing.last_step_msec
 		if _tower_built:
-			_tower_msec.append(update_msec)
+			_tower_msec.append(field_msec)
 		elif wall_update:
-			_wall_msec.append(update_msec)
+			_wall_msec.append(field_msec)
 		elif _landed:
-			_landing_msec.append(update_msec)
+			_landing_msec.append(field_msec)
 		elif routing.last_step_msec > 0.0:
 			_settle_msec.append(routing.last_step_msec)
 
