@@ -58,6 +58,8 @@ var _index_by_id := {}
 var _bucket_starts := PackedInt32Array()
 var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
+# The personal-space push from the last _neighbour_pushes.
+var _space_push := Vector2.ZERO
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
 var _last_values := PackedFloat64Array()
@@ -309,13 +311,16 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		if hp[i] <= 0.0 or tumbling[i] == 1:
 			_moved[i] = pos
 			continue
-		var separation := _separation(i, radius, push, cap).limit_length(radius)
-		if structure_targets[i] != NONE:
+		var attacking := structure_targets[i] != NONE
+		var spaces := spreads and not attacking
+		var separation := _neighbour_pushes(i, radius, push, cap, spaces, space_radius, space_push)
+		separation = separation.limit_length(radius)
+		if attacking:
 			_moved[i] = pos + separation
 			continue
-		if spreads:
+		if spaces:
 			var clear_step := steps[kinds[i] * _PILE_LEVELS]
-			separation += _personal_space(i, space_radius, space_push).limit_length(clear_step)
+			separation += _space_push.limit_length(clear_step)
 		var turn := heading_offsets[i]
 		if wander > 0.0:
 			turn += wander * sin(wander_phases[i] + wander_angle)
@@ -492,74 +497,87 @@ func _distance_to_cell(pos: Vector2, index: int) -> float:
 	return pos.distance_to(pos.clamp(corner, corner + Vector2.ONE))
 
 
-# Pushes from overlapping peers are averaged: summed, they overcorrect in a packed crowd and
-# the enemy steps back and forth every tick. A walker takes the doubled push of each attacker
-# in full, so the crowd cannot squeeze attackers off their targets.
-func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
+# Separation and personal space from one scan of the buckets around enemy i: returns the
+# separation push, and leaves the personal-space push in _space_push when [param spaces].
+#
+# Separation pushes from overlapping peers are averaged: summed, they overcorrect in a packed
+# crowd and the enemy steps back and forth every tick. A walker takes the doubled push of each
+# attacker in full, so the crowd cannot squeeze attackers off their targets. Separation reads
+# the 3×3 buckets, up to the neighbour cap.
+#
+# Personal space is a soft push that keeps neighbours a personal-space radius apart, wider than
+# the collision spacing, so a column fans out across a corridor rather than single-filing. It
+# reads every neighbour within ceil(space_radius) buckets, past the cap and the 3×3, but not
+# attackers.
+func _neighbour_pushes(
+	i: int,
+	radius: float,
+	push: float,
+	cap: int,
+	spaces: bool,
+	space_radius: float,
+	space_push: float
+) -> Vector2:
 	var spacing := 2.0 * radius
 	var spacing_squared := spacing * spacing
+	var space_squared := space_radius * space_radius
+	var reach := maxi(ceili(space_radius), 1) if spaces else 1
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
 	var attacking := structure_targets[i] != NONE
+	var separating := true
 	var checked := 0
 	var from_peers := Vector2.ZERO
 	var peers := 0
 	var from_attackers := Vector2.ZERO
-	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
-		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, width)):
+	var from_space := Vector2.ZERO
+	for y in range(maxi(cell.y - reach, 0), mini(cell.y + reach + 1, _map.height)):
+		var near_row := absi(y - cell.y) <= 1
+		for x in range(maxi(cell.x - reach, 0), mini(cell.x + reach + 1, width)):
+			var near := near_row and absi(x - cell.x) <= 1
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
 				if j == i or tumbling[j] == 1:
 					continue
-				if cap > 0 and checked == cap:
-					return _separation_total(from_peers, peers, from_attackers)
-				checked += 1
 				var away := pos - positions[j]
-				if away.length_squared() >= spacing_squared:
-					continue
+				var distance_squared := away.length_squared()
 				var other_attacking := structure_targets[j] != NONE
-				if attacking and not other_attacking:
+				var separates := false
+				if near and separating:
+					if cap > 0 and checked == cap:
+						separating = false
+						if not spaces:
+							return _separation_total(from_peers, peers, from_attackers)
+					else:
+						checked += 1
+						separates = (
+							distance_squared < spacing_squared
+							and not (attacking and not other_attacking)
+						)
+				var keeps_space := (
+					spaces and not other_attacking and distance_squared < space_squared
+				)
+				if not separates and not keeps_space:
 					continue
 				var distance := away.length()
 				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
-				var shove := direction * (spacing - distance) * push
-				if other_attacking and not attacking:
-					from_attackers += shove * 2.0
-				else:
-					from_peers += shove
-					peers += 1
+				if separates:
+					var shove := direction * (spacing - distance) * push
+					if other_attacking and not attacking:
+						from_attackers += shove * 2.0
+					else:
+						from_peers += shove
+						peers += 1
+				if keeps_space:
+					from_space += direction * (1.0 - distance / space_radius) * space_push
+	_space_push = from_space
 	return _separation_total(from_peers, peers, from_attackers)
 
 
 func _separation_total(from_peers: Vector2, peers: int, from_attackers: Vector2) -> Vector2:
 	return from_peers / maxi(peers, 1) + from_attackers
-
-
-# A soft push that keeps neighbours a personal-space radius apart, wider than the
-# collision spacing, so a column fans out across a corridor rather than single-filing.
-func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
-	var reach := ceili(space_radius)
-	var radius_squared := space_radius * space_radius
-	var width := _map.width
-	var pos := positions[i]
-	var cell := Vector2i(pos.floor())
-	var total := Vector2.ZERO
-	for y in range(maxi(cell.y - reach, 0), mini(cell.y + reach + 1, _map.height)):
-		for x in range(maxi(cell.x - reach, 0), mini(cell.x + reach + 1, width)):
-			var bucket := y * width + x
-			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
-				var j := _bucket_enemies[slot]
-				if j == i or structure_targets[j] != NONE or tumbling[j] == 1:
-					continue
-				var away := pos - positions[j]
-				if away.length_squared() >= radius_squared:
-					continue
-				var distance := away.length()
-				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
-				total += direction * (1.0 - distance / space_radius) * space_push
-	return total
 
 
 func _resolve_collision(pos: Vector2, radius: float) -> Vector2:
