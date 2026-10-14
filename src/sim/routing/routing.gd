@@ -4,6 +4,9 @@ extends RefCounted
 enum Route { SENSIBLE, DIRECT }
 
 const UNREACHABLE := INF
+## The most field cells a repair settles in one step, across both fields: about 1.5 ms on the M5
+## release build. A cell count rather than a time, so runs replay exactly.
+const REPAIR_SETTLE_CELLS := 900
 const NO_PARENT := Vector2i(-1, -1)
 const _OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0),
@@ -27,6 +30,7 @@ static var _directions := PackedVector2Array()
 
 var last_rebuild_msec: float
 var last_update_msec: float
+var last_step_msec: float
 
 var _settings: Settings
 var _map: MapData
@@ -39,6 +43,7 @@ var _solid := PackedByteArray()
 var _builds: Array[_FieldBuild] = []
 var _build_tasks := PackedInt64Array()
 var _builds_stale := false
+var _repairs: Array[_Repair] = []
 var _blend_cells := PackedInt32Array([0, 0, 0, 0])
 var _blend_weights := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var _marks := PackedByteArray()
@@ -52,6 +57,22 @@ class Field:
 	var parents := PackedInt32Array()
 	var parent_offsets := PackedByteArray()
 	var directions := PackedVector2Array()
+
+
+# A copy of one field under repair, swapped in once its heap is empty.
+class _Repair:
+	extends RefCounted
+
+	var field := Field.new()
+	var heap := _Heap.new(64)
+	var changed := PackedInt32Array()
+	var touched := false
+
+	func _init(live: Field) -> void:
+		field.values = live.values.duplicate()
+		field.parents = live.parents.duplicate()
+		field.parent_offsets = live.parent_offsets.duplicate()
+		field.directions = live.directions.duplicate()
 
 
 class _FieldBuild:
@@ -109,7 +130,8 @@ func rebuild() -> bool:
 	if is_rebuilding():
 		_builds_stale = true
 		return false
-	_keep_sensible_before(false)
+	_keep_sensible_before()
+	_repairs.clear()
 	_rebuild_now()
 	return true
 
@@ -125,25 +147,68 @@ func _rebuild_now() -> void:
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
 
 
-func update(cells: Array[Vector2i]) -> bool:
+# Feeds [param cells] into the repair in flight, starting one if needed. The fields read stay
+# as they are until [method step] swaps the repair in.
+func update(cells: Array[Vector2i]) -> void:
 	if is_rebuilding():
 		_builds_stale = true
-		return false
+		return
 	var started := Time.get_ticks_usec()
 	var reshaped := _apply_solid(cells)
-	var changed := false
 	for route: Route in Route.values():
-		changed = _repair(route, cells) or changed
+		_repair(route, cells)
 	for cell in reshaped:
 		_marks[cell] &= ~_RESHAPED
 	last_update_msec = (Time.get_ticks_usec() - started) / 1000.0
-	return changed
+
+
+# Settles at most [param budget] cells of the repair in flight, across both fields, and swaps
+# both in together once it is finished. Returns whether they swapped in.
+func step(budget := REPAIR_SETTLE_CELLS) -> bool:
+	if _repairs.is_empty():
+		last_step_msec = 0.0
+		return false
+	var started := Time.get_ticks_usec()
+	var finished := true
+	for route: Route in Route.values():
+		var repair := _repairs[route]
+		budget -= _settle(
+			_map.width,
+			_map.height,
+			_factors[route],
+			_solid,
+			repair.field,
+			repair.heap,
+			repair.changed,
+			budget
+		)
+		finished = finished and repair.heap.is_empty()
+	if finished:
+		_swap_in_repairs()
+	last_step_msec = (Time.get_ticks_usec() - started) / 1000.0
+	return finished
+
+
+func is_repairing() -> bool:
+	return not _repairs.is_empty()
+
+
+func _swap_in_repairs() -> void:
+	for repair in _repairs:
+		var field := repair.field
+		for cell in repair.changed:
+			field.directions[cell] = _directions[field.parent_offsets[cell]]
+	if _repairs[Route.SENSIBLE].touched:
+		_keep_sensible_before()
+	_fields = [_repairs[Route.SENSIBLE].field, _repairs[Route.DIRECT].field]
+	_repairs.clear()
 
 
 func start_rebuild() -> void:
 	if is_rebuilding():
 		_builds_stale = true
 		return
+	_repairs.clear()
 	_start_builds()
 
 
@@ -158,7 +223,7 @@ func finish_rebuild() -> bool:
 	if _builds_stale:
 		_start_builds()
 		return false
-	_keep_sensible_before(false)
+	_keep_sensible_before()
 	_fields = [_builds[Route.SENSIBLE].field, _builds[Route.DIRECT].field]
 	_factors = [_builds[Route.SENSIBLE].factors, _builds[Route.DIRECT].factors]
 	_solid = _builds[Route.SENSIBLE].solid
@@ -174,17 +239,10 @@ func take_sensible_before() -> Field:
 	return before
 
 
-# Keeps the sensible field about to change; a field repaired in place is copied first.
-func _keep_sensible_before(copy: bool) -> void:
-	if _sensible_before != null:
-		return
-	var field := _fields[Route.SENSIBLE]
-	if copy:
-		var kept := Field.new()
-		kept.values = field.values.duplicate()
-		kept.directions = field.directions.duplicate()
-		field = kept
-	_sensible_before = field
+# Keeps the sensible field about to be replaced.
+func _keep_sensible_before() -> void:
+	if _sensible_before == null:
+		_sensible_before = _fields[Route.SENSIBLE]
 
 
 func value(route: Route, cell: Vector2i) -> float:
@@ -262,29 +320,27 @@ func _wait_for_builds() -> void:
 	_build_tasks.clear()
 
 
-func _repair(route: Route, cells: Array[Vector2i]) -> bool:
-	var field := _fields[route]
+# Invalidates and reseeds the repair copy of [param route]'s field; [method step] settles it.
+func _repair(route: Route, cells: Array[Vector2i]) -> void:
 	var factors := _factors[route]
 	var region := _apply_factors(route, factors, cells)
 	if region.is_empty():
-		return false
-	if route == Route.SENSIBLE:
-		_keep_sensible_before(true)
+		return
+	if _repairs.is_empty():
+		_repairs = [_Repair.new(_fields[Route.SENSIBLE]), _Repair.new(_fields[Route.DIRECT])]
+	var repair := _repairs[route]
+	repair.touched = true
+	var field := repair.field
 	var invalid := _invalidate(field, factors, region)
-	var changed := invalid.duplicate()
-	var heap := _Heap.new(64)
+	repair.changed.append_array(invalid)
 	for seeds: PackedInt32Array in [region, invalid]:
 		for cell in seeds:
-			if _reseed(field, factors, cell, heap):
-				changed.append(cell)
-	_settle(_map.width, _map.height, factors, _solid, field, heap, changed)
-	for cell in changed:
-		field.directions[cell] = _directions[field.parent_offsets[cell]]
+			if _reseed(field, factors, cell, repair.heap):
+				repair.changed.append(cell)
 	for cell in region:
 		_marks[cell] = 0
 	for cell in invalid:
 		_marks[cell] = 0
-	return true
 
 
 func _apply_factors(
@@ -474,13 +530,15 @@ static func _build_field(
 		var base_index := map.index_of(cell)
 		field.values[base_index] = 0.0
 		heap.push(0.0, base_index)
-	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array())
+	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array(), -1)
 
 	for cell in count:
 		field.directions[cell] = _directions[field.parent_offsets[cell]]
 	return field
 
 
+# Settles up to [param budget] cells from [param heap], or all of them for a budget of -1, and
+# returns how many it settled.
 static func _settle(
 	width: int,
 	height: int,
@@ -488,19 +546,23 @@ static func _settle(
 	solid: PackedByteArray,
 	field: Field,
 	heap: _Heap,
-	changed: PackedInt32Array
-) -> void:
+	changed: PackedInt32Array,
+	budget: int,
+) -> int:
 	var values := field.values
 	var parents := field.parents
 	var parent_offsets := field.parent_offsets
 	var dxs := _dxs
 	var dys := _dys
 	var steps := _steps
-	while not heap.is_empty():
+	var settled := 0
+	while settled != budget and not heap.is_empty():
 		var current := heap.peek_value()
 		var cell := heap.pop()
-		if current > values[cell]:
+		# A repair joined in flight can invalidate a cell still queued at its old value.
+		if current != values[cell]:
 			continue
+		settled += 1
 		var x := cell % width
 		var y := cell / width
 		var entry_cost := factors[cell]
@@ -524,6 +586,7 @@ static func _settle(
 			parents[neighbour] = cell
 			parent_offsets[neighbour] = k
 			changed.append(neighbour)
+	return settled
 
 
 static func _set_parent(field: Field, cell: int, k: int, width: int) -> void:

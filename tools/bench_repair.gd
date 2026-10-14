@@ -1,7 +1,8 @@
 # Times the incremental field updates headless under a heavy wave: a dense crowd near the base,
 # with a body landing in it every tick, four times the v1 kill rate bench_sim uses, and a tower
 # built just outside the crowd every TOWER_INTERVAL ticks. Walls form in the crowd and its attacks
-# change their HP buckets and break them.
+# change their HP buckets and break them. A tick's time is its update plus its share of settling
+# the repair; ticks that only settle a repair in flight are timed on their own row.
 # Run with: godot --headless --script res://tools/bench_repair.gd
 extends SceneTree
 
@@ -22,6 +23,7 @@ var _levels_before := PackedByteArray()
 var _landing_msec := PackedFloat64Array()
 var _tower_msec := PackedFloat64Array()
 var _wall_msec := PackedFloat64Array()
+var _settle_msec := PackedFloat64Array()
 
 
 func _init() -> void:
@@ -48,12 +50,16 @@ func _init() -> void:
 		_wall_hit = false
 		_levels_before = _sim.piles.levels.duplicate()
 		_sim.tick()
+		var routing := _sim.routing
+		var update_msec := routing.last_update_msec + routing.last_step_msec
 		if _tower_built:
-			_tower_msec.append(_sim.routing.last_update_msec)
+			_tower_msec.append(update_msec)
 		elif wall_update:
-			_wall_msec.append(_sim.routing.last_update_msec)
+			_wall_msec.append(update_msec)
 		elif _landed:
-			_landing_msec.append(_sim.routing.last_update_msec)
+			_landing_msec.append(update_msec)
+		elif routing.last_step_msec > 0.0:
+			_settle_msec.append(routing.last_step_msec)
 
 	print(
 		(
@@ -68,6 +74,7 @@ func _init() -> void:
 	print(_row("Bodies landed", _landing_msec))
 	print(_row("Tower built", _tower_msec))
 	print(_row("Wall hit or broken", _wall_msec))
+	print(_row("Settling only", _settle_msec))
 	quit()
 
 

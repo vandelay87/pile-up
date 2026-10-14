@@ -17,3 +17,9 @@ static func routings_match(routing: Routing, other: Routing, map: MapData) -> bo
 				if routing.parent(route, cell) != other.parent(route, cell):
 					return false
 	return true
+
+
+## Steps [param routing] until its repair in flight, if any, has swapped in.
+static func settle(routing: Routing) -> void:
+	while routing.is_repairing():
+		routing.step()

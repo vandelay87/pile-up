@@ -227,11 +227,12 @@ func test_a_change_during_a_rebuild_is_in_the_fields_it_swaps_in() -> void:
 	routing.start_rebuild()
 
 	var tower := systems.build_tower(Vector2i(2, 0)).footprint
-	var updated_now := routing.update(tower)
+	routing.update(tower)
+	var repairing := routing.is_repairing()
 	var swapped_stale := routing.finish_rebuild()
 	var swapped_restart := routing.finish_rebuild()
 
-	assert_bool(updated_now).is_false()
+	assert_bool(repairing).is_false()
 	assert_bool(swapped_stale).is_false()
 	assert_bool(swapped_restart).is_true()
 	assert_bool(routing.is_rebuilding()).is_false()
