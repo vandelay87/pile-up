@@ -2,8 +2,8 @@
 # with a body landing in it every tick, four times the v1 kill rate bench_sim uses, and a tower
 # built just outside the crowd every TOWER_INTERVAL ticks. Walls form in the crowd and its attacks
 # change their HP buckets and break them. A tick's time is its update plus its share of settling
-# the repair; ticks that only settle a repair in flight are timed on their own row.
-# Run with: godot --headless --script res://tools/bench_repair.gd
+# the pending fields.
+# Run with: godot --headless --script res://tools/bench_settle.gd
 extends SceneTree
 
 const RUN_SEED := 1
@@ -23,7 +23,6 @@ var _levels_before := PackedByteArray()
 var _landing_msec := PackedFloat64Array()
 var _tower_msec := PackedFloat64Array()
 var _wall_msec := PackedFloat64Array()
-var _settle_msec := PackedFloat64Array()
 
 
 func _init() -> void:
@@ -58,12 +57,10 @@ func _init() -> void:
 			_wall_msec.append(field_msec)
 		elif _landed:
 			_landing_msec.append(field_msec)
-		elif routing.last_step_msec > 0.0:
-			_settle_msec.append(routing.last_step_msec)
 
 	print(
 		(
-			"Field repair under a heavy wave: %d enemies, a body every tick for %d ticks"
+			"Field settling under a heavy wave: %d enemies, a body every tick for %d ticks"
 			% [ENEMIES, MEASURED_TICKS]
 		)
 	)
@@ -74,7 +71,6 @@ func _init() -> void:
 	print(_row("Bodies landed", _landing_msec))
 	print(_row("Tower built", _tower_msec))
 	print(_row("Wall hit or broken", _wall_msec))
-	print(_row("Settling only", _settle_msec))
 	quit()
 
 
