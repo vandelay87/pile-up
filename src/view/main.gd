@@ -20,6 +20,7 @@ var _last_saved_json := ""
 @onready var _camera: MapCamera = $Camera
 @onready var _world: Node2D = $World
 @onready var _enemy_renderer: EnemyRenderer = $EnemyRenderer
+@onready var _soldier_renderer: SoldierRenderer = $SoldierRenderer
 @onready var _flow_overlay: FlowOverlay = $FlowOverlay
 @onready var _debug_panel: DebugPanel = $DebugPanel
 @onready var _stats_readout: StatsReadout = $StatsReadout
@@ -97,6 +98,7 @@ func _start_run(simulation: Simulation) -> void:
 	_simulation.fields_changed.connect(_flow_overlay.queue_redraw)
 	_pile_layer.setup(_simulation)
 	_enemy_renderer.setup(_simulation, _world)
+	_soldier_renderer.setup(_simulation, _world)
 	_flow_overlay.setup(_simulation.routing, _map)
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)

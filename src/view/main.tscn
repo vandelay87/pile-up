@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://src/view/combo_view.gd" id="18"]
 [ext_resource type="Script" path="res://src/view/overflow_view.gd" id="19"]
 [ext_resource type="Script" path="res://src/view/blast_rings.gd" id="20"]
+[ext_resource type="Script" path="res://src/view/soldier_renderer.gd" id="21"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -80,6 +81,9 @@ script = ExtResource("9")
 
 [node name="EnemyRenderer" type="Node" parent="."]
 script = ExtResource("3")
+
+[node name="SoldierRenderer" type="Node" parent="."]
+script = ExtResource("21")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 script = ExtResource("7")

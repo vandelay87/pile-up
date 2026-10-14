@@ -245,7 +245,7 @@ func step() -> void:
 	_move_tumblers()
 
 
-## Step 7: the body of each enemy in [param deaths] that died mid-tumble, or within the
+## Step 9: the body of each enemy in [param deaths] that died mid-tumble, or within the
 ## fall-back window of landing, lands where its tumble started instead, back the way it came,
 ## so the overflow's dead don't build its barrier out ahead of it.
 func fall_back(deaths: Deaths) -> void:

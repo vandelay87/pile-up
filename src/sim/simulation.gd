@@ -14,6 +14,7 @@ signal building_placed(id: int)
 signal building_destroyed(id: int)
 signal power_changed
 signal shots_fired(shots: Array[Buildings.Shot])
+signal soldiers_added(ids: PackedInt32Array)
 signal blasts(went_off: Array[Blasts.Blast])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
@@ -26,7 +27,9 @@ enum Step {
 	SPAWN_ENEMIES,
 	REBUILD_SPATIAL_HASH,
 	MOVE_ENEMIES,
+	MOVE_UNITS,
 	BUILDINGS_ACT,
+	UNITS_FIRE,
 	REPAIR_BUILDINGS,
 	REMOVE_DEAD,
 	CHECK_WAVE_END,
@@ -46,6 +49,7 @@ const POWER_AREA_SETTINGS := [
 
 var settings: Settings
 var map: MapData
+var ids := Ids.new()
 var occupancy: Occupancy
 var piles: Piles
 var routing: Routing
@@ -58,6 +62,7 @@ var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
+var soldiers: Soldiers
 var bloater_blasts: Blasts
 var step_observer := Callable()
 var tick_count := 0
@@ -106,7 +111,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	run_state = RunState.new(settings)
 	combos = Combos.new(settings)
 	power_grid = PowerGrid.new(settings, map)
-	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
+	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid, ids)
 	repair_yards = RepairYards.new(settings, buildings)
 	structures = Structures.new(map, occupancy, piles, buildings, run_state)
 	routing = Routing.new(settings, map, occupancy, piles, structures)
@@ -128,6 +133,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
 	)
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
+	soldiers = Soldiers.new(settings, map, occupancy, piles, ids)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -166,7 +172,7 @@ func jump_to_wave(wave: int) -> void:
 	_start_wave(wave, Commands.JumpToWave.LABEL)
 
 
-## Kills the first [param count] living enemies on the field. They are removed at step 7 like
+## Kills the first [param count] living enemies on the field. They are removed at step 9 like
 ## any kill: they count, pay and leave bodies.
 func kill_enemies(count: int) -> void:
 	if count < 1:
@@ -283,7 +289,9 @@ func tick() -> void:
 	_spawn_enemies()
 	_rebuild_spatial_hash()
 	_move_enemies()
+	_move_units()
 	_buildings_act()
+	_units_fire()
 	_repair_buildings()
 	_remove_dead()
 	_check_wave_end()
@@ -314,6 +322,9 @@ func _emit_signals() -> void:
 		building_placed.emit(id)
 	for id in buildings.take_destroyed():
 		building_destroyed.emit(id)
+	var added := soldiers.take_added()
+	if not added.is_empty():
+		soldiers_added.emit(added)
 	if power_grid.take_changed():
 		power_changed.emit()
 	if not piles.changed.is_empty():
@@ -423,9 +434,18 @@ func _move_enemies() -> void:
 	overflow.step()
 
 
+func _move_units() -> void:
+	_observe(Step.MOVE_UNITS)
+	soldiers.step()
+
+
 func _buildings_act() -> void:
 	_observe(Step.BUILDINGS_ACT)
 	_shots = buildings.act(enemies)
+
+
+func _units_fire() -> void:
+	_observe(Step.UNITS_FIRE)
 
 
 func _repair_buildings() -> void:

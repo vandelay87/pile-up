@@ -1,7 +1,7 @@
 class_name Blasts
 extends RefCounted
 
-## Step 7: every bloater in the death list blows up where it died. Its blast kills each living
+## Step 9: every bloater in the death list blows up where it died. Its blast kills each living
 ## enemy within the blast radius, credited to the bloater's killer, and a bloater it kills
 ## blows up in turn, so chains resolve breadth-first. Once every kill is credited, each
 ## building with a cell centre in reach of a blast takes the blast damage once, as does the

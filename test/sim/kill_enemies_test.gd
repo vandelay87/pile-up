@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 # The debug "kill enemies" command: the first n enemies on the field die on the tick it is
-# drained, and are removed at step 7 like any kill. They die before moving, so they stand
+# drained, and are removed at step 9 like any kill. They die before moving, so they stand
 # still and attack nothing that tick.
 
 var _sim: Simulation

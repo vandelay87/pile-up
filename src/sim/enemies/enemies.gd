@@ -295,7 +295,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	_ticks += 1
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
-	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
+	# Only a debug kill at step 0 leaves an enemy dead before removal at step 9; it stands
 	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
 	var fuse_ticks := _settings.fuse_ticks
 	for i in count:

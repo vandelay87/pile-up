@@ -45,6 +45,7 @@ func _init() -> void:
 	_draw_repair_effect(image)
 	_draw_unpowered_icon(image)
 	_draw_enemy(image)
+	_draw_soldier(image)
 	_draw_tracer(image)
 	_draw_blast_ring(image)
 	var error := image.save_png(Atlas.PATH)
@@ -165,6 +166,23 @@ func _draw_enemy(image: Image) -> void:
 			if offset.length_squared() <= 1.0:
 				var shade := WHITE.darkened(0.2) if offset.y > 0.35 else WHITE
 				image.set_pixel(x, y, shade)
+
+
+# A round head over a narrower body with square shoulders, so a soldier reads apart from the
+# enemies' plain ovals.
+func _draw_soldier(image: Image) -> void:
+	var area := Atlas.SOLDIER_REGION
+	var head := Vector2(area.get_center().x, area.position.y + 5.0)
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var pixel := Vector2(x, y) + Vector2(0.5, 0.5)
+			var local := pixel - Vector2(area.position)
+			var on_head := pixel.distance_to(head) <= 4.5
+			var on_body := local.y >= 10.0 and absf(pixel.x - head.x) <= 5.5
+			if on_head:
+				image.set_pixel(x, y, WHITE)
+			elif on_body:
+				image.set_pixel(x, y, WHITE.darkened(0.2) if local.y >= 19.0 else WHITE)
 
 
 func _draw_tracer(image: Image) -> void:
