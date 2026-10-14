@@ -147,10 +147,12 @@ func _build_walls(cells: Array[Vector2i]) -> void:
 	_piles.queue_bodies(Deaths.bodies_at(bodies))
 	_piles.land()
 	_routing.update(_piles.take_field_changes())
+	_routing.step()
 
 
 func _tick(enemies: Enemies) -> void:
 	_routing.update(_piles.take_field_changes())
+	_routing.step()
 	enemies.rebuild_spatial_hash()
 	enemies.move()
 

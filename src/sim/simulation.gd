@@ -401,9 +401,10 @@ func _land_bodies_and_update_fields() -> void:
 	if not _changed_cells.is_empty():
 		var cells := _changed_cells
 		_changed_cells = []
-		if routing.update(cells):
-			_fields_changed = true
+		routing.update(cells)
 		overflow.update(cells)
+	if routing.step():
+		_fields_changed = true
 
 
 func _spawn_enemies() -> void:
