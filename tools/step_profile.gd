@@ -4,14 +4,14 @@ class_name StepProfile
 extends RefCounted
 
 ## The worst ticks, as a share of all ticks, that each step reports its mean inside.
-const WORST_TICKS := 0.01
+const WORST_TICK_SHARE := 0.01
 
 
 class Stats:
 	var mean_msec := 0.0
 	var p99_msec := 0.0
 	var max_msec := 0.0
-	## Of the tick's mean.
+	## The step's mean as a share of the tick's mean.
 	var share := 0.0
 	var worst_ticks_mean_msec := 0.0
 
@@ -23,26 +23,26 @@ class Table:
 
 
 var _tick_msec := PackedFloat64Array()
-## Each finished tick's step times, indexed by Simulation.Step.
+# Each finished tick's step times, indexed by Simulation.Step.
 var _step_msec: Array[PackedFloat64Array] = []
 var _mark_steps := PackedInt32Array()
 var _mark_usec := PackedInt64Array()
 
 
 ## Step [param step] started at [param usec].
-func mark(step: int, usec: int) -> void:
+func mark(step: Simulation.Step, usec: int) -> void:
 	_mark_steps.append(step)
 	_mark_usec.append(usec)
 
 
 ## Closes the marked tick, which took [param tick_msec] in all from its first mark.
 func finish_tick(tick_msec: float) -> void:
-	var last := _mark_steps.size() - 1
+	var last_mark := _mark_steps.size() - 1
 	var row := PackedFloat64Array()
 	row.resize(Simulation.Step.size())
-	for k in last:
-		row[_mark_steps[k]] = (_mark_usec[k + 1] - _mark_usec[k]) / 1000.0
-	row[_mark_steps[last]] = tick_msec - (_mark_usec[last] - _mark_usec[0]) / 1000.0
+	for m in last_mark:
+		row[_mark_steps[m]] = (_mark_usec[m + 1] - _mark_usec[m]) / 1000.0
+	row[_mark_steps[last_mark]] = tick_msec - (_mark_usec[last_mark] - _mark_usec[0]) / 1000.0
 	_step_msec.append(row)
 	_tick_msec.append(tick_msec)
 	_mark_steps.clear()
@@ -66,7 +66,7 @@ func _worst_ticks() -> PackedInt32Array:
 	var order := PackedInt32Array(range(_tick_msec.size()))
 	var by_cost := Array(order)
 	by_cost.sort_custom(func(a: int, b: int) -> bool: return _tick_msec[a] > _tick_msec[b])
-	return PackedInt32Array(by_cost.slice(0, maxi(1, ceili(_tick_msec.size() * WORST_TICKS))))
+	return PackedInt32Array(by_cost.slice(0, maxi(1, ceili(_tick_msec.size() * WORST_TICK_SHARE))))
 
 
 func _stats(samples: PackedFloat64Array, worst: PackedInt32Array, tick_mean: float) -> Stats:

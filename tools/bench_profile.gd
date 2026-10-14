@@ -3,10 +3,13 @@
 # Cases, chosen by a user arg:
 #   --case=dense-1000  1,000 dense enemies from BenchCrowd: tick p99 ≤ 12 ms, frame p99 ≤ 16.7 ms
 #   --case=dense-1390  the wave-20 crowd, dense: frame mean ≤ 16.7 ms
-#   --case=wave-20     a real wave 20 against BenchCrowd's towers and endless base: no tick over
-#                      16.7 ms, for up to 7,200 ticks or until the wave ends
-# Run in the release export, one tick a frame, with:
-# pile-up --fixed-fps 60 -- --case=dense-1000
+#   --case=wave-20     a real wave 20 against BenchCrowd's towers and endless base, jumped to once
+#                      warm-up ends: no tick over 16.7 ms, for up to 7,200 ticks or until the wave
+#                      ends
+# Run in the release export: in a copy of the project, set run/main_scene to this scene, drop
+# tools/* from the macOS preset's exclude_filter, export with --export-release, then run one tick
+# a frame with:
+# pile-up.app/Contents/MacOS/pile-up --fixed-fps 60 -- --case=dense-1000
 extends Node
 
 const MAIN_SCENE := preload("res://src/view/main.tscn")
@@ -53,15 +56,17 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_crowd = BenchCrowd.new(_sim, CROWD_SEED)
-	if _case == "wave-20":
-		_sim.jump_to_wave(WAVE)
-	else:
+	if _case != "wave-20":
 		_dense_count = int(_case.trim_prefix("dense-"))
 	_sim.step_observer = _on_step
 
 
 func _on_step(step: Simulation.Step) -> void:
 	if not _measuring:
+		return
+	if step == Simulation.Step.DRAIN_COMMANDS and _ticked:
+		push_error("bench_profile: two ticks in one frame; run with --fixed-fps 60 at speed 1")
+		get_tree().quit(1)
 		return
 	_ticked = true
 	_profile.mark(step, Time.get_ticks_usec())
@@ -89,7 +94,10 @@ func _process(_delta: float) -> void:
 	if _dense_count > 0:
 		_crowd.top_up(_dense_count)
 	_frame += 1
-	_measuring = _frame > WARMUP_FRAMES
+	if _frame == WARMUP_FRAMES:
+		_measuring = true
+		if _dense_count == 0:
+			_sim.jump_to_wave(WAVE)
 
 
 func _done() -> bool:
@@ -104,14 +112,16 @@ func _print_report() -> void:
 	print(
 		(
 			(
-				"Godot %s | %s | debug build: %s | window %s | vsync off | case %s"
-				+ " | %d ticks after %d warm-up frames"
+				"Godot %s | %s | debug build: %s | window %s | vsync off | %d physics ticks/s"
+				+ " | neighbour cap %d | case %s | %d ticks after %d warm-up frames"
 			)
 			% [
 				Engine.get_version_info().string,
 				OS.get_processor_name(),
 				OS.is_debug_build(),
 				DisplayServer.window_get_size(),
+				Engine.physics_ticks_per_second,
+				_sim.settings.neighbour_cap,
 				_case,
 				_ticks,
 				WARMUP_FRAMES,
@@ -131,6 +141,8 @@ func _print_report() -> void:
 	var names := PackedStringArray(Simulation.Step.keys())
 	for step in names.size():
 		print(_row(names[step].capitalize(), table.steps[step]))
+	print("")
+	print("The last step runs to the tick's end, so it includes emitting the tick's signals.")
 	print("")
 	print(_verdict(table))
 
