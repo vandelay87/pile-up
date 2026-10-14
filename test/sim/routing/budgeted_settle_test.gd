@@ -26,13 +26,13 @@ func before_test() -> void:
 func test_a_tower_built_mid_wave_leaves_the_old_fields_until_both_swap_in_together() -> void:
 	var sensible_before := _value(Routing.Route.SENSIBLE)
 	var direct_before := _value(Routing.Route.DIRECT)
-	var old_while_repairing: Array[bool] = []
+	var old_while_settling: Array[bool] = []
 
 	_sim.queue_command(Commands.Build.new(Buildings.TOWER, GAP))
 	_sim.tick()
 	var ticks := 1
-	while _sim.routing.is_repairing() and ticks < MAX_TICKS:
-		old_while_repairing.append(
+	while _sim.routing.is_settling() and ticks < MAX_TICKS:
+		old_while_settling.append(
 			(
 				_value(Routing.Route.SENSIBLE) == sensible_before
 				and _value(Routing.Route.DIRECT) == direct_before
@@ -43,7 +43,7 @@ func test_a_tower_built_mid_wave_leaves_the_old_fields_until_both_swap_in_togeth
 
 	assert_bool(_sim.occupancy.is_occupied(GAP)).is_true()
 	assert_int(ticks).is_greater(1)
-	assert_array(old_while_repairing).not_contains([false])
+	assert_array(old_while_settling).not_contains([false])
 	assert_array(_reports).contains_exactly([_sim.tick_count])
 	assert_float(_value(Routing.Route.SENSIBLE)).is_greater(sensible_before)
 	assert_float(_value(Routing.Route.DIRECT)).is_greater(direct_before)
@@ -56,7 +56,7 @@ func test_a_small_change_swaps_in_on_the_tick_it_is_made() -> void:
 	_sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(5, 17)))
 	_sim.tick()
 
-	assert_bool(_sim.routing.is_repairing()).is_false()
+	assert_bool(_sim.routing.is_settling()).is_false()
 	assert_array(_reports).contains_exactly([_sim.tick_count])
 	assert_float(_sim.routing.value(Routing.Route.DIRECT, Vector2i(5, 17))).is_greater(before)
 	assert_bool(FieldChecks.matches_full_rebuild(_sim)).is_true()

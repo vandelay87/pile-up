@@ -4,9 +4,9 @@ extends RefCounted
 enum Route { SENSIBLE, DIRECT }
 
 const UNREACHABLE := INF
-## The most field cells a repair settles in one step, across both fields: about 1.5 ms on the M5
+## The most field cells settled in one step, across both pending fields: about 1.5 ms on the M5
 ## release build. A cell count rather than a time, so runs replay exactly.
-const REPAIR_SETTLE_CELLS := 900
+const SETTLE_CELLS_PER_TICK := 900
 const NO_PARENT := Vector2i(-1, -1)
 const _OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0),
@@ -44,7 +44,7 @@ var _solid := PackedByteArray()
 var _builds: Array[_FieldBuild] = []
 var _build_tasks := PackedInt64Array()
 var _builds_stale := false
-var _repairs: Array[_Repair] = []
+var _pending: Array[_PendingField] = []
 var _blend_cells := PackedInt32Array([0, 0, 0, 0])
 var _blend_weights := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var _marks := PackedByteArray()
@@ -60,8 +60,8 @@ class Field:
 	var directions := PackedVector2Array()
 
 
-# A copy of one field under repair, swapped in once its heap is empty.
-class _Repair:
+# A copy of one field being settled, swapped in once its heap is empty.
+class _PendingField:
 	extends RefCounted
 
 	var field := Field.new()
@@ -132,7 +132,7 @@ func rebuild() -> bool:
 		_builds_stale = true
 		return false
 	_keep_sensible_before()
-	_repairs.clear()
+	_pending.clear()
 	_rebuild_now()
 	return true
 
@@ -148,8 +148,8 @@ func _rebuild_now() -> void:
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
 
 
-# Feeds [param cells] into the repair in flight, starting one if needed. The fields read stay
-# as they are until [method step] swaps the repair in.
+# Feeds [param cells] into the pending fields, copying the live ones if none are pending. The
+# fields read stay as they are until [method step] swaps the pending ones in.
 func update(cells: Array[Vector2i]) -> void:
 	if is_rebuilding():
 		_builds_stale = true
@@ -157,59 +157,59 @@ func update(cells: Array[Vector2i]) -> void:
 	var started := Time.get_ticks_usec()
 	var reshaped := _apply_solid(cells)
 	for route: Route in Route.values():
-		_repair(route, cells)
+		_reseed_pending(route, cells)
 	for cell in reshaped:
 		_marks[cell] &= ~_RESHAPED
 	last_update_msec = (Time.get_ticks_usec() - started) / 1000.0
 
 
-# Settles at most [param budget] cells of the repair in flight, across both fields, and swaps
-# both in together once it is finished. Returns whether they swapped in.
-func step(budget := REPAIR_SETTLE_CELLS) -> bool:
-	if _repairs.is_empty():
+# Settles at most [param budget] cells of the pending fields, across both, and swaps both in
+# together once they are settled. Returns whether they swapped in.
+func step(budget := SETTLE_CELLS_PER_TICK) -> bool:
+	if _pending.is_empty():
 		last_step_msec = 0.0
 		return false
 	var started := Time.get_ticks_usec()
 	var finished := true
 	for route: Route in Route.values():
-		var repair := _repairs[route]
+		var pending := _pending[route]
 		budget -= _settle(
 			_map.width,
 			_map.height,
 			_factors[route],
 			_solid,
-			repair.field,
-			repair.heap,
-			repair.changed,
+			pending.field,
+			pending.heap,
+			pending.changed,
 			budget
 		)
-		finished = finished and repair.heap.is_empty()
+		finished = finished and pending.heap.is_empty()
 	if finished:
-		_swap_in_repairs()
+		_swap_in_pending()
 	last_step_msec = (Time.get_ticks_usec() - started) / 1000.0
 	return finished
 
 
-func is_repairing() -> bool:
-	return not _repairs.is_empty()
+func is_settling() -> bool:
+	return not _pending.is_empty()
 
 
-func _swap_in_repairs() -> void:
-	for repair in _repairs:
-		var field := repair.field
-		for cell in repair.changed:
+func _swap_in_pending() -> void:
+	for pending in _pending:
+		var field := pending.field
+		for cell in pending.changed:
 			field.directions[cell] = _directions[field.parent_offsets[cell]]
-	if _repairs[Route.SENSIBLE].reseeded:
+	if _pending[Route.SENSIBLE].reseeded:
 		_keep_sensible_before()
-	_fields = [_repairs[Route.SENSIBLE].field, _repairs[Route.DIRECT].field]
-	_repairs.clear()
+	_fields = [_pending[Route.SENSIBLE].field, _pending[Route.DIRECT].field]
+	_pending.clear()
 
 
 func start_rebuild() -> void:
 	if is_rebuilding():
 		_builds_stale = true
 		return
-	_repairs.clear()
+	_pending.clear()
 	_start_builds()
 
 
@@ -321,23 +321,25 @@ func _wait_for_builds() -> void:
 	_build_tasks.clear()
 
 
-# Invalidates and reseeds the repair copy of [param route]'s field; [method step] settles it.
-func _repair(route: Route, cells: Array[Vector2i]) -> void:
+# Invalidates and reseeds the pending copy of [param route]'s field; [method step] settles it.
+func _reseed_pending(route: Route, cells: Array[Vector2i]) -> void:
 	var factors := _factors[route]
 	var region := _apply_factors(route, factors, cells)
 	if region.is_empty():
 		return
-	if _repairs.is_empty():
-		_repairs = [_Repair.new(_fields[Route.SENSIBLE]), _Repair.new(_fields[Route.DIRECT])]
-	var repair := _repairs[route]
-	repair.reseeded = true
-	var field := repair.field
+	if _pending.is_empty():
+		_pending = [
+			_PendingField.new(_fields[Route.SENSIBLE]), _PendingField.new(_fields[Route.DIRECT])
+		]
+	var pending := _pending[route]
+	pending.reseeded = true
+	var field := pending.field
 	var invalid := _invalidate(field, factors, region)
-	repair.changed.append_array(invalid)
+	pending.changed.append_array(invalid)
 	for seeds: PackedInt32Array in [region, invalid]:
 		for cell in seeds:
-			if _reseed(field, factors, cell, repair.heap):
-				repair.changed.append(cell)
+			if _reseed(field, factors, cell, pending.heap):
+				pending.changed.append(cell)
 	for cell in region:
 		_marks[cell] = 0
 	for cell in invalid:
@@ -560,7 +562,7 @@ static func _settle(
 	while settled != budget and not heap.is_empty():
 		var current := heap.peek_value()
 		var cell := heap.pop()
-		# A repair joined in flight can invalidate a cell still queued at its old value.
+		# A change joining pending fields can invalidate a cell still queued at its old value.
 		if current != values[cell]:
 			continue
 		settled += 1

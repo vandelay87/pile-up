@@ -19,7 +19,7 @@ static func routings_match(routing: Routing, other: Routing, map: MapData) -> bo
 	return true
 
 
-## Steps [param routing] until its repair in flight, if any, has swapped in.
+## Steps [param routing] until its pending fields, if any, have swapped in.
 static func settle(routing: Routing) -> void:
-	while routing.is_repairing():
+	while routing.is_settling():
 		routing.step()

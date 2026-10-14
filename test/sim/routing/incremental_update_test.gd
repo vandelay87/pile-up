@@ -62,7 +62,7 @@ func test_both_fields_equal_a_full_rebuild_after_each_random_change() -> void:
 	assert_array(mismatches).is_empty()
 
 
-func test_changes_joining_repairs_in_flight_equal_a_full_rebuild() -> void:
+func test_changes_joining_pending_fields_equal_a_full_rebuild() -> void:
 	var mismatches: Array[String] = []
 	for n in STEPS:
 		var cells := _random_change()
@@ -76,7 +76,7 @@ func test_changes_joining_repairs_in_flight_equal_a_full_rebuild() -> void:
 	assert_array(mismatches).is_empty()
 
 
-func test_a_repair_in_flight_leaves_the_old_fields_until_it_swaps_in() -> void:
+func test_pending_fields_leave_the_old_fields_in_place_until_they_swap_in() -> void:
 	var before := _systems.routing()
 	var cells := _systems.build_tower(BASE.position + Vector2i(-2, 0)).footprint
 
@@ -84,10 +84,10 @@ func test_a_repair_in_flight_leaves_the_old_fields_until_it_swaps_in() -> void:
 	var swapped := _routing.step(0)
 
 	assert_bool(swapped).is_false()
-	assert_bool(_routing.is_repairing()).is_true()
+	assert_bool(_routing.is_settling()).is_true()
 	assert_bool(FieldChecks.routings_match(_routing, before, _map)).is_true()
 	assert_bool(_routing.step()).is_true()
-	assert_bool(_routing.is_repairing()).is_false()
+	assert_bool(_routing.is_settling()).is_false()
 	assert_bool(_matches_full_rebuild()).is_true()
 
 
