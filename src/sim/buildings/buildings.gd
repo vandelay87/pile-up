@@ -37,7 +37,7 @@ var _piles: Piles
 var _run_state: RunState
 var _power_grid: PowerGrid
 var _by_id: Dictionary[int, Building] = {}
-var _next_id := 0
+var _ids: Ids
 var _field_changes: Array[Vector2i] = []
 var _destroyed: Array[int] = []
 
@@ -89,6 +89,7 @@ func _init(
 	run_piles: Piles,
 	run_state: RunState,
 	power_grid: PowerGrid,
+	run_ids: Ids,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
@@ -96,6 +97,7 @@ func _init(
 	_piles = run_piles
 	_run_state = run_state
 	_power_grid = power_grid
+	_ids = run_ids
 	nearby.resize(_map.width * _map.height)
 
 
@@ -153,8 +155,7 @@ func build(kind: StringName, origin: Vector2i) -> Building:
 	if not build_error(kind, origin).is_empty():
 		return null
 	_run_state.spend(cost_of(kind))
-	var placed := Building.new(_next_id, kind, origin)
-	_next_id += 1
+	var placed := Building.new(_ids.next(), kind, origin)
 	placed.hp = max_hp(kind)
 	_occupancy.occupy(placed.footprint, placed.id)
 	_count_nearby(placed.footprint, 1)
@@ -259,8 +260,8 @@ func take_destroyed() -> Array[int]:
 	return taken
 
 
-## Step 5: each working building acts, in build order. Towers fire, returning their shots;
-## grinders hurt every enemy touching them.
+## At [constant Simulation.Step.BUILDINGS_ACT], each working building acts, in build order.
+## Towers fire, returning their shots; grinders hurt every enemy touching them.
 func act(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for acting in built:

@@ -33,6 +33,7 @@ func _init(sim: Simulation, crowd_seed: int) -> void:
 
 static func digest(sim: Simulation) -> int:
 	var enemies := sim.enemies
+	var soldiers := sim.soldiers
 	return hash(
 		[
 			enemies.count,
@@ -40,6 +41,10 @@ static func digest(sim: Simulation) -> int:
 			enemies.positions.slice(0, enemies.count),
 			enemies.hp.slice(0, enemies.count),
 			sim.piles.levels,
+			soldiers.count,
+			soldiers.ids.slice(0, soldiers.count),
+			soldiers.positions.slice(0, soldiers.count),
+			soldiers.hp.slice(0, soldiers.count),
 		]
 	)
 

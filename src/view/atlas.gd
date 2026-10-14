@@ -25,6 +25,7 @@ const DRONE_REGION := Rect2i(320, 0, 20, 12)
 const REPAIR_EFFECT_REGION := Rect2i(352, 0, 16, 16)
 const UNPOWERED_REGION := Rect2i(128, 0, 16, 16)
 const ENEMY_REGION := Rect2i(192, 96, 16, 24)
+const SOLDIER_REGION := Rect2i(224, 96, 16, 24)
 const TRACER_REGION := Rect2i(256, 96, 16, 4)
 ## A ring on the ground, one cell's radius across its widest diagonal when drawn at
 ## [constant BLAST_RING_SCALE] per cell of radius.

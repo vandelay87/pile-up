@@ -230,3 +230,26 @@ class KillEnemies:
 
 	func apply(sim: Simulation) -> void:
 		sim.kill_enemies(_count)
+
+
+## Debug: soldiers beside the base for free, placed one by one by the new-soldier rule.
+class AddSoldiers:
+	extends Commands.Play
+
+	const LABEL := "add soldiers"
+
+	var _count: int
+
+	func _init(count: int) -> void:
+		_count = count
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Soldiers: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		if _count < 1:
+			sim.reject_command("%s: the count must be at least 1" % LABEL)
+			return
+		if sim.soldiers.add_beside(sim.map.base, _count) < _count:
+			sim.reject_command("%s: no free cell beside the base" % LABEL)

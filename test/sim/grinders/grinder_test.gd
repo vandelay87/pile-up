@@ -115,7 +115,7 @@ func _hp(id: int) -> float:
 	return _sim.enemies.hp[_sim.enemies.index_of(id)]
 
 
-# Lands a wall on each cell at step 1 of the next tick.
+# Lands a wall on each cell as bodies land on the next tick.
 func _walls(cells: Array[Vector2i]) -> void:
 	var bodies := PackedVector2Array()
 	for cell in cells:

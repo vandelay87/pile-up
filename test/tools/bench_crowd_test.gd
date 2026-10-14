@@ -75,3 +75,13 @@ func test_the_same_seed_reaches_the_same_state() -> void:
 
 func test_a_different_seed_reaches_a_different_state() -> void:
 	assert_int(BenchCrowd.digest(_run(7, 60))).is_not_equal(BenchCrowd.digest(_run(8, 60)))
+
+
+func test_soldiers_on_the_field_change_the_state() -> void:
+	var with_soldiers := _run(7, 0)
+	with_soldiers.queue_command(Commands.AddSoldiers.new(5))
+	with_soldiers.tick()
+	var without := _run(7, 0)
+	without.tick()
+
+	assert_int(BenchCrowd.digest(with_soldiers)).is_not_equal(BenchCrowd.digest(without))

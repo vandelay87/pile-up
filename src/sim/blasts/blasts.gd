@@ -1,11 +1,11 @@
 class_name Blasts
 extends RefCounted
 
-## Step 7: every bloater in the death list blows up where it died. Its blast kills each living
-## enemy within the blast radius, credited to the bloater's killer, and a bloater it kills
-## blows up in turn, so chains resolve breadth-first. Once every kill is credited, each
-## building with a cell centre in reach of a blast takes the blast damage once, as does the
-## base, and every pile and wall in reach is erased.
+## At [constant Simulation.Step.REMOVE_DEAD], every bloater in the death list blows up where
+## it died. Its blast kills each living enemy within the blast radius, credited to the bloater's
+## killer, and a bloater it kills blows up in turn, so chains resolve breadth-first. Once every
+## kill is credited, each building with a cell centre in reach of a blast takes the blast damage
+## once, as does the base, and every pile and wall in reach is erased.
 
 var _settings: Settings
 var _map: MapData
@@ -55,7 +55,7 @@ func resolve(deaths: Deaths) -> Array[Blast]:
 	while k < deaths.size():
 		if deaths.kinds[k] == Enemies.Kind.BLOATER:
 			if blasts.is_empty():
-				# Removal moved enemies between slots since step 3.
+				# Removal moved enemies between slots since REBUILD_SPATIAL_HASH.
 				_enemies.rebuild_spatial_hash()
 			var blast := Blast.new(deaths.positions[k], deaths.killers[k])
 			blasts.append(blast)
@@ -104,4 +104,4 @@ static func _any_in_reach(cells: Array[Vector2i], centre: Vector2, radius: float
 
 
 static func _in_reach(cell: Vector2i, centre: Vector2, radius: float) -> bool:
-	return (Vector2(cell) + Vector2(0.5, 0.5)).distance_to(centre) <= radius
+	return MapData.centre_of(cell).distance_to(centre) <= radius
