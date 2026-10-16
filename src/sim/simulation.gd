@@ -461,7 +461,7 @@ func _move_units() -> void:
 	_observe(Step.MOVE_UNITS)
 	soldiers.need_restarted()
 	unit_paths.step()
-	soldiers.step(enemies)
+	soldiers.step(enemies, overflow.take_knock_offs())
 	soldier_attacks.step()
 
 
