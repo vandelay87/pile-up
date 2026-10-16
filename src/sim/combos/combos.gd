@@ -1,10 +1,11 @@
 class_name Combos
 extends RefCounted
 
-## Each building's own combo on a timer. A kill credited to a building adds 1 to its count,
-## sets its tier and restarts its timer; a combo whose timer runs out breaks back to x1. A
-## destroyed building's combo is removed with it, and a kill credited to it afterwards counts
-## for nothing. The kill pulses, tier-ups and breaks wait in take_events() for the view.
+## Each killer's own combo on a timer: a building's or a soldier's, by the id they share. A kill
+## credited to a killer adds 1 to its count, sets its tier and restarts its timer; a combo whose
+## timer runs out breaks back to x1. A destroyed building's combo is removed with it, and a kill
+## credited to it afterwards counts for nothing. The kill pulses, tier-ups and breaks wait in
+## take_events() for the view.
 
 enum EventKind { KILL, TIER_UP, BREAK }
 

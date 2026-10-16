@@ -125,18 +125,16 @@ func details() -> Array[String]:
 	var soldiers := _simulation.soldiers
 	var settings := _simulation.settings
 	var i := soldiers.index_of(_ids[0])
-	var reach: float = settings.value("soldiers", "range")
-	var high_ground: float = soldiers.elevation(i) * settings.value("soldiers", "range_per_level")
-	var range_line := "Range %s" % _number(reach + high_ground)
+	var high_ground := soldiers.range_bonus(i)
+	var range_line := "Range %s" % _number(soldiers.range_of(i))
 	if high_ground > 0.0:
 		range_line += " (+%s high ground)" % _number(high_ground)
-	var damage: float = settings.value("soldiers", "damage")
 	var fire_rate: float = settings.value("soldiers", "fire_rate")
 	var one: Array[String] = [
 		"Soldier",
 		"HP %d / %d" % [ceili(soldiers.hp[i]), ceili(settings.soldier_hp)],
 		_status(i),
-		"Damage %s" % _number(damage),
+		"Damage %s" % _number(settings.soldier_damage),
 		"Shots/s %s" % _number(fire_rate),
 		range_line,
 		"Kills %d" % soldiers.kills[i],
