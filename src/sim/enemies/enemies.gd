@@ -49,7 +49,8 @@ var tumbling := PackedByteArray()
 # Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
 var fuses := PackedInt32Array()
 ## True while [method move] runs the neighbour scan in the C++ GDExtension's NeighbourScan
-## (ADR 0001), false for the GDScript scan. On whenever the extension is loaded.
+## (ADR 0001), false for the GDScript scan. On whenever the extension is loaded; tests turn it
+## off to compare the two.
 var native_scan := ClassDB.class_exists(&"NeighbourScan")
 
 var _settings: Settings
@@ -66,7 +67,7 @@ var _index_by_id := {}
 var _bucket_starts := PackedInt32Array()
 var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
-# The personal-space push from the last _neighbour_pushes.
+# The personal-space push for the enemy being moved, from either neighbour scan.
 var _last_space_push := Vector2.ZERO
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
@@ -615,6 +616,8 @@ func _distance_to_cell(pos: Vector2, index: int) -> float:
 # the collision spacing, so a column fans out across a corridor rather than single-filing. It
 # reads every neighbour within ceil(space_radius) buckets, past the cap and the 3×3, but not
 # attackers.
+#
+# Mirrored in native/src/neighbour_scan.cpp: keep the two in step.
 func _neighbour_pushes(
 	i: int,
 	radius: float,

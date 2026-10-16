@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 
@@ -22,6 +23,9 @@ void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
 		const PackedInt32Array &p_bucket_starts, const PackedInt32Array &p_bucket_enemies,
 		int p_width, int p_height, double p_radius, double p_push, int p_cap, bool p_spreads,
 		double p_space_radius, double p_space_push) {
+	ERR_FAIL_COND(p_count < 0 || p_positions.size() < p_count || p_hp.size() < p_count ||
+			p_tumbling.size() < p_count || p_attacking.size() < p_count || p_ids.size() < p_count ||
+			p_bucket_enemies.size() < p_count || p_bucket_starts.size() != p_width * p_height + 1);
 	separations.resize(p_count);
 	space_pushes.resize(p_count);
 	Vector2 *out_separations = separations.ptrw();

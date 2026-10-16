@@ -11,3 +11,5 @@ Enemies live as parallel typed packed arrays (dense, swap-remove on death, stabl
 Evidence: [Drawing 1,000+ enemies](https://github.com/vandelay87/pile-up/issues/2), [Can GDScript move 1,000 enemies within budget?](https://github.com/vandelay87/pile-up/issues/6), [Spike: 1,000 enemies on a flow field](https://github.com/vandelay87/pile-up/issues/7).
 
 Amended by ADR 0002: the module's `died` and `leaked` signals became lists returned from its removal step and passed on by the tick driver.
+
+Amended by [#201](https://github.com/vandelay87/pile-up/issues/201): at 1,000 dense enemies with the v4 swarm spread, the neighbour scan left GDScript for `NeighbourScan`, a C++ GDExtension in `native/` that `Enemies.move` calls over the same packed arrays and spatial hash. The rest of the loop stays in GDScript, and the GDScript scan stays as the fallback and the reference the native one is tested against.

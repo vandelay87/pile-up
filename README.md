@@ -16,4 +16,4 @@ brew install scons   # or: pip install scons
 scons -C native target=template_release
 ```
 
-Without it the game falls back to the slower GDScript scan, and the native scan tests fail. CI builds it for Linux, macOS and Windows.
+Without it the game falls back to the slower GDScript scan (Godot logs that it can't load the library), and the native scan tests fail. CI builds it for Linux, macOS and Windows.
