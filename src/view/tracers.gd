@@ -58,7 +58,7 @@ func _muzzle_height(shot: Buildings.Shot) -> float:
 	var index := soldiers.index_of(shot.shooter_id)
 	if index == Soldiers.NONE:
 		return MUZZLE_HEIGHT
-	return SOLDIER_MUZZLE_HEIGHT + soldiers.elevation(index) * Atlas.PILE_SLAB_HEIGHT
+	return SOLDIER_MUZZLE_HEIGHT + SoldierRenderer.lift(soldiers, index)
 
 
 func _process(_delta: float) -> void:

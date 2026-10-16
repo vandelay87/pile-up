@@ -1,6 +1,6 @@
 extends "res://test/sim/soldiers/order_suite.gd"
 
-# Soldiers fire at step 7 by the tower's rules with their own numbers (2 damage at 2 shots/s,
+# Soldiers fire at step 7 with their own numbers (2 damage at 2 shots/s,
 # range 4 plus 0.5 a level up), and earn bounty and a combo of their own.
 
 const TOUGH := 1000.0
@@ -108,6 +108,29 @@ func test_a_firing_soldier_walks_at_half_speed() -> void:
 
 	assert_float(idle).is_equal_approx(30.0 * 2.5 / 60.0, 1e-3)
 	assert_float(firing).is_equal_approx(idle / 2.0, 1e-3)
+
+
+func test_a_soldier_whose_target_died_has_no_target_as_firing_ends() -> void:
+	_sim = _still_sim(OPEN)
+	var id := _sim.soldiers.add(Vector2i(6, 1))
+	_sim.enemies.spawn(Vector2(8.5, 1.5), 2.0)
+
+	_sim.tick()
+
+	assert_int(_sim.run_state.kills).is_equal(1)
+	assert_int(_target_of(id)).is_equal(Enemies.NONE)
+
+
+func test_a_firing_soldier_walks_back_to_its_spot_at_its_normal_speed() -> void:
+	_sim = _still_sim(OPEN)
+	var id := _sim.soldiers.add(Vector2i(6, 1))
+	_sim.enemies.spawn(Vector2(9.5, 1.5), TOUGH)
+	_sim.tick()
+	_sim.soldiers.positions[_sim.soldiers.index_of(id)] = Vector2(6.5, 2.0)
+
+	_sim.tick()
+
+	assert_float(_position_of(id).y).is_equal_approx(2.0 - 2.5 / 60.0, 1e-4)
 
 
 func test_a_soldiers_kills_pay_bounty_times_its_tier_and_build_its_combo() -> void:

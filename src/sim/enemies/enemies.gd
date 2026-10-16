@@ -27,7 +27,7 @@ var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
 var kinds := PackedByteArray()
-# The building that last damaged each enemy, or NONE: the killer if it dies.
+# The building or soldier that last damaged each enemy, or NONE: the killer if it dies.
 var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
 var structure_targets := PackedInt32Array()
@@ -132,7 +132,7 @@ func index_of(id: int) -> int:
 	return _index_by_id.get(id, NONE)
 
 
-# Damage from the building with id [param by], or from NONE.
+# Damage from the building or soldier with id [param by], or from NONE.
 func damage(id: int, amount: float, by: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
@@ -140,7 +140,7 @@ func damage(id: int, amount: float, by: int) -> void:
 		last_hitters[index] = by
 
 
-# A debug kill: no building gets the credit.
+# A debug kill: nobody gets the credit.
 func kill(id: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
@@ -206,6 +206,7 @@ func begin_targeting() -> void:
 	_target_values.fill(NAN)
 
 
+## Ends the window [method begin_targeting] opened.
 func end_targeting() -> void:
 	_target_values.clear()
 

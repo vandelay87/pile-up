@@ -294,9 +294,11 @@ func step(enemies: Enemies) -> void:
 		positions[i] = _solids.resolve(positions[i], radius)
 
 
-## At [constant Simulation.Step.UNITS_FIRE], in soldier order, by the tower's rules with the
-## soldier's numbers: each keeps its target while it is alive and in range, else picks again by
-## its targeting, and hits it whenever its cooldown is done, adding the shot to [param shots].
+## At [constant Simulation.Step.UNITS_FIRE], in soldier order, with the soldier's numbers:
+## instant hits on a cooldown as a tower fires, but each soldier keeps its target while it is
+## alive and in range, else picks again by its targeting, every tick. It hits its target whenever
+## its cooldown is done, adding the shot to [param shots]. A target killed this step is dropped
+## once every soldier has fired, so only a living one slows its soldier next tick.
 func fire(enemies: Enemies, shots: Array[Buildings.Shot]) -> void:
 	var damage := _settings.soldier_damage
 	var cooldown := _settings.soldier_cooldown_ticks
@@ -318,6 +320,9 @@ func fire(enemies: Enemies, shots: Array[Buildings.Shot]) -> void:
 			kills[i] += 1
 		cooldowns[i] = cooldown
 		shots.append(Buildings.Shot.new(ids[i], positions[i], target, enemies.positions[index]))
+	for i in count:
+		if targets[i] != Enemies.NONE and not enemies.is_alive(enemies.index_of(targets[i])):
+			targets[i] = Enemies.NONE
 
 
 ## Counts a kill towards the soldier with id [param id]'s kills, if it is still living.
@@ -439,18 +444,18 @@ func _free_slot_near(i: int) -> int:
 
 # Walking soldiers step along their paths at their speed times the slow of the cell under them,
 # halved for one that had a target as the last tick's firing ended; a soldier on its slot stands
-# there. A standing soldier pushed off its spot walks back, or plans a path back when it is more
-# than a cell away.
+# there. A standing soldier pushed off its spot walks back at its full speed, or plans a path back
+# when it is more than a cell away.
 func _walk() -> void:
-	var full_step := _settings.soldier_speed / Simulation.TICKS_PER_SECOND
+	var step_length := _settings.soldier_speed / Simulation.TICKS_PER_SECOND
 	for i in count:
-		var step_length := full_step if targets[i] == Enemies.NONE else full_step / 2.0
 		if orders[i] == NONE:
 			_stand(i, step_length)
 			continue
 		if _path_generations[i] == NONE:
 			continue
-		var left := step_length * _paths.speed_factor(_cell_index(i))
+		var firing_slow := 1.0 if targets[i] == Enemies.NONE else 0.5
+		var left := step_length * firing_slow * _paths.speed_factor(_cell_index(i))
 		var walk := _walks[i]
 		while left > 0.0:
 			var goal := _centre(

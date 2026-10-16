@@ -128,10 +128,8 @@ func _top_of(id: int) -> Vector2:
 	var index := soldiers.index_of(id)
 	if index == Soldiers.NONE:
 		return Vector2.INF
-	var lift := soldiers.elevation(index) * Atlas.PILE_SLAB_HEIGHT
-	return (
-		GridTransform.grid_to_world(soldiers.positions[index]) + Vector2(0, -SOLDIER_RAISE - lift)
-	)
+	var foot := GridTransform.grid_to_world(soldiers.positions[index])
+	return foot + Vector2(0, -SOLDIER_RAISE - SoldierRenderer.lift(soldiers, index))
 
 
 ## Draws a ring centred on [param at], [param s] times its base size of 14 pixels. Hidden at x1
