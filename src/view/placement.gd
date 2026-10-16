@@ -1,6 +1,9 @@
 class_name Placement
 extends Node2D
 
+## Sent as a building starts being placed, by a hotkey or the build menu.
+signal entered
+
 const VALID := Color(0.3, 0.9, 0.4)
 const INVALID := Color(0.95, 0.3, 0.25)
 const FILL_ALPHA := 0.35
@@ -31,6 +34,7 @@ func setup(simulation: Simulation) -> void:
 func enter(building_kind: StringName = Buildings.TOWER) -> void:
 	kind = building_kind
 	active = true
+	entered.emit()
 	queue_redraw()
 
 

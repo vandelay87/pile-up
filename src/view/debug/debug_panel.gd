@@ -137,6 +137,16 @@ func _build() -> void:
 	_add_save()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_box.add_child(_status)
+	_take_no_focus(_box)
+
+
+# Space toggles pause, so no button may hold the keyboard and take the press.
+func _take_no_focus(control: Control) -> void:
+	if control is BaseButton:
+		control.focus_mode = Control.FOCUS_NONE
+	for child in control.get_children():
+		if child is Control:
+			_take_no_focus(child as Control)
 
 
 func add_overlay(label: String, toggled: Callable) -> void:
@@ -158,6 +168,12 @@ func _ready() -> void:
 	scroll.add_child(_box)
 	panel.add_child(scroll)
 	ui.add_child(panel)
+
+
+# Space pauses from the HUD, so the Pause button follows the simulation.
+func _process(_delta: float) -> void:
+	if visible and _simulation != null:
+		_pause.set_pressed_no_signal(_simulation.paused)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

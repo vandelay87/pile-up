@@ -115,6 +115,24 @@ func spot(index: int) -> Vector2i:
 	return _map.cell_of(spots[index])
 
 
+## The targeting of the soldier at [param index]: one of [constant Enemies.TARGETINGS].
+func targeting(index: int) -> StringName:
+	return Enemies.TARGETINGS[targetings[index]]
+
+
+## Sets [param mode] on each soldier in [param soldier_ids]; ids of soldiers no longer living
+## are skipped, since one can die between the order and the drain. Returns an error, or "".
+func set_targeting(soldier_ids: PackedInt32Array, mode: StringName) -> String:
+	var mode_index := Enemies.TARGETINGS.find(mode)
+	if mode_index == NONE:
+		return Buildings.BAD_TARGETING
+	for id in soldier_ids:
+		var index := index_of(id)
+		if index != NONE:
+			targetings[index] = mode_index
+	return ""
+
+
 ## The level of the cell under the soldier at [param index]: 0 on the ground, 1–4 on a pile,
 ## 5 on a wall. Nothing is stored; it follows the cell.
 func elevation(index: int) -> int:
