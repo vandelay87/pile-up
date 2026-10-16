@@ -32,6 +32,7 @@ var _last_saved_json := ""
 @onready var _drone_view: DroneView = $DroneView
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
+@onready var _unit_paths_overlay: UnitPathsOverlay = $UnitPathsOverlay
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
@@ -114,6 +115,7 @@ func _start_run(simulation: Simulation) -> void:
 	_drone_view.setup(_simulation)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)
+	_unit_paths_overlay.setup(_simulation)
 	_pile_overlay.setup(_simulation)
 	_power_overlay.setup(_simulation)
 	_selection.setup(_simulation)
@@ -152,6 +154,7 @@ func _add_overlays() -> void:
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 	_debug_panel.add_overlay("Power grid", _power_overlay.show_grid)
 	_debug_panel.add_overlay("Overflow", _overflow_view.show_debug)
+	_debug_panel.add_overlay("Unit paths", _unit_paths_overlay.show_paths)
 
 
 func _draw_map(map: MapData) -> void:

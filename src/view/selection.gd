@@ -18,6 +18,10 @@ const UNPOWERED := Color(0.6, 0.6, 0.6, 0.6)
 const REPAIR_AREA := Color(0.35, 0.95, 0.45, 0.8)
 const REPAIR_AREA_TINT := Color(0.35, 0.95, 0.45, 0.1)
 const ASSIGNMENT := Color(0.35, 0.95, 0.45, 1.0)
+const RALLY := Color(1.0, 0.85, 0.3, 0.95)
+## The rally flag's pole height and flag width, in world pixels.
+const RALLY_POLE := 22.0
+const RALLY_FLAG := 12.0
 
 var _simulation: Simulation
 var _building_id := Occupancy.EMPTY
@@ -114,6 +118,17 @@ func is_barracks_selected() -> bool:
 func train(count: int) -> void:
 	if is_barracks_selected():
 		_simulation.queue_command(Commands.Train.new(_building_id, count))
+
+
+## Sets the selected barracks' rally point on [param cell], as a right-click does.
+func set_rally(cell: Vector2i) -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.SetRallyPoint.new(_building_id, cell))
+
+
+func clear_rally() -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.ClearRallyPoint.new(_building_id))
 
 
 func cancel_training(slot: int) -> void:
@@ -316,6 +331,25 @@ func _draw() -> void:
 	else:
 		var colour := POWER_AREA if building.powered else UNPOWERED
 		PowerGridDrawing.outline(self, grid.area_of(building.kind, building.origin), colour, 2.0)
+	if building.kind == Buildings.BARRACKS:
+		_draw_rally(building)
+
+
+# The rally flag on its cell and a line to it from the barracks.
+func _draw_rally(barracks: Buildings.Building) -> void:
+	var rally := _simulation.barracks.rally_point(barracks.id)
+	if rally == Barracks.NO_RALLY:
+		return
+	var foot := GridTransform.grid_to_world(MapData.centre_of(rally))
+	draw_dashed_line(GridTransform.grid_to_world(barracks.centre), foot, RALLY, 2.0, 6.0)
+	var top := foot - Vector2(0, RALLY_POLE)
+	draw_line(foot, top, RALLY, 2.0)
+	draw_colored_polygon(
+		PackedVector2Array(
+			[top, top + Vector2(RALLY_FLAG, RALLY_FLAG * 0.35), top + Vector2(0, RALLY_FLAG * 0.7)]
+		),
+		RALLY
+	)
 
 
 func _draw_repair_area(yard: Buildings.Building) -> void:

@@ -4,7 +4,7 @@ extends RefCounted
 ## Every barracks' training queue, in build order. A Train pays for each soldier as it is queued.
 ## In the build phase a queue trains at once; during a wave each barracks trains its queue's head
 ## while it is working. A new soldier appears on the free cell beside its barracks nearest the
-## base, by the new-soldier rule.
+## base, by the new-soldier rule, and walks to its barracks' rally point if it has one.
 
 const QUEUE_LENGTH := 5
 ## How many soldiers a shift-click Train asks for.
@@ -15,11 +15,14 @@ const QUEUE_FULL := "the queue is full"
 const CAPACITY_FULL := "capacity is full"
 const NOT_ENOUGH_GOLD := "not enough gold"
 const NO_SUCH_SLOT := "no such slot"
+const NO_RALLY := Vector2i(-1, -1)
 
 var _settings: Settings
 var _buildings: Buildings
 var _run_state: RunState
 var _soldiers: Soldiers
+var _paths: UnitPaths
+var _map: MapData
 var _trainers: Array[Trainer] = []
 var _by_id: Dictionary[int, Trainer] = {}
 # The barracks whose queue or head changed since the last take_changed(), in order of change.
@@ -35,6 +38,8 @@ class Trainer:
 	var paid := PackedInt32Array()
 	## Ticks the head has trained so far.
 	var progress := 0
+	## The rally field new soldiers walk on, or [constant UnitPaths.NONE].
+	var rally_field := UnitPaths.NONE
 
 	func _init(barracks: Buildings.Building) -> void:
 		barracks_id = barracks.id
@@ -42,12 +47,19 @@ class Trainer:
 
 
 func _init(
-	run_settings: Settings, run_buildings: Buildings, run_state: RunState, run_soldiers: Soldiers
+	run_settings: Settings,
+	run_map: MapData,
+	run_buildings: Buildings,
+	run_state: RunState,
+	run_soldiers: Soldiers,
+	run_paths: UnitPaths,
 ) -> void:
 	_settings = run_settings
+	_map = run_map
 	_buildings = run_buildings
 	_run_state = run_state
 	_soldiers = run_soldiers
+	_paths = run_paths
 
 
 ## Creates a new barracks' empty queue.
@@ -61,6 +73,39 @@ func add(barracks: Buildings.Building) -> void:
 func queue_of(barracks_id: int) -> PackedInt32Array:
 	var trainer: Trainer = _by_id.get(barracks_id, null)
 	return PackedInt32Array() if trainer == null else trainer.paid
+
+
+## A barracks' rally point, or [constant NO_RALLY].
+func rally_point(barracks_id: int) -> Vector2i:
+	var trainer: Trainer = _by_id.get(barracks_id, null)
+	if trainer == null or trainer.rally_field == UnitPaths.NONE:
+		return NO_RALLY
+	return _map.cell_of(_paths.anchor(trainer.rally_field))
+
+
+## Sets a barracks' rally point on [param cell], or on the nearest cell a soldier can stand on,
+## with a rally field from it; returns why not, or "".
+func set_rally(barracks_id: int, cell: Vector2i) -> String:
+	var trainer: Trainer = _by_id.get(barracks_id, null)
+	if trainer == null:
+		return NOT_A_BARRACKS
+	var anchor := _paths.nearest_standable(MapData.centre_of(cell))
+	if anchor == UnitPaths.NONE:
+		return "no cell a soldier can stand on"
+	_clear_rally(trainer)
+	trainer.rally_field = _paths.plan(anchor, true)
+	_mark_changed(trainer)
+	return ""
+
+
+## Removes a barracks' rally point; returns why not, or "".
+func clear_rally(barracks_id: int) -> String:
+	var trainer: Trainer = _by_id.get(barracks_id, null)
+	if trainer == null:
+		return NOT_A_BARRACKS
+	_clear_rally(trainer)
+	_mark_changed(trainer)
+	return ""
 
 
 ## [member Settings.barracks_capacity] for each standing barracks, unpowered ones included.
@@ -163,6 +208,7 @@ func remove(barracks_id: int) -> void:
 		return
 	for paid in trainer.paid:
 		_run_state.add_gold(paid)
+	_clear_rally(trainer)
 	_trainers.erase(trainer)
 	_by_id.erase(barracks_id)
 	_mark_changed(trainer)
@@ -193,9 +239,17 @@ func _finish(trainer: Trainer) -> void:
 func _release_head(trainer: Trainer) -> bool:
 	if _soldiers.add_beside(trainer.area, 1) == 0:
 		return false
+	if trainer.rally_field != UnitPaths.NONE:
+		_soldiers.send_to_rally(_soldiers.ids[_soldiers.count - 1], trainer.rally_field)
 	trainer.paid.remove_at(0)
 	_mark_changed(trainer)
 	return true
+
+
+func _clear_rally(trainer: Trainer) -> void:
+	if trainer.rally_field != UnitPaths.NONE:
+		_paths.release(trainer.rally_field)
+		trainer.rally_field = UnitPaths.NONE
 
 
 func _mark_changed(trainer: Trainer) -> void:

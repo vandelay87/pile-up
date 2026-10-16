@@ -64,6 +64,7 @@ var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
+var unit_paths: UnitPaths
 var soldiers: Soldiers
 var barracks: Barracks
 var bloater_blasts: Blasts
@@ -136,8 +137,9 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
 	)
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
-	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids)
-	barracks = Barracks.new(settings, buildings, run_state, soldiers)
+	unit_paths = UnitPaths.new(settings, map, occupancy, piles, structures)
+	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids, unit_paths)
+	barracks = Barracks.new(settings, map, buildings, run_state, soldiers, unit_paths)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -163,6 +165,8 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 		_fields_changed = true
 	if [group, key] == ["overflow", "band"]:
 		overflow.relabel()
+	if group == "piles" or [group, key] == ["soldiers", "wall_climb_slow"]:
+		unit_paths.refresh_costs()
 
 
 func next_wave() -> void:
@@ -207,6 +211,9 @@ func build(kind: StringName, origin: Vector2i) -> void:
 	var placed := buildings.build(kind, origin)
 	_placed.append(placed.id)
 	_changed_cells.append_array(placed.footprint)
+	# Soldiers' paths and regions see the building at once, so orders in the same drain do.
+	unit_paths.update(placed.footprint)
+	soldiers.push_out_of(Rect2i(placed.origin, Buildings.footprint_size(placed.kind)))
 	if placed.kind == Buildings.REPAIR_YARD:
 		repair_yards.add(placed)
 	elif placed.kind == Buildings.BARRACKS:
@@ -419,6 +426,7 @@ func _land_bodies_and_update_fields() -> void:
 		_changed_cells = []
 		routing.update(cells)
 		overflow.update(cells)
+		unit_paths.update(cells)
 	if routing.step():
 		_fields_changed = true
 
