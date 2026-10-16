@@ -35,6 +35,7 @@ var _last_saved_json := ""
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
+@onready var _soldier_selection: SoldierSelection = $SoldierSelection
 @onready var _combo_view: ComboView = $ComboView
 @onready var _overflow_view: OverflowView = $OverflowView
 
@@ -55,6 +56,7 @@ func _ready() -> void:
 	_edge_highlight.setup(_map)
 	_add_overlays()
 	_hud.build_requested.connect(_placement.enter)
+	_placement.entered.connect(_soldier_selection.clear)
 	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
 		(
@@ -105,7 +107,7 @@ func _start_run(simulation: Simulation) -> void:
 	_stats_readout.setup(_simulation)
 	_combo_view.setup(_simulation)
 	_overflow_view.setup(_simulation)
-	_hud.setup(_simulation, _selection, _combo_view)
+	_hud.setup(_simulation, _selection, _soldier_selection, _combo_view)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
 	_blast_rings.setup(_simulation)
@@ -115,6 +117,7 @@ func _start_run(simulation: Simulation) -> void:
 	_pile_overlay.setup(_simulation)
 	_power_overlay.setup(_simulation)
 	_selection.setup(_simulation)
+	_soldier_selection.setup(_simulation, _selection, _camera)
 
 
 func _restart() -> void:

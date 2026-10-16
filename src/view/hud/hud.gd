@@ -3,6 +3,8 @@ extends CanvasLayer
 ## The StarCraft-style console: one full-width bar across the bottom, built in UiRoot units.
 ## Status on the left, the selection's details in the middle (always there), and a command
 ## card of square buttons on the right. Toasts sit just above the bar; game over is centred.
+## With soldiers selected the card swaps to their commands and the details to theirs. Space
+## toggles pause; no HUD button takes keyboard focus, so Space always reaches it.
 
 signal build_requested(kind: StringName)
 
@@ -21,6 +23,9 @@ const PANEL_EDGE := Color(0.45, 0.4, 0.3)
 const PORTRAIT_COLOUR := Color(0.2, 0.22, 0.26)
 const UNAFFORDABLE_COLOUR := Color(1.0, 0.6, 0.6)
 const COMBO_RING_SIZE := 96.0
+const TILE_SIZE := Vector2(14, 14)
+const FULL_HP_COLOUR := Color(0.35, 0.85, 0.4)
+const NO_HP_COLOUR := Color(0.9, 0.25, 0.2)
 const COMMAND_SIZE := Vector2(72, 56)
 const COMMAND_COLUMNS := 3
 ## The command card's build buttons in grid order, before Next wave.
@@ -37,7 +42,7 @@ const COMMAND_LABELS := {
 ## A barracks queue slot: queued (click to cancel) or empty.
 const QUEUED_SLOT := "■"
 const EMPTY_SLOT := "□"
-## A tower's targeting toggle, in button order.
+## The targeting modes' names: a tower's toggle, in button order, and the soldier card's.
 const TARGETING_NAMES := {
 	Enemies.BLOATERS_FIRST: "Bloaters first",
 	Enemies.CLOSEST_TO_BASE: "Closest to base",
@@ -46,6 +51,7 @@ const TARGETING_NAMES := {
 var _simulation: Simulation
 var _bar: PanelContainer
 var _selection: Selection
+var _soldiers: SoldierSelection
 var _gold := Label.new()
 var _base_hp := Label.new()
 var _wave := Label.new()
@@ -67,6 +73,13 @@ var _barracks_controls := HBoxContainer.new()
 var _train := Button.new()
 var _slot_buttons: Array[Button] = []
 var _next_wave := Button.new()
+var _stop := Button.new()
+var _soldier_targeting := Button.new()
+var _formation := Button.new()
+# The soldier card's buttons and the blanks that keep Next wave in its slot.
+var _soldier_commands: Array[Control] = []
+var _soldier_tiles := HFlowContainer.new()
+var _paused := Label.new()
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _toast := Label.new()
 var _toast_tween: Tween
@@ -86,9 +99,15 @@ class ComboRing:
 			ComboView.draw_ring(self, size / 2.0, ring, size.y / 36.0, true)
 
 
-func setup(simulation: Simulation, selection: Selection, combo_view: ComboView) -> void:
+func setup(
+	simulation: Simulation,
+	selection: Selection,
+	soldiers: SoldierSelection,
+	combo_view: ComboView,
+) -> void:
 	_simulation = simulation
 	_selection = selection
+	_soldiers = soldiers
 	_combo_view = combo_view
 	_simulation.gold_changed.connect(_show_gold)
 	_simulation.base_hp_changed.connect(_show_base_hp)
@@ -132,6 +151,7 @@ func _ready() -> void:
 	title.add_theme_font_size_override("font_size", 32)
 	var restart := Button.new()
 	restart.text = "Restart"
+	restart.focus_mode = Control.FOCUS_NONE
 	restart.pressed.connect(func() -> void: _send(Commands.Restart.new()))
 	for control: Control in [title, _reached, _run_kills, restart]:
 		box.add_child(control)
@@ -157,6 +177,24 @@ func _ready() -> void:
 	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_toast.modulate.a = 0.0
 	ui.add_child(_toast)
+
+	_paused.text = "Paused"
+	_paused.add_theme_font_size_override("font_size", 24)
+	_paused.add_theme_constant_override("outline_size", 6)
+	_paused.add_theme_color_override("font_outline_color", Color.BLACK)
+	_paused.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
+	_paused.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_paused.offset_top = MARGIN
+	_paused.visible = false
+	ui.add_child(_paused)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if _simulation == null or not key.pressed or key.echo or key.keycode != KEY_SPACE:
+		return
+	_send(Commands.SetPaused.new(not _simulation.paused))
+	get_viewport().set_input_as_handled()
 
 
 # Gold, Base HP, Wave, Enemies left and Kills as a two-column table.
@@ -270,6 +308,9 @@ func _details_panel() -> PanelContainer:
 		_slot_buttons.append(button)
 		_barracks_controls.add_child(button)
 	text_column.add_child(_barracks_controls)
+	_soldier_tiles.add_theme_constant_override("h_separation", 3)
+	_soldier_tiles.add_theme_constant_override("v_separation", 3)
+	text_column.add_child(_soldier_tiles)
 	details_row.add_child(text_column)
 	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
 	_combo_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -278,11 +319,28 @@ func _details_panel() -> PanelContainer:
 	return details
 
 
-# Square build buttons with cost and hotkey, then Next wave.
+# Square build buttons with cost and hotkey, then Next wave. With soldiers selected, the build
+# buttons give way to Stop, targeting and Formation on the top row.
 func _command_card() -> PanelContainer:
 	var card := _panel()
 	var commands := GridContainer.new()
 	commands.columns = COMMAND_COLUMNS
+	_stop.text = "Stop\n[S]"
+	_stop.disabled = true
+	_stop.tooltip_text = "Stops soldiers' orders, once they take orders"
+	_soldier_targeting.pressed.connect(func() -> void: _soldiers.flip_targeting())
+	_soldier_targeting.tooltip_text = "Which enemy each soldier fires at first"
+	_formation.pressed.connect(func() -> void: _soldiers.flip_formation())
+	_formation.tooltip_text = "The shape soldiers take when ordered to move"
+	_soldier_commands.append_array([_stop, _soldier_targeting, _formation])
+	for button: Button in _soldier_commands:
+		button.focus_mode = Control.FOCUS_NONE
+	for blank in 2:
+		_soldier_commands.append(Control.new())
+	for control in _soldier_commands:
+		control.custom_minimum_size = COMMAND_SIZE
+		control.visible = false
+		commands.add_child(control)
 	for kind: StringName in COMMANDS:
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_NONE
@@ -370,7 +428,28 @@ func _process(_delta: float) -> void:
 		or _simulation.run_state.is_game_over
 	)
 	_show_capacity()
+	_show_command_card()
 	_show_details()
+	_paused.visible = _simulation.paused
+
+
+# The soldier card while soldiers are selected, else the build menu; Next wave stays put.
+func _show_command_card() -> void:
+	var soldiers := _soldiers.has_selection()
+	for control in _soldier_commands:
+		control.visible = soldiers
+	for button: Button in _build_buttons.values():
+		button.visible = not soldiers
+	if not soldiers:
+		return
+	# Two lines, like the build buttons: "Bloaters" over "first [A]".
+	var targeting := _soldiers.targeting_name()
+	var cut := targeting.find(" ")
+	if cut == -1:
+		_soldier_targeting.text = "%s\n[A]" % targeting
+	else:
+		_soldier_targeting.text = "%s\n%s [A]" % [targeting.left(cut), targeting.substr(cut + 1)]
+	_formation.text = "%s\n[F]" % SoldierSelection.FORMATION_NAMES[_soldiers.formation]
 
 
 # Capacity shows from the first barracks on.
@@ -383,9 +462,9 @@ func _show_capacity() -> void:
 
 
 func _show_details() -> void:
-	var lines := _selection.details()
+	var lines := _soldiers.details() if _soldiers.has_selection() else _selection.details()
 	if lines.is_empty():
-		lines = ["Nothing selected", "Click a building or the base."]
+		lines = ["Nothing selected", "Click a soldier, a building or the base."]
 	_details_title.text = lines[0]
 	var stats := lines.slice(1)
 	for i in stats.size():
@@ -409,6 +488,36 @@ func _show_details() -> void:
 	for each: StringName in _targeting_buttons:
 		_targeting_buttons[each].set_pressed_no_signal(each == mode)
 	_show_barracks_controls()
+	_show_soldier_tiles()
+
+
+# Several soldiers' tiles, one per soldier in selection order, coloured by HP. A click selects
+# that soldier alone; shift-click takes it out.
+func _show_soldier_tiles() -> void:
+	var ids := _soldiers.selected()
+	var count := ids.size() if ids.size() > 1 else 0
+	_soldier_tiles.visible = count > 0
+	while _soldier_tiles.get_child_count() < count:
+		_soldier_tiles.add_child(_soldier_tile(_soldier_tiles.get_child_count()))
+	for slot in _soldier_tiles.get_child_count():
+		var tile := _soldier_tiles.get_child(slot) as Button
+		tile.visible = slot < count
+		if tile.visible:
+			var style := tile.get_theme_stylebox("normal") as StyleBoxFlat
+			style.bg_color = NO_HP_COLOUR.lerp(FULL_HP_COLOUR, _soldiers.hp_fraction(slot))
+
+
+func _soldier_tile(slot: int) -> Button:
+	var tile := Button.new()
+	tile.focus_mode = Control.FOCUS_NONE
+	tile.custom_minimum_size = TILE_SIZE
+	var style := StyleBoxFlat.new()
+	for state: String in ["normal", "hover", "pressed"]:
+		tile.add_theme_stylebox_override(state, style)
+	tile.pressed.connect(
+		func() -> void: _soldiers.pick(_soldiers.selected()[slot], Input.is_key_pressed(KEY_SHIFT))
+	)
+	return tile
 
 
 # Train soldier, greyed with the reason on hover, and one button per queue slot.
@@ -428,16 +537,19 @@ func _show_barracks_controls() -> void:
 		_slot_buttons[slot].disabled = slot >= queued
 
 
-# A tower's or grinder's ring, in pale gold at x1 rather than hidden, so its progress towards
-# x2 shows.
+# One soldier's, a tower's or a grinder's ring, in pale gold at x1 rather than hidden, so its
+# progress towards x2 shows.
 func _show_combo_ring() -> void:
 	var building := _selection.selected_building()
-	_combo_ring.visible = (
-		building != null and building.kind in [Buildings.TOWER, Buildings.GRINDER]
-	)
+	var id := Occupancy.EMPTY
+	if _soldiers.selected().size() == 1:
+		id = _soldiers.selected()[0]
+	elif building != null and building.kind in [Buildings.TOWER, Buildings.GRINDER]:
+		id = building.id
+	_combo_ring.visible = id != Occupancy.EMPTY
 	if not _combo_ring.visible:
 		return
-	_combo_ring.ring = _combo_view.ring_of(building.id)
+	_combo_ring.ring = _combo_view.ring_of(id)
 	if _combo_ring.ring == null:
 		_combo_ring.ring = ComboView.Ring.new()
 	_combo_ring.queue_redraw()

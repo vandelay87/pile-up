@@ -4,7 +4,8 @@ extends Node2D
 ## View-only selection: clicking a building or the base selects it and draws its range (a
 ## tower's fire range, a repair yard's repair area, a pylon's or the base's power area). The
 ## HUD reads its details each frame. Clicking empty ground or Esc clears it; a destroyed
-## building clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
+## building clears itself. [SoldierSelection] routes left clicks on the world here through
+## [method click]. Placement sits later in the tree, so it sees clicks and Esc first.
 ## A selected repair yard can be put in assign mode (the next click on a building in its
 ## repair area becomes its assignment; Esc cancels), have its assignment cleared or its repair
 ## threshold set; a selected tower can have its targeting set; a selected barracks can train
@@ -17,14 +18,10 @@ const UNPOWERED := Color(0.6, 0.6, 0.6, 0.6)
 const REPAIR_AREA := Color(0.35, 0.95, 0.45, 0.8)
 const REPAIR_AREA_TINT := Color(0.35, 0.95, 0.45, 0.1)
 const ASSIGNMENT := Color(0.35, 0.95, 0.45, 1.0)
-## A left press and release further apart than this (screen pixels) is a camera drag.
-const CLICK_SLOP := 6.0
 
 var _simulation: Simulation
 var _building_id := Occupancy.EMPTY
 var _base := false
-var _press_position := Vector2.ZERO
-var _pressed := false
 var _assigning := false
 
 
@@ -124,6 +121,15 @@ func cancel_training(slot: int) -> void:
 		_simulation.queue_command(Commands.CancelTraining.new(_building_id, slot))
 
 
+## A left click on [param cell]: names the building to assign while assigning, else selects
+## what is there, or clears the selection on empty ground.
+func click(cell: Vector2i) -> void:
+	if _assigning:
+		_assign_at(cell)
+	else:
+		_select_at(cell)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
@@ -133,22 +139,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				clear()
 			get_viewport().set_input_as_handled()
-	elif event is InputEventMouseButton:
-		var button := event as InputEventMouseButton
-		if button.button_index != MOUSE_BUTTON_LEFT:
-			return
-		# Left-drag pans the camera, so a selection happens on a release close to its press.
-		if button.pressed:
-			_pressed = true
-			_press_position = button.position
-		elif _pressed:
-			_pressed = false
-			if button.position.distance_to(_press_position) <= CLICK_SLOP:
-				var cell := GridTransform.world_to_cell(get_global_mouse_position())
-				if _assigning:
-					_assign_at(cell)
-				else:
-					_select_at(cell)
 
 
 func _process(_delta: float) -> void:

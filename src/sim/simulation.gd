@@ -272,7 +272,7 @@ func step_one_tick() -> void:
 
 func run_frame() -> void:
 	if paused:
-		_drain_time_controls()
+		_apply_queued_commands()
 		_emit_signals()
 	var was_paused := paused
 	var ticks := _pending_steps if was_paused else speed
@@ -380,6 +380,13 @@ func _emit_enemies_left() -> void:
 
 func _drain_commands() -> void:
 	_observe(Step.DRAIN_COMMANDS)
+	_apply_queued_commands()
+
+
+# Step 0's drain. While paused it also runs on every frame, as the next tick's step 0 run early:
+# nothing else runs between it and that tick, so a replay that drains the same commands at the
+# tick's own step 0 ends in the same state.
+func _apply_queued_commands() -> void:
 	var commands := _command_queue
 	_command_queue = []
 	for command in commands:
@@ -388,16 +395,6 @@ func _drain_commands() -> void:
 			reject_command("%s: the run is over" % play.label())
 		else:
 			command.apply(self)
-
-
-func _drain_time_controls() -> void:
-	var commands := _command_queue
-	_command_queue = []
-	for command in commands:
-		if command is Commands.TimeControl or command is Commands.Restart:
-			command.apply(self)
-		else:
-			_command_queue.append(command)
 
 
 func _land_bodies_and_update_fields() -> void:

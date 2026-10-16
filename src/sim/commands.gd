@@ -129,6 +129,28 @@ class SetTargeting:
 			sim.reject_command("%s: %s" % [LABEL, error])
 
 
+class SetSoldierTargeting:
+	extends Commands.Play
+
+	const LABEL := "soldier targeting"
+
+	var _soldier_ids: PackedInt32Array
+	var _mode: StringName
+
+	func _init(soldier_ids: PackedInt32Array, mode: StringName) -> void:
+		_soldier_ids = soldier_ids
+		_mode = mode
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Soldiers: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.soldiers.set_targeting(_soldier_ids, _mode)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
 class Train:
 	extends Commands.Play
 

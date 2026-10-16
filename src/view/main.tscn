@@ -21,6 +21,7 @@
 [ext_resource type="Script" path="res://src/view/overflow_view.gd" id="19"]
 [ext_resource type="Script" path="res://src/view/blast_rings.gd" id="20"]
 [ext_resource type="Script" path="res://src/view/soldier_renderer.gd" id="21"]
+[ext_resource type="Script" path="res://src/view/soldier_selection.gd" id="22"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -69,6 +70,9 @@ script = ExtResource("18")
 
 [node name="OverflowView" type="Node2D" parent="."]
 script = ExtResource("19")
+
+[node name="SoldierSelection" type="Node2D" parent="."]
+script = ExtResource("22")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2")

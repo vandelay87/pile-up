@@ -149,6 +149,52 @@ func test_a_soldier_on_a_wall_stands_at_elevation_5() -> void:
 	assert_int(_sim.soldiers.elevation(0)).is_equal(5)
 
 
+func test_set_soldier_targeting_sets_the_mode_of_each_soldier_named() -> void:
+	_sim.queue_command(Commands.AddSoldiers.new(3))
+	_sim.tick()
+	var ids := _sim.soldiers.ids
+
+	_sim.queue_command(
+		Commands.SetSoldierTargeting.new(
+			PackedInt32Array([ids[0], ids[2]]), Enemies.CLOSEST_TO_BASE
+		)
+	)
+	_sim.tick()
+
+	assert_array(_targetings()).is_equal(
+		[Enemies.CLOSEST_TO_BASE, Enemies.BLOATERS_FIRST, Enemies.CLOSEST_TO_BASE]
+	)
+
+
+func test_set_soldier_targeting_skips_ids_that_are_not_living_soldiers() -> void:
+	_add_one_and_tick()
+
+	_sim.queue_command(
+		Commands.SetSoldierTargeting.new(
+			PackedInt32Array([999, _sim.soldiers.ids[0]]), Enemies.CLOSEST_TO_BASE
+		)
+	)
+	_sim.tick()
+
+	assert_array(_targetings()).is_equal([Enemies.CLOSEST_TO_BASE])
+
+
+func test_set_soldier_targeting_with_an_unknown_mode_is_rejected() -> void:
+	_add_one_and_tick()
+	var rejections: Array[String] = []
+	_sim.command_rejected.connect(func(reason: String) -> void: rejections.append(reason))
+
+	_sim.queue_command(
+		Commands.SetSoldierTargeting.new(PackedInt32Array([_sim.soldiers.ids[0]]), &"nearest")
+	)
+	_sim.tick()
+
+	assert_array(rejections).contains_exactly(
+		["soldier targeting: the mode must be bloaters_first or closest_to_base"]
+	)
+	assert_array(_targetings()).is_equal([Enemies.BLOATERS_FIRST])
+
+
 # Lands [param level] bodies on [param cell] as bodies land on the next tick.
 func _land_bodies(cell: Vector2i, level: int) -> void:
 	var bodies := PackedVector2Array()
@@ -185,3 +231,10 @@ func _spots() -> Array[Vector2i]:
 
 func _positions() -> PackedVector2Array:
 	return _sim.soldiers.positions.slice(0, _sim.soldiers.count)
+
+
+func _targetings() -> Array[StringName]:
+	var modes: Array[StringName] = []
+	for i in _sim.soldiers.count:
+		modes.append(_sim.soldiers.targeting(i))
+	return modes
