@@ -127,6 +127,8 @@ func test_enemies_held_up_by_soldiers_fill_no_gauge() -> void:
 	_sim.soldiers.add(Vector2i(6, 1))
 	var enemy := _sim.enemies.spawn(Vector2(9.5, 1.5), TOUGH)
 	_run_until_attacking(enemy, 240)
+	var at := Vector2i(_sim.enemies.positions[_sim.enemies.index_of(enemy)].floor())
+	assert_int(_sim.overflow.band_label(at)).is_not_equal(Overflow.NONE)
 	var gauges := _gauges()
 
 	for tick in 300:

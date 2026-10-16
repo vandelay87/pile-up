@@ -1,8 +1,8 @@
 class_name SoldierDeathsView
 extends Node2D
 
-## A brief burst on the ground where each soldier falls, in the soldiers' colour, swelling and
-## fading. No alert.
+## A brief burst where each soldier falls, lifted by the pile it fell on as soldiers are, in the
+## soldiers' colour, swelling and fading. No alert.
 
 const DURATION_MSEC := 450.0
 const START_SCALE := 0.5
@@ -36,7 +36,8 @@ func _fall(deaths: SoldierDeaths) -> void:
 	for pos in deaths.positions:
 		var burst := Burst.new()
 		burst.item = _take()
-		burst.at = GridTransform.grid_to_world(pos)
+		var level := _simulation.piles.level(Vector2i(pos.floor()))
+		burst.at = GridTransform.grid_to_world(pos) - Vector2(0, level * Atlas.PILE_SLAB_HEIGHT)
 		burst.started_msec = now
 		_bursts.append(burst)
 	_draw_bursts(now)

@@ -17,7 +17,7 @@ const _PILE_LEVELS := Piles.WALL_LEVEL + 1
 ## How far an enemy's field value must drop for a tick to count as progress against a jam.
 const PROGRESS := 0.02
 # The weight of this tick's progress in its exponential average.
-const PROGRESS_SMOOTHING := 0.05
+const _PROGRESS_SMOOTHING := 0.05
 const _ROLL_STEPS := 40
 # Single-precision headings put an exact reversal a hair either side of pi, so a turn must
 # beat the turn-back angle by this much to count.
@@ -440,7 +440,7 @@ func _track_progress(i: int, pos: Vector2, band_mask: PackedByteArray, full_step
 	if _last_values[i] != INF and field_value != INF:
 		gained = clampf((_last_values[i] - field_value) / full_step, -1.0, 2.0)
 	_last_values[i] = field_value
-	progress[i] = lerpf(progress[i], gained, PROGRESS_SMOOTHING)
+	progress[i] = lerpf(progress[i], gained, _PROGRESS_SMOOTHING)
 
 
 func _roll_route(

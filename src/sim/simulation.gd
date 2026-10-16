@@ -104,6 +104,7 @@ var _reported_gold: int
 var _reported_base_hp: float
 var _reported_kills := 0
 var _payout_was_multiplied := false
+var _soldiers_died := false
 var _reported_enemies_left: int
 var _wave_ended := false
 var _reported_phase := Waves.Phase.BUILD
@@ -343,9 +344,9 @@ func _emit_signals() -> void:
 	var added := soldiers.take_added()
 	if not added.is_empty():
 		soldiers_added.emit(added)
-	if not soldier_deaths.is_empty():
+	if _soldiers_died:
+		_soldiers_died = false
 		soldiers_died.emit(soldier_deaths)
-		soldier_deaths = SoldierDeaths.new()
 	for id in barracks.take_changed():
 		training_changed.emit(id)
 	if power_grid.take_changed():
@@ -458,6 +459,8 @@ func _move_enemies() -> void:
 
 func _move_units() -> void:
 	_observe(Step.MOVE_UNITS)
+	soldiers.need_restarted()
+	unit_paths.step()
 	soldiers.step(enemies)
 	soldier_attacks.step()
 
@@ -487,8 +490,9 @@ func _remove_dead() -> void:
 	_blasts.append_array(bloater_blasts.resolve(deaths, soldiers))
 	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
-	soldier_deaths = soldiers.remove_dead()
-	if not soldier_deaths.is_empty():
+	soldier_deaths = soldiers.remove_dead(deaths)
+	_soldiers_died = not soldier_deaths.is_empty()
+	if _soldiers_died:
 		soldier_attacks.end_on(soldier_deaths.ids)
 		piles.queue_bodies(soldier_deaths.bodies())
 		for id in soldier_deaths.ids:

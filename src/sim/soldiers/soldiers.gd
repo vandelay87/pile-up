@@ -255,9 +255,9 @@ func push_out_of(area: Rect2i) -> void:
 			_hold(i, _map.index_of(cell))
 
 
-# Before UnitPaths.step: each field restarted since the last tick asks again for its soldiers'
-# cells and slots, aimed at where they are now.
-func _need_restarted() -> void:
+## At [constant Simulation.Step.MOVE_UNITS], before [method UnitPaths.step]: each field restarted
+## since the last tick asks again for its soldiers' cells and slots, aimed at where they are now.
+func need_restarted() -> void:
 	for field in _paths.take_restarted():
 		var needed := PackedInt32Array()
 		var mean := Vector2.ZERO
@@ -279,8 +279,6 @@ func _need_restarted() -> void:
 ## pushes them and [param enemies] apart by mass, spaces them out, then holds every soldier off
 ## what is solid to it.
 func step(enemies: Enemies) -> void:
-	_need_restarted()
-	_paths.step()
 	_assign_slots()
 	_plan_paths()
 	_walk()
@@ -313,8 +311,6 @@ func fire(enemies: Enemies, shots: Array[Buildings.Shot]) -> void:
 			continue
 		var index := enemies.index_of(target)
 		enemies.damage(target, damage, ids[i])
-		if not enemies.is_alive(index):
-			kills[i] += 1
 		cooldowns[i] = cooldown
 		shots.append(Buildings.Shot.new(ids[i], positions[i], target, enemies.positions[index]))
 	for i in count:
@@ -333,9 +329,14 @@ func damage(id: int, amount: float, by_blast := false) -> void:
 		blast_killed[i] = 1
 
 
-## At [constant Simulation.Step.REMOVE_DEAD], after blasts: removes every soldier at 0 HP,
-## leaving its order and spot, and returns their deaths in removal order.
-func remove_dead() -> SoldierDeaths:
+## At [constant Simulation.Step.REMOVE_DEAD], after blasts: counts each of [param enemy_deaths]
+## towards its killer's kills, if a soldier killed it, blast kills included. Then removes every
+## soldier at 0 HP, leaving its order and spot, and returns their deaths in removal order.
+func remove_dead(enemy_deaths: Deaths) -> SoldierDeaths:
+	for killer in enemy_deaths.killers:
+		var killed_by := index_of(killer)
+		if killed_by != NONE:
+			kills[killed_by] += 1
 	var deaths := SoldierDeaths.new()
 	var i := 0
 	while i < count:
@@ -353,13 +354,6 @@ func remove_dead() -> SoldierDeaths:
 func recover_all() -> void:
 	for i in count:
 		hp[i] = _settings.soldier_hp
-
-
-## Counts a kill towards the soldier with id [param id]'s kills, if it is still living.
-func count_kill(id: int) -> void:
-	var index := index_of(id)
-	if index != NONE:
-		kills[index] += 1
 
 
 ## How far the soldier at [param index] reaches: its range plus the elevation bonus,

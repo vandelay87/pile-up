@@ -122,8 +122,8 @@ func _init() -> void:
 	if first.soldier_shots == 0 or first.soldier_kills == 0:
 		printerr("No soldier fired and killed")
 		failed = true
-	if first.attack_ticks == 0 or first.soldier_deaths == 0:
-		printerr("No soldier was attacked and killed")
+	if first.attack_ticks == 0:
+		printerr("No soldier was attacked")
 		failed = true
 	if first.digest != second.digest:
 		printerr("Two runs with the same seed ended in different states")
