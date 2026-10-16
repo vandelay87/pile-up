@@ -59,12 +59,21 @@ func test_a_tumbling_enemy_neither_pushes_nor_is_pushed_by_a_soldier() -> void:
 
 
 func test_a_standing_soldier_pushed_by_a_thin_stream_returns_to_its_spot() -> void:
-	_sim = _sim_from(CORRIDOR)
+	_sim = _sim_from(
+		[
+			"##############",
+			"..............",
+			"..............",
+			"..............",
+			"..############",
+			"..############",
+		]
+	)
 	var id := _sim.soldiers.add(Vector2i(7, 2))
 	var furthest := 0.0
 	for tick in 480:
 		if tick % 40 == 0 and tick < 320:
-			_sim.enemies.spawn(Vector2(13.5, 1.5), 10.0)
+			_sim.enemies.spawn(Vector2(13.5, 2.5), 10.0)
 		_sim.tick()
 		furthest = maxf(furthest, _position_of(id).distance_to(Vector2(7.5, 2.5)))
 	for tick in 240:
@@ -76,11 +85,10 @@ func test_a_standing_soldier_pushed_by_a_thin_stream_returns_to_its_spot() -> vo
 	assert_float(off).is_less_equal(Soldiers.SPOT_SLACK)
 
 
-func test_a_dense_crowd_pushes_a_soldier_line_back_under_a_full_contact_push() -> void:
+func test_a_surge_pushes_a_soldier_line_back() -> void:
 	_sim = _sim_from(CORRIDOR)
-	_sim.settings.change("soldiers", "contact_push", 1.0)
 	var ids := [_sim.soldiers.add(Vector2i(7, 1)), _sim.soldiers.add(Vector2i(7, 2))]
-	_spawn_crowd(Rect2(8.4, 1.2, 5.4, 1.6), 100)
+	_spawn_crowd(Rect2(8.4, 1.2, 5.4, 1.6), 140)
 	var furthest := 0.0
 	for tick in 240:
 		_sim.tick()
