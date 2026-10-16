@@ -286,6 +286,11 @@ var soldier_hp: float:
 var soldier_speed: float:
 	get:
 		return value("soldiers", "speed")
+## How much slower a soldier climbs over a wall, as a fraction.
+var soldier_wall_climb_slow: float:
+	get:
+		var percent: int = value("soldiers", "wall_climb_slow")
+		return percent / 100.0
 var soldier_cost: int:
 	get:
 		return value("soldiers", "cost")

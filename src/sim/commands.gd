@@ -196,6 +196,95 @@ class CancelTraining:
 			sim.reject_command("%s: %s" % [LABEL, error])
 
 
+## Sets where a barracks sends the soldiers it trains.
+class SetRallyPoint:
+	extends Commands.Play
+
+	const LABEL := "rally point"
+
+	var _barracks_id: int
+	var _cell: Vector2i
+
+	func _init(barracks_id: int, cell: Vector2i) -> void:
+		_barracks_id = barracks_id
+		_cell = cell
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Barracks: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.barracks.set_rally(_barracks_id, _cell)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
+## New soldiers from a barracks stand where they appear again.
+class ClearRallyPoint:
+	extends Commands.Play
+
+	const LABEL := "clear rally point"
+
+	var _barracks_id: int
+
+	func _init(barracks_id: int) -> void:
+		_barracks_id = barracks_id
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Barracks: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.barracks.clear_rally(_barracks_id)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
+## Sends soldiers to a map position in a formation, read from the command card when the order
+## is given so replays are exact.
+class Move:
+	extends Commands.Play
+
+	const LABEL := "move"
+
+	var _soldier_ids: PackedInt32Array
+	var _target: Vector2
+	var _formation: StringName
+
+	func _init(soldier_ids: PackedInt32Array, target: Vector2, formation: StringName) -> void:
+		_soldier_ids = soldier_ids
+		_target = target
+		_formation = formation
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Soldiers: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.soldiers.move(_soldier_ids, _target, _formation)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
+## Ends soldiers' orders: each stands where it is.
+class Stop:
+	extends Commands.Play
+
+	const LABEL := "stop"
+
+	var _soldier_ids: PackedInt32Array
+
+	func _init(soldier_ids: PackedInt32Array) -> void:
+		_soldier_ids = soldier_ids
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Soldiers: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		sim.soldiers.stop(_soldier_ids)
+
+
 class Restart:
 	extends Commands.Command
 

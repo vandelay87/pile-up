@@ -74,6 +74,7 @@ var _train := Button.new()
 var _slot_buttons: Array[Button] = []
 var _next_wave := Button.new()
 var _stop := Button.new()
+var _clear_rally := Button.new()
 var _soldier_targeting := Button.new()
 var _formation := Button.new()
 # The soldier card's buttons and the blanks that keep Next wave in its slot.
@@ -295,6 +296,11 @@ func _details_panel() -> PanelContainer:
 		func() -> void: _selection.train(Barracks.BATCH if Input.is_key_pressed(KEY_SHIFT) else 1)
 	)
 	_barracks_controls.add_child(_train)
+	_clear_rally.text = "Clear rally point"
+	_clear_rally.focus_mode = Control.FOCUS_NONE
+	_clear_rally.tooltip_text = "New soldiers stand beside the barracks"
+	_clear_rally.pressed.connect(func() -> void: _selection.clear_rally())
+	_barracks_controls.add_child(_clear_rally)
 	var queue_label := Label.new()
 	queue_label.text = "  Queue"
 	queue_label.add_theme_font_size_override("font_size", 14)
@@ -326,8 +332,8 @@ func _command_card() -> PanelContainer:
 	var commands := GridContainer.new()
 	commands.columns = COMMAND_COLUMNS
 	_stop.text = "Stop\n[S]"
-	_stop.disabled = true
-	_stop.tooltip_text = "Stops soldiers' orders, once they take orders"
+	_stop.pressed.connect(func() -> void: _soldiers.stop())
+	_stop.tooltip_text = "Stops the selected soldiers where they stand"
 	_soldier_targeting.pressed.connect(func() -> void: _soldiers.flip_targeting())
 	_soldier_targeting.tooltip_text = "Which enemy each soldier fires at first"
 	_formation.pressed.connect(func() -> void: _soldiers.flip_formation())
@@ -531,6 +537,7 @@ func _show_barracks_controls() -> void:
 	_train.tooltip_text = (
 		_sentence(error) if _train.disabled else "Shift-click queues %d" % Barracks.BATCH
 	)
+	_clear_rally.disabled = _simulation.barracks.rally_point(id) == Barracks.NO_RALLY
 	var queued := _simulation.barracks.queue_of(id).size()
 	for slot in _slot_buttons.size():
 		_slot_buttons[slot].text = QUEUED_SLOT if slot < queued else EMPTY_SLOT

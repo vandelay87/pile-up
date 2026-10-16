@@ -6,6 +6,8 @@
 #   --case=wave-20     a real wave 20 against BenchCrowd's towers and endless base, jumped to once
 #                      warm-up ends: no tick over 16.7 ms, for up to 7,200 ticks or until the wave
 #                      ends
+# With --orders, 50 soldiers stand beside the base and every 120 ticks ten of them are sent across
+# the map, alternating Cluster and Line, so the unit steps' cost shows (#190).
 # Run in the release export: in a copy of the project, set run/main_scene to this scene, drop
 # tools/* from the macOS preset's exclude_filter, export with --export-release, then run one tick
 # a frame with:
@@ -21,6 +23,13 @@ const WAVE_TICKS := 7200
 const FRAME_BUDGET_MSEC := 1000.0 / 60.0
 const DENSE_TICK_P99_MSEC := 12.0
 const CASES: Array[String] = ["dense-1000", "dense-1390", "wave-20"]
+const ARMY := 50
+const ORDER_GROUP := 10
+const ORDER_INTERVAL := 120
+## Far corners of the v3 flared map that orders alternate between.
+const ORDER_TARGETS: Array[Vector2] = [
+	Vector2(12.5, 27.5), Vector2(100.5, 20.5), Vector2(56.5, 8.5)
+]
 
 var _main: Main
 var _sim: Simulation
@@ -35,12 +44,16 @@ var _ticked := false
 var _ticks := 0
 var _frame_msec := PackedFloat64Array()
 var _enemies := PackedInt32Array()
+var _orders := false
+var _orders_sent := 0
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--case="):
 			_case = arg.trim_prefix("--case=")
+		elif arg == "--orders":
+			_orders = true
 	if _case not in CASES:
 		push_error("bench_profile: expected --case= one of %s, got %s" % [CASES, _case])
 		get_tree().quit(1)
@@ -59,6 +72,8 @@ func _ready() -> void:
 	if _case != "wave-20":
 		_dense_count = int(_case.trim_prefix("dense-"))
 	_sim.step_observer = _on_step
+	if _orders:
+		_sim.queue_command(Commands.AddSoldiers.new(ARMY))
 
 
 func _on_step(step: Simulation.Step) -> void:
@@ -93,11 +108,25 @@ func _process(_delta: float) -> void:
 			return
 	if _dense_count > 0:
 		_crowd.top_up(_dense_count)
+	if _orders and _measuring and _ticks % ORDER_INTERVAL == 0:
+		_send_order()
 	_frame += 1
 	if _frame == WARMUP_FRAMES:
 		_measuring = true
 		if _dense_count == 0:
 			_sim.jump_to_wave(WAVE)
+
+
+# Ten soldiers in turn, to the next far target, alternating Cluster and Line.
+func _send_order() -> void:
+	var ids := PackedInt32Array()
+	for k in ORDER_GROUP:
+		var i := (_orders_sent * ORDER_GROUP + k) % _sim.soldiers.count
+		ids.append(_sim.soldiers.ids[i])
+	var target := ORDER_TARGETS[_orders_sent % ORDER_TARGETS.size()]
+	var formation := Formations.CLUSTER if _orders_sent % 2 == 0 else Formations.LINE
+	_sim.queue_command(Commands.Move.new(ids, target, formation))
+	_orders_sent += 1
 
 
 func _done() -> bool:
@@ -113,7 +142,7 @@ func _print_report() -> void:
 		(
 			(
 				"Godot %s | %s | debug build: %s | window %s | vsync off | %d physics ticks/s"
-				+ " | neighbour cap %d | case %s | %d ticks after %d warm-up frames"
+				+ " | neighbour cap %d | case %s%s | %d ticks after %d warm-up frames"
 			)
 			% [
 				Engine.get_version_info().string,
@@ -123,6 +152,7 @@ func _print_report() -> void:
 				Engine.physics_ticks_per_second,
 				_sim.settings.neighbour_cap,
 				_case,
+				" with orders" if _orders else "",
 				_ticks,
 				WARMUP_FRAMES,
 			]

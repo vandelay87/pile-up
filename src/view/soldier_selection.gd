@@ -7,11 +7,13 @@ extends Node2D
 ## building [Selection] and clears the soldiers; a click on empty ground or Esc clears both.
 ## Ctrl+1–9 saves the selected soldiers as a group, 1–9 selects it again, and the same number
 ## twice in quick succession centres the camera on it. The selection and groups drop soldiers
-## that die. Placement sits later in the tree, so it sees clicks and Esc first, and no box
-## starts while a building is placed. The selection marker is drawn above everything.
+## that die. A right-click sends the selected soldiers a Move in the army-wide formation, or sets
+## the selected barracks' rally point. Placement sits later in the tree, so it sees clicks and
+## Esc first, and no box starts while a building is placed. The selection marker and the move
+## marker are drawn above everything.
 
-const CLUSTER := &"cluster"
-const LINE := &"line"
+const CLUSTER := Formations.CLUSTER
+const LINE := Formations.LINE
 const FORMATION_NAMES := {CLUSTER: "Cluster", LINE: "Line"}
 ## Shown for the targeting when the selected soldiers' modes differ.
 const MIXED := "Mixed"
@@ -24,8 +26,11 @@ const MARKER := Color(0.4, 1.0, 0.5, 0.95)
 const MARKER_RADIUS := 9.0
 const BOX_EDGE := Color(0.4, 1.0, 0.5, 0.9)
 const BOX_FILL := Color(0.4, 1.0, 0.5, 0.1)
+const MOVE_MARKER := Color(0.4, 1.0, 0.5)
+const MOVE_MARKER_SECONDS := 0.45
+const MOVE_MARKER_RADIUS := 14.0
 
-## The army-wide formation the next Move order takes (#190), flipped from the command card.
+## The army-wide formation the next Move order takes, flipped from the command card.
 var formation := CLUSTER
 
 var _simulation: Simulation
@@ -40,6 +45,9 @@ var _pressed := false
 var _boxing := false
 var _press_screen := Vector2.ZERO
 var _press_world := Vector2.ZERO
+# Where the last Move order landed, in world pixels, and when.
+var _move_marker := Vector2.ZERO
+var _move_marker_msec := -1
 
 
 func setup(simulation: Simulation, buildings: Selection, camera: MapCamera) -> void:
@@ -93,6 +101,12 @@ func flip_targeting() -> void:
 	_simulation.queue_command(Commands.SetSoldierTargeting.new(_ids, mode))
 
 
+## Stops the selected soldiers where they stand.
+func stop() -> void:
+	if has_selection():
+		_simulation.queue_command(Commands.Stop.new(_ids))
+
+
 ## Flips the army-wide formation between Cluster and Line.
 func flip_formation() -> void:
 	formation = LINE if formation == CLUSTER else CLUSTER
@@ -143,6 +157,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_key(event as InputEventKey)
 	elif event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
+		if button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
+			_order(get_global_mouse_position())
+			return
 		if button.button_index != MOUSE_BUTTON_LEFT:
 			return
 		# While a repair yard is assigning, a click names the building, so soldiers aren't picked.
@@ -175,6 +192,8 @@ func _key(key: InputEventKey) -> void:
 				_groups[group] = _ids
 		else:
 			_recall(group)
+	elif key.keycode == KEY_S and has_selection():
+		stop()
 	elif key.keycode == KEY_A and has_selection():
 		flip_targeting()
 	elif key.keycode == KEY_F and has_selection():
@@ -197,6 +216,21 @@ func _process(_delta: float) -> void:
 		else:
 			_cancel_box()
 	queue_redraw()
+
+
+# A right-click on the ground or an enemy: a Move to the ground under it for the selected
+# soldiers, or the selected barracks' rally point.
+func _order(point: Vector2) -> void:
+	if has_selection():
+		var target := GridTransform.world_to_grid(point)
+		_simulation.queue_command(Commands.Move.new(_ids, target, formation))
+		_move_marker = point
+		_move_marker_msec = Time.get_ticks_msec()
+	elif _buildings.is_barracks_selected():
+		_buildings.set_rally(GridTransform.world_to_cell(point))
+	else:
+		return
+	get_viewport().set_input_as_handled()
 
 
 func _release(shift: bool) -> void:
@@ -349,7 +383,24 @@ func _draw() -> void:
 		draw_set_transform(foot, 0.0, Vector2(1.0, 0.5))
 		draw_arc(Vector2.ZERO, MARKER_RADIUS, 0.0, TAU, 24, MARKER, width * 2.0)
 	draw_set_transform(Vector2.ZERO)
+	_draw_move_marker(width)
 	if _boxing:
 		var box := Rect2(_press_world, Vector2.ZERO).expand(get_global_mouse_position())
 		draw_rect(box, BOX_FILL)
 		draw_rect(box, BOX_EDGE, false, width)
+
+
+# A short flash where the last Move order landed: a ring on the ground shrinking as it fades.
+func _draw_move_marker(width: float) -> void:
+	if _move_marker_msec < 0:
+		return
+	var age := (Time.get_ticks_msec() - _move_marker_msec) / 1000.0 / MOVE_MARKER_SECONDS
+	if age >= 1.0:
+		_move_marker_msec = -1
+		return
+	draw_set_transform(_move_marker, 0.0, Vector2(1.0, 0.5))
+	var colour := Color(MOVE_MARKER, 1.0 - age)
+	draw_arc(
+		Vector2.ZERO, MOVE_MARKER_RADIUS * (1.0 - 0.5 * age), 0.0, TAU, 24, colour, width * 2.0
+	)
+	draw_set_transform(Vector2.ZERO)
