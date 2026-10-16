@@ -10,7 +10,8 @@
 # towers, under the crush, grinding the crowd pressed on them and the tumblers crossing them.
 # Every CHAIN_INTERVAL ticks a wall is raised in the crowd and a chain of bloaters set off beside
 # it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
-# around the ring, and ten of them are sent across it through the crowd every 120 ticks.
+# around the ring, and a group of them is sent across it through the crowd every
+# BenchCrowd.ORDER_INTERVAL ticks.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree

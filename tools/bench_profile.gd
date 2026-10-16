@@ -6,9 +6,9 @@
 #   --case=wave-20     a real wave 20 against BenchCrowd's towers and endless base, jumped to once
 #                      warm-up ends: no tick over 16.7 ms, for up to 7,200 ticks or until the wave
 #                      ends
-# With --army, BenchCrowd's army stands in and around the crowd's ring and every 120 ticks ten of
-# its soldiers are sent across the ring through the crowd, alternating Cluster and Line, so the unit
-# steps' cost shows.
+# With --army, BenchCrowd's army stands in and around the crowd's ring and a group of its soldiers
+# is sent across the ring through the crowd every BenchCrowd.ORDER_INTERVAL ticks, alternating
+# Cluster and Line, so the unit steps' cost shows.
 # Run in the release export: in a copy of the project, set run/main_scene to this scene, drop
 # tools/* from the macOS preset's exclude_filter, export with --export-release, then run one tick
 # a frame with:

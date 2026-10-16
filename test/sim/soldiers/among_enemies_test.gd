@@ -134,13 +134,18 @@ func test_enemies_are_never_pushed_into_a_building() -> void:
 
 func test_soldiers_never_enter_the_flow_fields_or_a_barrier() -> void:
 	var without := _sim_from(CORRIDOR)
+	_sim = without
+	_spawn_crowd(Rect2(8.4, 1.2, 5.4, 1.6), 40)
 	_sim = _sim_from(CORRIDOR)
 	_sim.soldiers.add(Vector2i(7, 1))
 	_sim.soldiers.add(Vector2i(7, 2))
+	_spawn_crowd(Rect2(8.4, 1.2, 5.4, 1.6), 40)
 	for sim: Simulation in [without, _sim]:
 		sim.add_gold(sim.settings.pylon_cost)
 		sim.queue_command(Commands.Build.new(Buildings.PYLON, Vector2i(10, 1)))
-		sim.tick()
+		for tick in 60:
+			sim.tick()
+	assert_bool(_sim.soldiers.positions[0] == Vector2(7.5, 1.5)).is_false()
 
 	for y in _sim.map.height:
 		for x in _sim.map.width:

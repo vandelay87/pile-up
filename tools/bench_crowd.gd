@@ -1,6 +1,7 @@
 # Keeps a dense crowd of enemies in a ring around the base, with a ring of towers firing into it,
 # for the benchmarks. It can field an army among them: soldiers in and around the ring, some on
-# walls it raises, ten of them sent across the ring through the crowd every ORDER_INTERVAL ticks.
+# walls it raises, ORDER_GROUP of them sent across the ring through the crowd every ORDER_INTERVAL
+# ticks.
 class_name BenchCrowd
 extends RefCounted
 
@@ -15,6 +16,8 @@ const ARMY_INNER_RADIUS := INNER_RADIUS - 2.0
 const ARMY_OUTER_RADIUS := OUTER_RADIUS + 2.0
 const ORDER_GROUP := 10
 const ORDER_INTERVAL := 120
+# Spots tried for each soldier before field_army gives up on a full army.
+const _TRIES_PER_SOLDIER := 100
 
 ## Where the ring's towers stand (or stood, once the crowd breaks them).
 var tower_origins: Array[Vector2i] = []
@@ -80,9 +83,10 @@ func raise_wall() -> Vector2i:
 	return Vector2i(spot.floor())
 
 
-## Raises ARMY_ON_WALLS walls in and around the ring and stands the army there: a soldier on
-## each wall that landed, the rest on the ground, each on a cell of its own. Ticks once, for the
-## walls to land.
+## Raises [constant ARMY_ON_WALLS] walls in and around the ring and stands the army of
+## [constant ARMY] there: a soldier on each wall that landed, the rest on the ground, each on a
+## cell of its own. Ticks once, for the walls to land. Fields fewer when the ring runs out of
+## free cells.
 func field_army() -> void:
 	var walls: Array[Vector2i] = []
 	for n in ARMY_ON_WALLS:
@@ -95,10 +99,13 @@ func field_army() -> void:
 	_sim.tick()
 	var taken := {}
 	for cell in walls:
-		if _sim.piles.level(cell) == Piles.WALL_LEVEL and not taken.has(cell):
+		var free := _sim.soldiers.can_stand_on(cell) and not taken.has(cell)
+		if free and _sim.piles.level(cell) == Piles.WALL_LEVEL:
 			taken[cell] = true
 			_sim.soldiers.add(cell)
-	while _sim.soldiers.count < ARMY:
+	for attempt in ARMY * _TRIES_PER_SOLDIER:
+		if _sim.soldiers.count == ARMY:
+			return
 		var cell := Vector2i(_army_spot().floor())
 		var free := _sim.soldiers.can_stand_on(cell) and not taken.has(cell)
 		if free and _sim.piles.level(cell) == 0:
@@ -106,8 +113,8 @@ func field_army() -> void:
 			_sim.soldiers.add(cell)
 
 
-## On every ORDER_INTERVAL-th tick [param t], sends the next ORDER_GROUP soldiers in turn on a
-## Move across the ring, through the crowd, alternating Cluster and Line.
+## On every [constant ORDER_INTERVAL]-th tick [param t], sends the next [constant ORDER_GROUP]
+## soldiers in turn on a Move across the ring, through the crowd, alternating Cluster and Line.
 func send_army(t: int) -> void:
 	if t % ORDER_INTERVAL != 0 or _sim.soldiers.count == 0:
 		return

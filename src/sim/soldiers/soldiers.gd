@@ -454,9 +454,9 @@ func _arrive(i: int) -> void:
 # the enemy takes mass / (mass + 1) of it and the soldier the rest.
 func _push_enemies(enemies: Enemies) -> void:
 	var mass := _settings.soldier_mass
-	var share := mass / (mass + 1.0)
+	var enemy_share := mass / (mass + 1.0)
 	for i in count:
-		positions[i] = enemies.shove_from(positions[i], share)
+		positions[i] = enemies.push_away_from(positions[i], enemy_share)
 
 
 # Pairs of soldiers closer than the personal-space radius push apart softly, every pair at once

@@ -350,9 +350,10 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 ## At [constant Simulation.Step.MOVE_UNITS], the contact pass for a soldier's body at
 ## [param pos], from the hash built at [constant Simulation.Step.REBUILD_SPATIAL_HASH]: every
 ## living, non-tumbling enemy in the 3×3 buckets around it whose centre is closer than two body
-## radii is pushed apart from it along the line between them, taking [param share] of the overlap,
-## and is held off walls and solids. Returns where the soldier ends up, having taken the rest.
-func shove_from(pos: Vector2, share: float) -> Vector2:
+## radii is pushed apart from it along the line between them, taking [param enemy_share] of the
+## overlap, and is held off walls and solids. Returns where the soldier ends up, having taken the
+## rest.
+func push_away_from(pos: Vector2, enemy_share: float) -> Vector2:
 	var radius := _settings.separation_radius
 	var spacing := 2.0 * radius
 	var spacing_squared := spacing * spacing
@@ -371,8 +372,9 @@ func shove_from(pos: Vector2, share: float) -> Vector2:
 				var distance := sqrt(distance_squared)
 				var direction := away / distance if distance > 1e-6 else Vector2.RIGHT
 				var overlap := spacing - distance
-				positions[i] = _held_off_solids(positions[i] + direction * overlap * share, radius)
-				pos -= direction * overlap * (1.0 - share)
+				var pushed := positions[i] + direction * overlap * enemy_share
+				positions[i] = _held_off_solids(pushed, radius)
+				pos -= direction * overlap * (1.0 - enemy_share)
 	return pos
 
 
