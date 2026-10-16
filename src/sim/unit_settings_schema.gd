@@ -77,6 +77,15 @@ const SOLDIERS := {
 		"unit": "an enemy's mass (1)",
 		"apply": Settings.Apply.LIVE,
 	},
+	"contact_push":
+	{
+		"type": TYPE_FLOAT,
+		"min": 0.05,
+		"max": 1.0,
+		"step": 0.05,
+		"unit": "overlap/tick with enemies",
+		"apply": Settings.Apply.LIVE,
+	},
 	"cost":
 	{
 		"type": TYPE_INT,

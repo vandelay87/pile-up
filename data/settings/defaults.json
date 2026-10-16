@@ -115,6 +115,7 @@
 		"speed": 2.5,
 		"wall_climb_slow": 75,
 		"mass": 5,
+		"contact_push": 0.7,
 		"cost": 30,
 		"training_time": 5
 	},

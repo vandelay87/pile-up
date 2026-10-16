@@ -332,12 +332,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	for i in count:
 		if hp[i] <= 0.0 or tumbling[i] == 1:
 			continue
-		var pos := _moved[i]
-		for _pass in _COLLISION_PASSES:
-			var resolved := _solids.resolve(pos, radius)
-			if resolved == pos:
-				break
-			pos = resolved
+		var pos := _held_off_solids(_moved[i], radius)
 		positions[i] = pos
 		if routes[i] == Routing.Route.SENSIBLE:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
@@ -350,6 +345,45 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	for i in count:
 		if structure_targets[i] != NONE and kinds[i] != Kind.BLOATER:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+
+
+## At [constant Simulation.Step.MOVE_UNITS], the contact pass for a soldier's body at
+## [param pos], from the hash built at [constant Simulation.Step.REBUILD_SPATIAL_HASH]: every
+## living, non-tumbling enemy in the 3×3 buckets around it whose centre is closer than two body
+## radii is pushed apart from it along the line between them, closing [param push] of the overlap.
+## The enemy takes [param enemy_share] of that push and is held off walls and solids. Returns where
+## the soldier ends up, having taken the rest.
+func push_away_from(pos: Vector2, push: float, enemy_share: float) -> Vector2:
+	var radius := _settings.separation_radius
+	var spacing := 2.0 * radius
+	var spacing_squared := spacing * spacing
+	var cell := Vector2i(pos.floor())
+	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
+		var row := y * _map.width
+		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
+			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
+				var i := _bucket_enemies[slot]
+				if hp[i] <= 0.0 or tumbling[i] == 1:
+					continue
+				var away := positions[i] - pos
+				var distance_squared := away.length_squared()
+				if distance_squared >= spacing_squared:
+					continue
+				var distance := sqrt(distance_squared)
+				var direction := away / distance if distance > 1e-6 else Vector2.RIGHT
+				var shove := direction * (spacing - distance) * push
+				positions[i] = _held_off_solids(positions[i] + shove * enemy_share, radius)
+				pos -= shove * (1.0 - enemy_share)
+	return pos
+
+
+func _held_off_solids(pos: Vector2, radius: float) -> Vector2:
+	for _pass in _COLLISION_PASSES:
+		var resolved := _solids.resolve(pos, radius)
+		if resolved == pos:
+			break
+		pos = resolved
+	return pos
 
 
 # A lit fuse burns down a tick; one that runs out pops its bloater, with no killer.

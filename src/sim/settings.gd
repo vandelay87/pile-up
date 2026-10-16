@@ -291,6 +291,14 @@ var soldier_wall_climb_slow: float:
 	get:
 		var percent: int = value("soldiers", "wall_climb_slow")
 		return percent / 100.0
+## A soldier's mass against an enemy's 1, in the contact pass.
+var soldier_mass: float:
+	get:
+		return value("soldiers", "mass")
+## The share of a soldier's overlap with an enemy closed each tick, in the contact pass.
+var soldier_contact_push: float:
+	get:
+		return value("soldiers", "contact_push")
 var soldier_cost: int:
 	get:
 		return value("soldiers", "cost")
