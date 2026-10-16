@@ -26,14 +26,48 @@ jobs:
       - run: tools/check_sim_boundary_test.sh
       - run: tools/sim_budget_test.sh
 
+  # The GDExtension (native/, ADR 0001), one release build per platform, for the jobs below.
+  native:
+    name: native (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+          - platform: macos
+            os: macos-latest
+          - platform: windows
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install scons==4.11.1
+      - run: scons -C native platform=${{ matrix.platform }} target=template_release -j4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.platform }}
+          path: bin/libpileup.*
+          retention-days: 7
+          if-no-files-found: error
+
   test:
     name: test
+    needs: native
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: native-linux
+          path: bin
       - uses: godot-gdunit-labs/gdUnit4-action@17eeffa988f9732fdc3dba3067405d16b55809de # v1.3.2
         with:
           godot-version: ${{ env.GODOT_VERSION }}
@@ -42,11 +76,16 @@ jobs:
 
   sim-budget:
     name: sim-budget
+    needs: native
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: pr
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: native-linux
+          path: pr/bin
       # The PR's base, benched on this same runner: runners differ by about 2x.
       - if: github.event_name == 'pull_request'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,9 +104,15 @@ jobs:
 
   export:
     name: export
+    needs: native
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: native-*
+          path: bin
+          merge-multiple: true
       - uses: chickensoft-games/setup-godot@ac93246ea68518a384c1c280a496e5989341f2f6 # v2.4.3
         with:
           version: ${{ env.GODOT_VERSION }}

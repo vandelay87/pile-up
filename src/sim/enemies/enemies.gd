@@ -48,6 +48,9 @@ var progress := PackedFloat32Array()
 var tumbling := PackedByteArray()
 # Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
 var fuses := PackedInt32Array()
+## True while [method move] runs the neighbour scan in the C++ GDExtension's NeighbourScan
+## (ADR 0001), false for the GDScript scan. On whenever the extension is loaded.
+var native_scan := ClassDB.class_exists(&"NeighbourScan")
 
 var _settings: Settings
 var _map: MapData
@@ -74,6 +77,8 @@ var _attacking := PackedByteArray()
 # NAN until then; empty outside that window.
 var _target_values := PackedFloat64Array()
 var _ticks := 0
+# The NeighbourScan, typed loosely: without the extension the class doesn't exist.
+var _scan: RefCounted
 
 
 func _init(
@@ -342,6 +347,32 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 			fuses[i] = fuse_ticks
 		_attacking[i] = 1 if structure_targets[i] != NONE or soldier_targets[i] != NONE else 0
 	_moved.resize(count)
+	var separations := PackedVector2Array()
+	var space_pushes := PackedVector2Array()
+	if native_scan:
+		if _scan == null:
+			_scan = ClassDB.instantiate(&"NeighbourScan")
+		_scan.call(
+			&"scan",
+			count,
+			positions,
+			hp,
+			tumbling,
+			_attacking,
+			ids,
+			_bucket_starts,
+			_bucket_enemies,
+			_map.width,
+			_map.height,
+			radius,
+			push,
+			cap,
+			spreads,
+			space_radius,
+			space_push
+		)
+		separations = _scan.call(&"get_separations")
+		space_pushes = _scan.call(&"get_space_pushes")
 	for i in count:
 		var pos := positions[i]
 		if hp[i] <= 0.0 or tumbling[i] == 1:
@@ -349,7 +380,12 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 			continue
 		var attacking := _attacking[i] == 1
 		var spaces := spreads and not attacking
-		var separation := _neighbour_pushes(i, radius, push, cap, spaces, space_radius, space_push)
+		var separation: Vector2
+		if native_scan:
+			separation = separations[i]
+			_last_space_push = space_pushes[i]
+		else:
+			separation = _neighbour_pushes(i, radius, push, cap, spaces, space_radius, space_push)
 		separation = separation.limit_length(radius)
 		if attacking:
 			_moved[i] = pos + separation
