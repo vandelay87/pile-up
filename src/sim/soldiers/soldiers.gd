@@ -60,7 +60,7 @@ var _walking_back := PackedByteArray()
 var _holding := PackedByteArray()
 # 1 for a soldier on a path back to its own spot.
 var _returning := PackedByteArray()
-var _paths_walked: Array[PackedInt32Array] = []
+var _walks: Array[PackedInt32Array] = []
 # The field generation each soldier's path came from, or NONE before it has one.
 var _path_generations := PackedInt32Array()
 # Each Move order's slots that no soldier has taken yet, by field, until the field is ready.
@@ -116,7 +116,7 @@ func add(cell: Vector2i) -> int:
 	_walking_back[count] = 0
 	_holding[count] = 0
 	_returning[count] = 0
-	_paths_walked[count] = PackedInt32Array()
+	_walks[count] = PackedInt32Array()
 	_path_generations[count] = NONE
 	_hold(count, _map.index_of(cell))
 	_index_by_id[id] = count
@@ -136,7 +136,7 @@ func spot(index: int) -> Vector2i:
 ## The cells the soldier at [param index] still has to walk through, the next first; empty when
 ## it isn't walking or its path isn't planned yet.
 func path_left(index: int) -> PackedInt32Array:
-	return _paths_walked[index].slice(path_cursors[index])
+	return _walks[index].slice(path_cursors[index])
 
 
 ## The targeting of the soldier at [param index]: one of [constant Enemies.TARGETINGS].
@@ -257,10 +257,9 @@ func push_out_of(area: Rect2i) -> void:
 			_hold(i, _map.index_of(cell))
 
 
-## At [constant Simulation.Step.MOVE_UNITS]: settles path fields under their budget, gives the
-## soldiers of ready fields their slots and paths, walks soldiers along their paths or back to
-## their spots, spaces them out, then holds every soldier off what is solid to it.
-func step() -> void:
+## At [constant Simulation.Step.MOVE_UNITS], before [method UnitPaths.step]: each field restarted
+## since the last tick asks again for its soldiers' cells and slots.
+func need_restarted() -> void:
 	for field in _paths.take_restarted():
 		var needed := PackedInt32Array()
 		for i in count:
@@ -271,7 +270,12 @@ func step() -> void:
 		var unassigned: PackedInt32Array = _unassigned.get(field, PackedInt32Array())
 		needed.append_array(unassigned)
 		_paths.need(field, needed)
-	_paths.step()
+
+
+## At [constant Simulation.Step.MOVE_UNITS], after [method UnitPaths.step]: gives the soldiers of
+## ready fields their slots and paths, walks soldiers along their paths or back to their spots,
+## spaces them out, then holds every soldier off what is solid to it.
+func step() -> void:
 	_assign_slots()
 	_plan_paths()
 	_walk()
@@ -341,8 +345,7 @@ func _plan_paths() -> void:
 		if _path_generations[i] == _paths.generation(field):
 			continue
 		if not can_stand_on(_map.cell_of(slots[i])):
-			var region := {_paths.regions[_paths.anchor(field)]: true}
-			slots[i] = _paths.nearest_standable(_centre(slots[i]), region)
+			slots[i] = _free_slot_near(i)
 			if slots[i] != NONE:
 				_paths.need(field, PackedInt32Array([slots[i]]))
 				continue
@@ -351,14 +354,25 @@ func _plan_paths() -> void:
 		if slots[i] != NONE:
 			walk = _paths.path(field, from, slots[i])
 		if slots[i] == NONE or (walk.is_empty() and from != slots[i]):
-			var returning := _returning[i] == 1
 			_end_order(i)
-			if not returning:
-				_stand_here(i)
+			_unhold(i)
+			_stand_here(i)
 			continue
-		_paths_walked[i] = walk
+		_walks[i] = walk
 		path_cursors[i] = 0
 		_path_generations[i] = _paths.generation(field)
+
+
+# The nearest cell to the soldier's slot, by straight distance, that it can stand on and reach
+# from its field's anchor, that no standing soldier holds and no other soldier is walking to.
+func _free_slot_near(i: int) -> int:
+	var field := orders[i]
+	var held := _spot_counts.duplicate()
+	for j in count:
+		if j != i and slots[j] != NONE:
+			held[slots[j]] += 1
+	var region := {_paths.regions[_paths.anchor(field)]: true}
+	return _paths.nearest_standable(_centre(slots[i]), region, held)
 
 
 # Walking soldiers step along their paths at their speed times the slow of the cell under them;
@@ -373,7 +387,7 @@ func _walk() -> void:
 		if _path_generations[i] == NONE:
 			continue
 		var left := step_length * _paths.speed_factor(_cell_index(i))
-		var walk := _paths_walked[i]
+		var walk := _walks[i]
 		while left > 0.0:
 			var goal := _centre(
 				walk[path_cursors[i]] if path_cursors[i] < walk.size() else slots[i]
@@ -396,7 +410,12 @@ func _stand(i: int, step_length: float) -> void:
 	var off := positions[i].distance_to(home)
 	if off > WALK_BACK_REACH:
 		_walking_back[i] = 0
-		_return(i)
+		if _paths.regions[_cell_index(i)] == _paths.regions[spots[i]]:
+			_return(i)
+		else:
+			# Its spot is out of reach: where it is becomes its spot.
+			_unhold(i)
+			_stand_here(i)
 		return
 	if off > SPOT_SLACK:
 		_walking_back[i] = 1
@@ -463,7 +482,7 @@ func _set_order(i: int, field: int, slot: int) -> void:
 	orders[i] = field
 	slots[i] = slot
 	path_cursors[i] = 0
-	_paths_walked[i] = PackedInt32Array()
+	_walks[i] = PackedInt32Array()
 	_path_generations[i] = NONE
 	_walking_back[i] = 0
 	_paths.join(field)
@@ -477,7 +496,7 @@ func _end_order(i: int) -> void:
 	orders[i] = NONE
 	slots[i] = NONE
 	path_cursors[i] = 0
-	_paths_walked[i] = PackedInt32Array()
+	_walks[i] = PackedInt32Array()
 	_path_generations[i] = NONE
 	_returning[i] = 0
 	_paths.leave(field)
@@ -606,5 +625,5 @@ func _grow() -> void:
 	slots.resize(capacity)
 	_holding.resize(capacity)
 	_returning.resize(capacity)
-	_paths_walked.resize(capacity)
+	_walks.resize(capacity)
 	_path_generations.resize(capacity)

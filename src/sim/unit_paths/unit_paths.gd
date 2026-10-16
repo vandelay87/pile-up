@@ -127,18 +127,16 @@ func speed_factor(index: int) -> float:
 
 
 ## The cell nearest [param pos] by straight distance (ties to the lowest index) that a soldier
-## can stand on and whose region is in [param allowed], or any region when it's empty; NONE when
-## there is none.
-func nearest_standable(pos: Vector2, allowed: Dictionary = {}) -> int:
+## can stand on, whose region is in [param allowed] (any region when it's empty) and whose
+## [param held] count, if given, is 0; NONE when there is none.
+func nearest_standable(pos: Vector2, allowed: Dictionary = {}, held := PackedInt32Array()) -> int:
 	var cell := Vector2i(pos.floor())
-	if _map.in_bounds(cell):
-		var index := _map.index_of(cell)
-		if _can_stand_on(index) and (allowed.is_empty() or allowed.has(regions[index])):
-			return index
+	if _map.in_bounds(cell) and _is_open(_map.index_of(cell), allowed, held):
+		return _map.index_of(cell)
 	var best := NONE
 	var best_distance := INF
 	for index in regions.size():
-		if regions[index] == NONE or not (allowed.is_empty() or allowed.has(regions[index])):
+		if not _is_open(index, allowed, held):
 			continue
 		var distance := MapData.centre_of(_map.cell_of(index)).distance_squared_to(pos)
 		if distance < best_distance:
@@ -178,7 +176,7 @@ func plan(anchor: int, persistent := false) -> int:
 func need(field_id: int, cells: PackedInt32Array) -> void:
 	var field := _fields[field_id]
 	if field.stale:
-		_restart(field_id)
+		restart(field_id)
 	for cell in cells:
 		if field.closed[cell] == 1:
 			field.bound = maxf(field.bound, field.values[cell])
@@ -186,6 +184,7 @@ func need(field_id: int, cells: PackedInt32Array) -> void:
 			field.waiting[cell] = true
 
 
+## A soldier starts walking on a field.
 func join(field_id: int) -> void:
 	_fields[field_id].users += 1
 
@@ -211,6 +210,7 @@ func release(field_id: int) -> void:
 		_fields.erase(field_id)
 
 
+## Whether a field is live: not yet dropped.
 func has_field(field_id: int) -> bool:
 	return _fields.has(field_id)
 
@@ -220,10 +220,12 @@ func field_ids() -> Array[int]:
 	return _fields.keys()
 
 
+## The cell index a field grows from.
 func anchor(field_id: int) -> int:
 	return _fields[field_id].anchor
 
 
+## How many times a field has restarted.
 func generation(field_id: int) -> int:
 	return _fields[field_id].generation
 
@@ -233,6 +235,7 @@ func is_ready(field_id: int) -> bool:
 	return _fields[field_id].is_ready()
 
 
+## A cell's cost to walk to the anchor on a field, or [constant UNREACHABLE].
 func value(field_id: int, cell: int) -> float:
 	return _fields[field_id].values[cell]
 
@@ -290,7 +293,7 @@ func update(cells: Array[Vector2i]) -> void:
 			else:
 				field.stale = true
 		if restart:
-			_restart(field_id)
+			restart(field_id)
 
 
 ## Every cell's cost again, after a setting that sets them changed. Fields keep what they have
@@ -310,11 +313,6 @@ func take_restarted() -> Array[int]:
 	return taken
 
 
-## Forces a field to settle again from scratch.
-func restart(field_id: int) -> void:
-	_restart(field_id)
-
-
 ## At [constant Simulation.Step.MOVE_UNITS]: settles up to [constant PATH_SETTLE_CELLS] cells
 ## across the fields that need cells, oldest first.
 func step() -> void:
@@ -326,7 +324,9 @@ func step() -> void:
 	last_settled = PATH_SETTLE_CELLS - budget
 
 
-func _restart(field_id: int) -> void:
+## Settles a field again from scratch, from its anchor or, if a soldier can no longer stand
+## there, the nearest cell one can.
+func restart(field_id: int) -> void:
 	var field := _fields[field_id]
 	var anchor_cell := field.anchor
 	if not _can_stand_on(anchor_cell):
@@ -457,3 +457,9 @@ func _relabel() -> void:
 # Whether a soldier can stand on [param index]: not rock, the base or a building.
 func _can_stand_on(index: int) -> bool:
 	return _costs[index] != INF
+
+
+func _is_open(index: int, allowed: Dictionary, held: PackedInt32Array) -> bool:
+	if regions[index] == NONE or not (allowed.is_empty() or allowed.has(regions[index])):
+		return false
+	return held.is_empty() or held[index] == 0

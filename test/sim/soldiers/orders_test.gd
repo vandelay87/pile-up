@@ -1,11 +1,6 @@
-extends GdUnitTestSuite
+extends "res://test/sim/soldiers/order_suite.gd"
 
-# Move and Stop orders, at the Simulation seam. Each test draws its own map: '.' clear ground,
-# '#' rock, 'W' a wall (5 bodies landed before the test starts) and 'p' a level-2 pile. The base
-# is 2×2 in the bottom-left corner, out of the way.
-
-var _sim: Simulation
-var _rejections: Array[String]
+# Move and Stop orders: where soldiers go, how they path there, and replanning.
 
 
 func test_a_soldier_sent_across_open_ground_reaches_the_target_and_stands_there() -> void:
@@ -154,144 +149,37 @@ func test_a_soldier_in_an_enclosed_region_stops_where_the_anchor_is_out_of_its_r
 	assert_object(_spot_of(outside)).is_equal(Vector2i(9, 1))
 
 
-func test_a_cluster_fills_the_cells_nearest_the_anchor() -> void:
-	_sim = _sim_from(
-		[
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............"
-		]
-	)
-	var ids := _add_row(Vector2i(3, 5), 5)
-
-	_move(ids, Vector2(8.5, 2.5), Formations.CLUSTER)
-	_run_until_standing(2000)
-
-	assert_array(_spots()).contains_exactly_in_any_order(
-		[Vector2i(8, 2), Vector2i(8, 1), Vector2i(7, 2), Vector2i(9, 2), Vector2i(8, 3)]
-	)
-
-
-func test_a_cluster_skips_cells_standing_soldiers_hold() -> void:
-	_sim = _sim_from(
-		[
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............"
-		]
-	)
-	var ids := _add_row(Vector2i(3, 5), 2)
-	_sim.soldiers.add(Vector2i(8, 2))
-
-	_move(ids, Vector2(8.5, 2.5), Formations.CLUSTER)
-	_run_until_standing(2000)
-
-	assert_array(_spots().slice(0, 2)).contains_exactly_in_any_order(
-		[Vector2i(8, 1), Vector2i(7, 2)]
-	)
-
-
-func test_a_line_runs_across_the_direction_of_travel_alternating_from_the_centre() -> void:
-	_sim = _sim_from(
-		[
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............"
-		]
-	)
-	var ids := _add_row(Vector2i(4, 5), 5)
-
-	_move(ids, Vector2(6.5, 1.5), Formations.LINE)
-	_run_until_standing(2000)
-
-	assert_array(_spots()).contains_exactly_in_any_order(
-		[Vector2i(4, 1), Vector2i(5, 1), Vector2i(6, 1), Vector2i(7, 1), Vector2i(8, 1)]
-	)
-
-
-func test_a_line_forms_a_second_rank_behind_once_both_sides_end() -> void:
-	_sim = _sim_from(
-		[
-			"............",
-			"....#...#...",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............"
-		]
-	)
-	var ids := _add_row(Vector2i(4, 5), 5)
-
-	_move(ids, Vector2(6.5, 1.5), Formations.LINE)
-	_run_until_standing(2000)
-
-	assert_array(_spots()).contains_exactly_in_any_order(
-		[Vector2i(5, 1), Vector2i(6, 1), Vector2i(7, 1), Vector2i(5, 2), Vector2i(6, 2)]
-	)
-
-
-func test_soldiers_take_slots_nearest_them_nearest_the_anchor_first() -> void:
-	_sim = _sim_from(
-		[
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............",
-			"............"
-		]
-	)
-	var far := _sim.soldiers.add(Vector2i(6, 4))
-	var near := _sim.soldiers.add(Vector2i(7, 1))
-
-	# The slots are the anchor (6, 1) and (6, 0); the near soldier picks first and takes the
-	# anchor, nearest it, though the far one is nearer it still.
-	_move([far, near], Vector2(6.5, 1.5), Formations.CLUSTER)
-	_run_until_standing(2000)
-
-	assert_object(_spot_of(near)).is_equal(Vector2i(6, 1))
-	assert_object(_spot_of(far)).is_equal(Vector2i(6, 0))
-
-
 func test_a_building_placed_on_a_path_replans_it_and_soldiers_keep_walking_meanwhile() -> void:
-	_sim = _sim_from(
-		[
-			"....................",
-			"....................",
-			"....................",
-			"....................",
-			"...................."
-		]
-	)
-	var id := _sim.soldiers.add(Vector2i(2, 1))
-	_move([id], Vector2(17.5, 1.5), Formations.CLUSTER)
-	for tick in 10:
+	# 40×30 is 1,200 cells, more than one tick's budget, so the new field settles over several.
+	var rows: Array[String] = []
+	for y in 30:
+		rows.append(".".repeat(40))
+	_sim = _sim_from(rows)
+	_sim.change_setting("run", "base_power_area", 40)
+	var id := _sim.soldiers.add(Vector2i(2, 20))
+	_move([id], Vector2(30.5, 1.5), Formations.CLUSTER)
+	for tick in 30:
 		_sim.tick()
-	var before := _position_of(id)
-	assert_bool(_path_cells(id).has(Vector2i(10, 1))).is_true()
+	var on_path := _path_cells(id)[3]
+	var generation := _sim.unit_paths.generation(_sim.soldiers.orders[0])
 
-	_sim.queue_command(Commands.Build.new(Buildings.PYLON, Vector2i(10, 1)))
+	_sim.queue_command(Commands.Build.new(Buildings.PYLON, on_path))
+	var waited := 0
+	var before := _position_of(id)
 	_sim.tick()
+	while not _sim.unit_paths.is_ready(_sim.soldiers.orders[0]):
+		assert_bool(_path_cells(id).has(on_path)).is_true()
+		assert_vector(_position_of(id)).is_not_equal(before)
+		before = _position_of(id)
+		_sim.tick()
+		waited += 1
 
 	assert_array(_rejections).is_empty()
-	assert_float(_position_of(id).x).is_greater(before.x)
-	var cells := _cells_walked(id, 2000)
-	assert_object(_spot_of(id)).is_equal(Vector2i(17, 1))
-	assert_array(cells).not_contains([Vector2i(10, 1)])
+	assert_int(_sim.unit_paths.generation(_sim.soldiers.orders[0])).is_greater(generation)
+	assert_int(waited).is_greater(0)
+	var cells := _cells_walked(id, 3000)
+	assert_object(_spot_of(id)).is_equal(Vector2i(30, 1))
+	assert_array(cells).not_contains([on_path])
 
 
 func test_a_long_order_settles_over_several_ticks_within_the_budget() -> void:
@@ -315,6 +203,21 @@ func test_a_long_order_settles_over_several_ticks_within_the_budget() -> void:
 	assert_int(ticks_waiting).is_greater(1)
 	_run_until_standing(3000)
 	assert_object(_spot_of(id)).is_equal(Vector2i(2, 57))
+
+
+func test_a_soldier_pushed_where_it_cannot_reach_its_spot_stands_where_it_is() -> void:
+	_sim = _sim_from(
+		["#####.......", "#...#.......", "#####.......", "............", "............"]
+	)
+	var id := _sim.soldiers.add(Vector2i(8, 1))
+	_sim.soldiers.positions[0] = Vector2(2.5, 1.5)
+
+	for tick in 5:
+		_sim.tick()
+
+	assert_int(_sim.soldiers.orders[0]).is_equal(Soldiers.NONE)
+	assert_object(_spot_of(id)).is_equal(Vector2i(2, 1))
+	assert_int(_sim.unit_paths.field_ids().size()).is_equal(0)
 
 
 func test_stop_makes_the_current_position_the_spot() -> void:
@@ -384,7 +287,7 @@ func test_unknown_formations_are_rejected() -> void:
 
 
 func test_two_runs_with_the_same_orders_end_in_the_same_state() -> void:
-	var ends: Array[PackedVector2Array] = []
+	var ends: Array[Array] = []
 	for run in 2:
 		_sim = _sim_from(
 			[
@@ -403,87 +306,6 @@ func test_two_runs_with_the_same_orders_end_in_the_same_state() -> void:
 		_move(ids.slice(0, 2), Vector2(10.5, 5.5), Formations.CLUSTER)
 		for tick in 200:
 			_sim.tick()
-		ends.append(_sim.soldiers.positions.slice(0, _sim.soldiers.count))
+		ends.append(_state())
 
-	assert_array(Array(ends[1])).is_equal(Array(ends[0]))
-
-
-func _move(ids: Array, target: Vector2, formation: StringName) -> void:
-	_sim.queue_command(Commands.Move.new(PackedInt32Array(ids), target, formation))
-
-
-# Ticks until no soldier is under an order, failing after [param limit] ticks.
-func _run_until_standing(limit: int) -> int:
-	for tick in limit:
-		_sim.tick()
-		var walking := false
-		for i in _sim.soldiers.count:
-			walking = walking or _sim.soldiers.orders[i] != Soldiers.NONE
-		if not walking:
-			return tick + 1
-	fail("soldiers still walking after %d ticks" % limit)
-	return limit
-
-
-# Ticks until the soldier [param id] stands, returning every cell it stood on along the way.
-func _cells_walked(id: int, limit: int) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	for tick in limit:
-		_sim.tick()
-		var cell := Vector2i(_position_of(id).floor())
-		if cells.is_empty() or cells[-1] != cell:
-			cells.append(cell)
-		if _sim.soldiers.orders[_sim.soldiers.index_of(id)] == Soldiers.NONE:
-			return cells
-	fail("soldier still walking after %d ticks" % limit)
-	return cells
-
-
-func _path_cells(id: int) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	for index in _sim.soldiers.path_left(_sim.soldiers.index_of(id)):
-		cells.append(_sim.map.cell_of(index))
-	return cells
-
-
-func _add_row(first: Vector2i, wanted: int) -> Array:
-	var ids := []
-	for n in wanted:
-		ids.append(_sim.soldiers.add(first + Vector2i(n, 0)))
-	return ids
-
-
-func _spots() -> Array[Vector2i]:
-	var spots: Array[Vector2i] = []
-	for i in _sim.soldiers.count:
-		spots.append(_sim.soldiers.spot(i))
-	return spots
-
-
-func _spot_of(id: int) -> Vector2i:
-	return _sim.soldiers.spot(_sim.soldiers.index_of(id))
-
-
-func _position_of(id: int) -> Vector2:
-	return _sim.soldiers.positions[_sim.soldiers.index_of(id)]
-
-
-# Rows with the base's 2×2 in the bottom-left corner. 'W' cells get a wall and 'p' cells a
-# level-2 pile before the test starts.
-func _sim_from(rows: Array[String]) -> Simulation:
-	var clear_rows: Array[String] = []
-	var bodies := PackedVector2Array()
-	for y in rows.size():
-		clear_rows.append(rows[y].replace("W", ".").replace("p", "."))
-		for x in rows[y].length():
-			var level: int = {"W": Piles.WALL_LEVEL, "p": 2}.get(rows[y][x], 0)
-			for n in level:
-				bodies.append(Vector2(x + 0.5, y + 0.5))
-	var map := TestMaps.from_rows(clear_rows, Rect2i(0, rows.size() - 2, 2, 2))
-	var sim := Simulation.new(Settings.load_file(Settings.DEFAULTS_PATH).settings, map)
-	_rejections = []
-	sim.command_rejected.connect(func(reason: String) -> void: _rejections.append(reason))
-	if not bodies.is_empty():
-		sim.piles.queue_bodies(Deaths.bodies_at(bodies))
-		sim.tick()
-	return sim
+	assert_array(ends[1]).is_equal(ends[0])

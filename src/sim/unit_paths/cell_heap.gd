@@ -8,10 +8,12 @@ var _items := PackedInt32Array()
 var _size := 0
 
 
+## Whether no cell is left.
 func is_empty() -> bool:
 	return _size == 0
 
 
+## Adds [param item] at [param value].
 func push(value: float, item: int) -> void:
 	if _size == _values.size():
 		_values.resize(maxi(16, _size * 2))
@@ -29,6 +31,7 @@ func push(value: float, item: int) -> void:
 	_items[i] = item
 
 
+## Takes out the cell with the lowest value, ties to the lowest index.
 func pop() -> int:
 	var top := _items[0]
 	_size -= 1

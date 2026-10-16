@@ -450,6 +450,8 @@ func _move_enemies() -> void:
 
 func _move_units() -> void:
 	_observe(Step.MOVE_UNITS)
+	soldiers.need_restarted()
+	unit_paths.step()
 	soldiers.step()
 
 

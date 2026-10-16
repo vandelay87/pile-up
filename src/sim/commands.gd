@@ -196,6 +196,7 @@ class CancelTraining:
 			sim.reject_command("%s: %s" % [LABEL, error])
 
 
+## Sets where a barracks sends the soldiers it trains.
 class SetRallyPoint:
 	extends Commands.Play
 
@@ -218,6 +219,7 @@ class SetRallyPoint:
 			sim.reject_command("%s: %s" % [LABEL, error])
 
 
+## New soldiers from a barracks stand where they appear again.
 class ClearRallyPoint:
 	extends Commands.Play
 
@@ -264,6 +266,7 @@ class Move:
 			sim.reject_command("%s: %s" % [LABEL, error])
 
 
+## Ends soldiers' orders: each stands where it is.
 class Stop:
 	extends Commands.Play
 

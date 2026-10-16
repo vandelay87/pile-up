@@ -18,6 +18,7 @@ func setup(simulation: Simulation) -> void:
 	queue_redraw()
 
 
+## Shows or hides the overlay, from the debug panel.
 func show_paths(shown: bool) -> void:
 	_shown = shown
 	queue_redraw()

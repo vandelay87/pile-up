@@ -126,6 +126,7 @@ func set_rally(cell: Vector2i) -> void:
 		_simulation.queue_command(Commands.SetRallyPoint.new(_building_id, cell))
 
 
+## Clears the selected barracks' rally point.
 func clear_rally() -> void:
 	if is_barracks_selected():
 		_simulation.queue_command(Commands.ClearRallyPoint.new(_building_id))
