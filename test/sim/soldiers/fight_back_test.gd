@@ -171,6 +171,20 @@ func test_a_soldier_survives_one_blast_with_15_hp() -> void:
 	assert_float(_hp_of(id)).is_equal_approx(15.0, 1e-4)
 
 
+func test_a_blast_reports_the_soldiers_it_hit() -> void:
+	_sim = _sim_from(OPEN)
+	var near := _sim.soldiers.add(Vector2i(6, 1))
+	_sim.soldiers.add(Vector2i(12, 1))
+	_pop_bloaters_at([Vector2(6.5, 2.5)])
+	var went_off: Array[Blasts.Blast] = []
+	_sim.blasts.connect(func(blasts: Array[Blasts.Blast]) -> void: went_off.append_array(blasts))
+
+	_sim.tick()
+
+	assert_int(went_off.size()).is_equal(1)
+	assert_array(Array(went_off[0].soldiers_hit)).is_equal([near])
+
+
 func test_two_blasts_kill_a_soldier_and_leave_no_body() -> void:
 	_sim = _sim_from(OPEN)
 	var id := _sim.soldiers.add(Vector2i(6, 1))

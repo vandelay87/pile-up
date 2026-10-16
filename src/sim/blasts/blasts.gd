@@ -16,12 +16,13 @@ var _run_state: RunState
 var _base_cells: Array[Vector2i]
 
 
-## One bloater blowing up: where, and who gets the credit for its kills.
+## One bloater blowing up: where, who gets the credit for its kills, and the soldiers it hurt.
 class Blast:
 	extends RefCounted
 
 	var position: Vector2
 	var killer: int
+	var soldiers_hit := PackedInt32Array()
 
 	func _init(blast_position: Vector2, blast_killer: int) -> void:
 		position = blast_position
@@ -67,7 +68,7 @@ func resolve(deaths: Deaths, soldiers: Soldiers) -> Array[Blast]:
 	_enemies.remove_dead()
 	for blast in blasts:
 		_hurt_structures(blast.position, radius)
-		_hurt_soldiers(blast.position, radius, soldiers)
+		_hurt_soldiers(blast, radius, soldiers)
 		_erase_piles(blast.position, radius)
 	return blasts
 
@@ -88,10 +89,11 @@ func _hurt_structures(centre: Vector2, radius: float) -> void:
 		_run_state.damage_base(damage)
 
 
-func _hurt_soldiers(centre: Vector2, radius: float, soldiers: Soldiers) -> void:
+func _hurt_soldiers(blast: Blast, radius: float, soldiers: Soldiers) -> void:
 	for i in soldiers.count:
-		if soldiers.positions[i].distance_to(centre) <= radius:
+		if soldiers.hp[i] > 0.0 and soldiers.positions[i].distance_to(blast.position) <= radius:
 			soldiers.damage(soldiers.ids[i], _settings.blast_damage, true)
+			blast.soldiers_hit.append(soldiers.ids[i])
 
 
 func _erase_piles(centre: Vector2, radius: float) -> void:
