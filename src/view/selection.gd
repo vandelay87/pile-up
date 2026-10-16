@@ -7,7 +7,8 @@ extends Node2D
 ## building clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
 ## A selected repair yard can be put in assign mode (the next click on a building in its
 ## repair area becomes its assignment; Esc cancels), have its assignment cleared or its repair
-## threshold set; a selected tower can have its targeting set. Each queues a command.
+## threshold set; a selected tower can have its targeting set; a selected barracks can train
+## soldiers and cancel queued ones. Each queues a command.
 
 const OUTLINE := Color(1.0, 1.0, 1.0, 0.9)
 const RANGE := Color(1.0, 0.9, 0.4, 0.8)
@@ -107,6 +108,22 @@ func set_tower_targeting(mode: StringName) -> void:
 		_simulation.queue_command(Commands.SetTargeting.new(_building_id, mode))
 
 
+func is_barracks_selected() -> bool:
+	var building := selected_building()
+	return building != null and building.kind == Buildings.BARRACKS
+
+
+## Queues [param count] soldiers (1, or 5 for a shift-click) at the selected barracks.
+func train(count: int) -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.Train.new(_building_id, count))
+
+
+func cancel_training(slot: int) -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.CancelTraining.new(_building_id, slot))
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
@@ -191,6 +208,8 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
 			lines.append_array(_yard_stats(building))
+		Buildings.BARRACKS:
+			lines.append_array(_barracks_stats(building))
 	return lines
 
 
@@ -200,6 +219,10 @@ func _status(building: Buildings.Building) -> String:
 		return "Unpowered"
 	if _simulation.repair_yards.is_under_repair(building.id):
 		return "Under repair"
+	return _activity(building)
+
+
+func _activity(building: Buildings.Building) -> String:
 	match building.kind:
 		Buildings.TOWER:
 			var reach := _simulation.settings.tower_range
@@ -212,6 +235,9 @@ func _status(building: Buildings.Building) -> String:
 		Buildings.REPAIR_YARD:
 			var on_job := _simulation.repair_yards.drone(building.id).is_on_job()
 			return "Repairing" if on_job else "Idle"
+		Buildings.BARRACKS:
+			var queued := _simulation.barracks.queue_of(building.id).size()
+			return "Training" if queued > 0 else "Idle"
 	return "Powering"
 
 
@@ -248,6 +274,17 @@ func _yard_stats(yard: Buildings.Building) -> Array[String]:
 	]
 	if _assigning:
 		lines.append("Click a building in the repair area")
+	return lines
+
+
+# The queue's length, the head's time left during a wave and the power area.
+func _barracks_stats(barracks: Buildings.Building) -> Array[String]:
+	var queued := _simulation.barracks.queue_of(barracks.id).size()
+	var lines: Array[String] = ["Queue %d / %d" % [queued, Barracks.QUEUE_LENGTH]]
+	if queued > 0 and _simulation.waves.phase == Waves.Phase.WAVE:
+		var ticks := _simulation.barracks.ticks_left(barracks.id)
+		lines.append("Next in %.1f s" % (float(ticks) / Simulation.TICKS_PER_SECOND))
+	lines.append("Power area %d" % _simulation.buildings.power_area(barracks.kind))
 	return lines
 
 

@@ -23,16 +23,20 @@ const UNAFFORDABLE_COLOUR := Color(1.0, 0.6, 0.6)
 const COMBO_RING_SIZE := 96.0
 const COMMAND_SIZE := Vector2(72, 56)
 const COMMAND_COLUMNS := 3
-## The command card's slots in grid order: a building kind, or an empty slot.
+## The command card's build buttons in grid order, before Next wave.
 const COMMANDS: Array[StringName] = [
-	Buildings.TOWER, Buildings.GRINDER, Buildings.PYLON, Buildings.REPAIR_YARD, &""
+	Buildings.TOWER, Buildings.GRINDER, Buildings.PYLON, Buildings.REPAIR_YARD, Buildings.BARRACKS
 ]
 const COMMAND_LABELS := {
 	Buildings.TOWER: ["Tower", "T"],
 	Buildings.GRINDER: ["Grinder", "G"],
 	Buildings.PYLON: ["Pylon", "P"],
 	Buildings.REPAIR_YARD: ["Repair", "R"],
+	Buildings.BARRACKS: ["Barracks", "B"],
 }
+## A barracks queue slot: queued (click to cancel) or empty.
+const QUEUED_SLOT := "■"
+const EMPTY_SLOT := "□"
 ## A tower's targeting toggle, in button order.
 const TARGETING_NAMES := {
 	Enemies.BLOATERS_FIRST: "Bloaters first",
@@ -47,6 +51,8 @@ var _base_hp := Label.new()
 var _wave := Label.new()
 var _enemies_left := Label.new()
 var _kills := Label.new()
+var _capacity := Label.new()
+var _capacity_name := Label.new()
 var _gold_tween: Tween
 var _combo_view: ComboView
 var _combo_ring := ComboRing.new()
@@ -57,6 +63,9 @@ var _assign := Button.new()
 var _threshold_buttons: Dictionary[int, Button] = {}
 var _tower_controls := HBoxContainer.new()
 var _targeting_buttons: Dictionary[StringName, Button] = {}
+var _barracks_controls := HBoxContainer.new()
+var _train := Button.new()
+var _slot_buttons: Array[Button] = []
 var _next_wave := Button.new()
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _toast := Label.new()
@@ -89,6 +98,8 @@ func setup(simulation: Simulation, selection: Selection, combo_view: ComboView) 
 	_simulation.enemies_left_changed.connect(_show_enemies_left)
 	_simulation.kills_changed.connect(_show_kills)
 	_simulation.payout.connect(_flash_gold)
+	_simulation.building_placed.connect(_show_build_buttons.unbind(1))
+	_simulation.building_destroyed.connect(_show_build_buttons.unbind(1))
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_base_hp(run_state.base_hp)
@@ -96,6 +107,9 @@ func setup(simulation: Simulation, selection: Selection, combo_view: ComboView) 
 	_show_kills(run_state.kills)
 	_show_phase(_simulation.waves.phase)
 	_game_over.visible = false
+	_capacity.visible = false
+	_capacity_name.visible = false
+	_show_build_buttons()
 
 
 func _ready() -> void:
@@ -160,9 +174,10 @@ func _status_panel() -> PanelContainer:
 		["Wave", _wave, 15, Color.WHITE],
 		["Enemies left", _enemies_left, 15, Color.WHITE],
 		["Kills", _kills, 15, Color.WHITE],
+		["Capacity", _capacity, 15, Color.WHITE],
 	]
 	for entry: Array in rows:
-		var name_label := Label.new()
+		var name_label := _capacity_name if entry[1] == _capacity else Label.new()
 		name_label.text = entry[0]
 		name_label.add_theme_font_size_override("font_size", 15)
 		name_label.add_theme_color_override("font_color", NAME_COLOUR)
@@ -236,6 +251,25 @@ func _details_panel() -> PanelContainer:
 		_targeting_buttons[mode] = button
 		_tower_controls.add_child(button)
 	text_column.add_child(_tower_controls)
+	_train.text = "Train soldier"
+	_train.focus_mode = Control.FOCUS_NONE
+	_train.pressed.connect(
+		func() -> void: _selection.train(Barracks.BATCH if Input.is_key_pressed(KEY_SHIFT) else 1)
+	)
+	_barracks_controls.add_child(_train)
+	var queue_label := Label.new()
+	queue_label.text = "  Queue"
+	queue_label.add_theme_font_size_override("font_size", 14)
+	queue_label.add_theme_color_override("font_color", NAME_COLOUR)
+	_barracks_controls.add_child(queue_label)
+	for slot in Barracks.QUEUE_LENGTH:
+		var button := Button.new()
+		button.focus_mode = Control.FOCUS_NONE
+		button.tooltip_text = "Cancel and refund"
+		button.pressed.connect(func() -> void: _selection.cancel_training(slot))
+		_slot_buttons.append(button)
+		_barracks_controls.add_child(button)
+	text_column.add_child(_barracks_controls)
 	details_row.add_child(text_column)
 	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
 	_combo_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -244,15 +278,12 @@ func _details_panel() -> PanelContainer:
 	return details
 
 
-# Square build buttons with cost and hotkey, then Next wave; empty slots are kept.
+# Square build buttons with cost and hotkey, then Next wave.
 func _command_card() -> PanelContainer:
 	var card := _panel()
 	var commands := GridContainer.new()
 	commands.columns = COMMAND_COLUMNS
 	for kind: StringName in COMMANDS:
-		if kind.is_empty():
-			commands.add_child(Control.new())
-			continue
 		var button := Button.new()
 		button.focus_mode = Control.FOCUS_NONE
 		button.custom_minimum_size = COMMAND_SIZE
@@ -282,12 +313,25 @@ func _panel(radius := 4) -> PanelContainer:
 
 func _show_gold(gold: int) -> void:
 	_gold.text = str(gold)
+	_show_build_buttons()
+
+
+# Each build button's cost and hotkey, tinted when unaffordable; the barracks' also shows its
+# count against the limit, like "3/5", and greys out at the limit.
+func _show_build_buttons() -> void:
+	var gold := _simulation.run_state.gold
 	for kind: StringName in _build_buttons:
 		var cost := _simulation.buildings.cost_of(kind)
 		var label: Array = COMMAND_LABELS[kind]
 		var button := _build_buttons[kind]
 		button.text = "%s\n%d [%s]" % [label[0], cost, label[1]]
 		button.modulate = Color.WHITE if gold >= cost else UNAFFORDABLE_COLOUR
+	var barracks := _simulation.barracks.count()
+	var limit := _simulation.settings.barracks_limit
+	var button := _build_buttons[Buildings.BARRACKS]
+	button.text += " %d/%d" % [barracks, limit]
+	button.disabled = barracks >= limit
+	button.tooltip_text = _sentence(Buildings.BARRACKS_LIMIT) if button.disabled else ""
 
 
 # In the build phase, the next wave's size and its bloaters, like "120 enemies · 3 bloaters".
@@ -325,7 +369,17 @@ func _process(_delta: float) -> void:
 		or _simulation.is_decay_rebuild_in_flight()
 		or _simulation.run_state.is_game_over
 	)
+	_show_capacity()
 	_show_details()
+
+
+# Capacity shows from the first barracks on.
+func _show_capacity() -> void:
+	if not _capacity.visible and _simulation.barracks.count() == 0:
+		return
+	_capacity.visible = true
+	_capacity_name.visible = true
+	_capacity.text = "%d/%d" % [_simulation.barracks.used(), _simulation.barracks.capacity()]
 
 
 func _show_details() -> void:
@@ -354,6 +408,24 @@ func _show_details() -> void:
 	var mode := _selection.tower_targeting()
 	for each: StringName in _targeting_buttons:
 		_targeting_buttons[each].set_pressed_no_signal(each == mode)
+	_show_barracks_controls()
+
+
+# Train soldier, greyed with the reason on hover, and one button per queue slot.
+func _show_barracks_controls() -> void:
+	_barracks_controls.visible = _selection.is_barracks_selected()
+	if not _barracks_controls.visible:
+		return
+	var id := _selection.selected_building().id
+	var error := _simulation.barracks.train_error(id)
+	_train.disabled = not error.is_empty()
+	_train.tooltip_text = (
+		_sentence(error) if _train.disabled else "Shift-click queues %d" % Barracks.BATCH
+	)
+	var queued := _simulation.barracks.queue_of(id).size()
+	for slot in _slot_buttons.size():
+		_slot_buttons[slot].text = QUEUED_SLOT if slot < queued else EMPTY_SLOT
+		_slot_buttons[slot].disabled = slot >= queued
 
 
 # A tower's or grinder's ring, in pale gold at x1 rather than hidden, so its progress towards
@@ -383,7 +455,7 @@ func _show_game_over() -> void:
 
 
 func _show_toast(reason: String) -> void:
-	_toast.text = reason[0].to_upper() + reason.substr(1)
+	_toast.text = _sentence(reason)
 	# The bar can grow a little past BAR_HEIGHT with its content, so sit above its real top.
 	_toast.position.y = _bar.position.y - _toast.get_combined_minimum_size().y - MARGIN
 	if _toast_tween != null:
@@ -392,6 +464,11 @@ func _show_toast(reason: String) -> void:
 	_toast_tween = create_tween()
 	_toast_tween.tween_interval(TOAST_HOLD_SECONDS)
 	_toast_tween.tween_property(_toast, "modulate:a", 0.0, TOAST_FADE_SECONDS)
+
+
+# A reason as a sentence: its first letter upper-cased.
+func _sentence(reason: String) -> String:
+	return reason[0].to_upper() + reason.substr(1)
 
 
 func _send(command: Commands.Command) -> void:

@@ -5,6 +5,7 @@ const TOWER := &"tower"
 const GRINDER := &"grinder"
 const PYLON := &"pylon"
 const REPAIR_YARD := &"repair_yard"
+const BARRACKS := &"barracks"
 ## Every kind of building: its footprint, and the settings group holding its cost, hp and
 ## power_area. The one per-kind lookup; add new kinds here.
 const KINDS := {
@@ -12,12 +13,14 @@ const KINDS := {
 	GRINDER: {"footprint": Vector2i(2, 2), "settings": "grinders"},
 	PYLON: {"footprint": Vector2i(1, 1), "settings": "pylons"},
 	REPAIR_YARD: {"footprint": Vector2i(2, 2), "settings": "repair_yards"},
+	BARRACKS: {"footprint": Vector2i(2, 2), "settings": "barracks"},
 }
 const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
 const NEAR_SPAWN := "too close to a spawn edge"
 const OFF_GRID := "off the power grid"
 const OCCUPIED := "occupied"
+const BARRACKS_LIMIT := "barracks limit reached"
 const NOT_ENOUGH_GOLD := "not enough gold"
 const NOT_A_TOWER := "not a tower"
 const BAD_TARGETING := "the mode must be bloaters_first or closest_to_base"
@@ -141,12 +144,17 @@ func can_place(kind: StringName, origin: Vector2i) -> bool:
 	return _placement_error(kind, origin).is_empty()
 
 
-## Why a build here would be rejected, or empty when it would succeed.
+## Why a build here would be rejected, or empty when it would succeed: placement, then the
+## barracks limit for a barracks, then gold.
 func build_error(kind: StringName, origin: Vector2i) -> String:
 	var error := _placement_error(kind, origin)
-	if error.is_empty() and not _run_state.can_afford(cost_of(kind)):
+	if not error.is_empty():
+		return error
+	if kind == BARRACKS and _count_of(BARRACKS) >= _settings.barracks_limit:
+		return BARRACKS_LIMIT
+	if not _run_state.can_afford(cost_of(kind)):
 		return NOT_ENOUGH_GOLD
-	return error
+	return ""
 
 
 ## Spends the cost and places a building at the end of [member built], returning it; returns
@@ -333,6 +341,14 @@ func _destroy(target: Building) -> void:
 	_field_changes.append_array(target.footprint)
 	_destroyed.append(target.id)
 	_power_grid.recompute(self)
+
+
+func _count_of(kind: StringName) -> int:
+	var found := 0
+	for each in built:
+		if each.kind == kind:
+			found += 1
+	return found
 
 
 func _count_nearby(cells: Array[Vector2i], change: int) -> void:

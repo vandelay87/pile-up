@@ -23,6 +23,10 @@ const GRINDER_HEIGHT := 20
 const GRINDER_MAW := Color(0.18, 0.16, 0.16)
 const TOOTH := Color(0.85, 0.4, 0.2)
 const TOOTH_HEIGHT := 5
+const BARRACKS := Color(0.55, 0.62, 0.42)
+const BARRACKS_HEIGHT := 26
+const ROOF_HEIGHT := 10
+const DOOR := Color(0.2, 0.2, 0.18)
 
 
 func _init() -> void:
@@ -41,6 +45,7 @@ func _init() -> void:
 	_draw_pylon(image)
 	_draw_grinder(image)
 	_draw_repair_yard(image)
+	_draw_barracks(image)
 	_draw_drone(image)
 	_draw_repair_effect(image)
 	_draw_unpowered_icon(image)
@@ -112,6 +117,20 @@ func _draw_repair_yard(image: Image) -> void:
 	var top := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0 - YARD_HEIGHT)
 	_fill_diamond(image, top, footprint / 2.0 * 0.5, PAD)
 	_outline_diamond(image, top, footprint / 2.0 * 0.5, YARD)
+
+
+# A hut with a narrower roof block on top and a dark door on its left face.
+func _draw_barracks(image: Image) -> void:
+	var area := Atlas.region(Atlas.BARRACKS, Atlas.BARRACKS_SIZE)
+	_draw_box_tile(image, area, BARRACKS_HEIGHT, BARRACKS)
+	var footprint := Vector2(area.size.x, area.size.x / 2.0)
+	var foot := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0)
+	_draw_box(image, foot - Vector2(0, BARRACKS_HEIGHT), footprint / 2.0 * 0.6, ROOF_HEIGHT, WHITE)
+	# The left face runs from the bottom corner up to the left corner; the door sits halfway.
+	var door := foot + Vector2(-footprint.x / 4.0, footprint.y / 4.0)
+	for y in range(roundi(door.y - 14), roundi(door.y)):
+		for x in range(roundi(door.x - 4), roundi(door.x + 4)):
+			image.set_pixel(x, y + roundi((door.x - x) * 0.5), DOOR)
 
 
 # A small body between two rotors, seen from the side.

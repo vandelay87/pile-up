@@ -13,6 +13,7 @@ const KEYS := {
 	KEY_G: Buildings.GRINDER,
 	KEY_P: Buildings.PYLON,
 	KEY_R: Buildings.REPAIR_YARD,
+	KEY_B: Buildings.BARRACKS,
 }
 
 var active := false
