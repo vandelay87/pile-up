@@ -15,6 +15,7 @@ signal building_destroyed(id: int)
 signal power_changed
 signal shots_fired(shots: Array[Buildings.Shot])
 signal soldiers_added(ids: PackedInt32Array)
+signal training_changed(barracks_id: int)
 signal blasts(went_off: Array[Blasts.Blast])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
@@ -45,6 +46,7 @@ const POWER_AREA_SETTINGS := [
 	["grinders", "power_area"],
 	["pylons", "power_area"],
 	["repair_yards", "power_area"],
+	["barracks", "power_area"],
 ]
 
 var settings: Settings
@@ -63,6 +65,7 @@ var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
 var soldiers: Soldiers
+var barracks: Barracks
 var bloater_blasts: Blasts
 var step_observer := Callable()
 var tick_count := 0
@@ -134,6 +137,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	)
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids)
+	barracks = Barracks.new(settings, buildings, run_state, soldiers)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
 	_reported_enemies_left = waves.enemies_left
@@ -205,6 +209,8 @@ func build(kind: StringName, origin: Vector2i) -> void:
 	_changed_cells.append_array(placed.footprint)
 	if placed.kind == Buildings.REPAIR_YARD:
 		repair_yards.add(placed)
+	elif placed.kind == Buildings.BARRACKS:
+		barracks.add(placed)
 
 
 func assign(yard_id: int, building_id: int) -> void:
@@ -325,6 +331,8 @@ func _emit_signals() -> void:
 	var added := soldiers.take_added()
 	if not added.is_empty():
 		soldiers_added.emit(added)
+	for id in barracks.take_changed():
+		training_changed.emit(id)
 	if power_grid.take_changed():
 		power_changed.emit()
 	if not piles.changed.is_empty():
@@ -421,6 +429,7 @@ func _land_bodies_and_update_fields() -> void:
 func _spawn_enemies() -> void:
 	_observe(Step.SPAWN_ENEMIES)
 	waves.spawn()
+	barracks.step(waves.phase == Waves.Phase.WAVE)
 
 
 func _rebuild_spatial_hash() -> void:
@@ -462,6 +471,7 @@ func _remove_dead() -> void:
 	piles.queue_bodies(deaths)
 	for id in buildings.pending_destroyed():
 		combos.remove(id)
+		barracks.remove(id)
 	combos.expire(tick_count)
 	run_state.pay(deaths, combos, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
@@ -473,6 +483,7 @@ func _check_wave_end() -> void:
 	if not run_state.is_game_over and waves.check_end():
 		_wave_ended = true
 		decay_piles()
+		barracks.finish_queues()
 
 
 func _start_wave(wave: int, label: String) -> void:

@@ -4,9 +4,6 @@ class_name Soldiers
 extends RefCounted
 
 const NONE := -1
-## A soldier's HP and speed until the soldiers settings group arrives with barracks (#188).
-const HP := 45.0
-const SPEED := 2.5
 ## A new soldier's targeting: the index of [constant Enemies.BLOATERS_FIRST] in
 ## [constant Enemies.TARGETINGS].
 const DEFAULT_TARGETING := 0
@@ -93,7 +90,7 @@ func add(cell: Vector2i) -> int:
 	var spot := _map.index_of(cell)
 	ids[count] = id
 	positions[count] = MapData.centre_of(cell)
-	hp[count] = HP
+	hp[count] = _settings.soldier_hp
 	spots[count] = spot
 	orders[count] = NONE
 	path_cursors[count] = 0
@@ -127,7 +124,7 @@ func elevation(index: int) -> int:
 ## At [constant Simulation.Step.MOVE_UNITS], each standing soldier pushed off its spot walks
 ## back towards it, then every soldier is held off what is solid to it.
 func step() -> void:
-	var step_length := SPEED / Simulation.TICKS_PER_SECOND
+	var step_length := _settings.soldier_speed / Simulation.TICKS_PER_SECOND
 	var radius := _settings.separation_radius
 	for i in count:
 		if orders[i] == NONE:

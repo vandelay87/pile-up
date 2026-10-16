@@ -129,6 +129,51 @@ class SetTargeting:
 			sim.reject_command("%s: %s" % [LABEL, error])
 
 
+class Train:
+	extends Commands.Play
+
+	const LABEL := "train"
+
+	var _barracks_id: int
+	var _count: int
+
+	func _init(barracks_id: int, count: int) -> void:
+		_barracks_id = barracks_id
+		_count = count
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Barracks: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var instant := sim.waves.phase != Waves.Phase.WAVE
+		var error := sim.barracks.train(_barracks_id, _count, instant)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
+class CancelTraining:
+	extends Commands.Play
+
+	const LABEL := "cancel training"
+
+	var _barracks_id: int
+	var _slot: int
+
+	func _init(barracks_id: int, slot: int) -> void:
+		_barracks_id = barracks_id
+		_slot = slot
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Barracks: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.barracks.cancel(_barracks_id, _slot)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
 class Restart:
 	extends Commands.Command
 
