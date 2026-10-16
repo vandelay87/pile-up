@@ -1,9 +1,10 @@
 class_name ComboView
 extends Node2D
 
-## Draws a gold ring above each building with a combo, from Combos each frame, at a steady size
-## on screen whatever the zoom; hidden at x1. Its tier sits in the middle, an outer arc fills
-## towards the next tier (full at the cap) and an inner arc is the timer, red when nearly out.
+## Draws a gold ring above each building and soldier with a combo, from Combos each frame, at a
+## steady size on screen whatever the zoom; hidden at x1. Its tier sits in the middle, an outer
+## arc fills towards the next tier (full at the cap) and an inner arc is the timer, red when
+## nearly out.
 ## combo_events animate it: a kill pulses it, a tier-up sends a ring outwards as the number
 ## swells, and a break scatters red arc fragments as the old tier drops away.
 
@@ -21,6 +22,8 @@ const BREAK_RED := Color(0.95, 0.25, 0.2)
 const TIMER_LOW := 0.3
 ## World pixels from a building's ground centre to its top, and the on-screen size factor.
 const RAISE := 60.0
+## World pixels from a soldier's feet to the top of its head, before its pile lift.
+const SOLDIER_RAISE := 26.0
 const SCREEN_SCALE := 1.9
 const BREAK_SECONDS := 0.8
 const TIER_UP_SECONDS := 0.45
@@ -109,11 +112,24 @@ func _draw() -> void:
 	var s := clampf(SCREEN_SCALE / zoom, 0.5, 6.0)
 	for id: int in _rings:
 		var ring := _rings[id]
-		var building := _simulation.buildings.building(id)
-		if building == null or not ring.is_shown():
+		if not ring.is_shown():
 			continue
-		var top := GridTransform.grid_to_world(building.centre) + Vector2(0, -RAISE - 20.0 * s)
-		draw_ring(self, top, ring, s)
+		var top := _top_of(id)
+		if top.is_finite():
+			draw_ring(self, top + Vector2(0, -20.0 * s), ring, s)
+
+
+# The top of the building or soldier [param id] in world pixels, or INF when it is gone.
+func _top_of(id: int) -> Vector2:
+	var building := _simulation.buildings.building(id)
+	if building != null:
+		return GridTransform.grid_to_world(building.centre) + Vector2(0, -RAISE)
+	var soldiers := _simulation.soldiers
+	var index := soldiers.index_of(id)
+	if index == Soldiers.NONE:
+		return Vector2.INF
+	var foot := GridTransform.grid_to_world(soldiers.positions[index])
+	return foot + Vector2(0, -SOLDIER_RAISE - SoldierRenderer.lift(soldiers, index))
 
 
 ## Draws a ring centred on [param at], [param s] times its base size of 14 pixels. Hidden at x1

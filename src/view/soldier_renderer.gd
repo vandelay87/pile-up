@@ -14,6 +14,11 @@ var _lifts := PackedFloat32Array()
 var _shown := 0
 
 
+## How far the soldier at [param index] is drawn above its feet: its pile's height.
+static func lift(soldiers: Soldiers, index: int) -> float:
+	return float(soldiers.elevation(index) * Atlas.PILE_SLAB_HEIGHT)
+
+
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
 	_soldiers = simulation.soldiers
 	_parent = parent.get_canvas_item()
@@ -36,11 +41,11 @@ func _process(_delta: float) -> void:
 	for i in count:
 		var foot := GridTransform.grid_to_world(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, foot))
-		var lift := float(_soldiers.elevation(i) * Atlas.PILE_SLAB_HEIGHT)
-		if lift != _lifts[i]:
-			_lifts[i] = lift
+		var lifted := lift(_soldiers, i)
+		if lifted != _lifts[i]:
+			_lifts[i] = lifted
 			RenderingServer.canvas_item_set_transform(
-				_sprites[i], Transform2D(0.0, Vector2(0, -lift))
+				_sprites[i], Transform2D(0.0, Vector2(0, -lifted))
 			)
 
 

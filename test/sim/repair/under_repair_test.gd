@@ -55,7 +55,7 @@ func test_a_tower_under_repair_holds_fire_until_the_drone_lifts_off() -> void:
 
 	_sim.tick()
 	assert_int(shots.size()).is_equal(1)
-	assert_int(shots[0].tower_id).is_equal(tower.id)
+	assert_int(shots[0].shooter_id).is_equal(tower.id)
 
 
 func test_a_grinder_under_repair_hurts_nothing_until_the_drone_lifts_off() -> void:

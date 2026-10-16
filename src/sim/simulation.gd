@@ -457,11 +457,15 @@ func _move_units() -> void:
 
 func _buildings_act() -> void:
 	_observe(Step.BUILDINGS_ACT)
+	# Enemies hold still through steps 6 and 7, so their field values are shared by every pick.
+	enemies.begin_targeting()
 	_shots = buildings.act(enemies)
 
 
 func _units_fire() -> void:
 	_observe(Step.UNITS_FIRE)
+	soldiers.fire(enemies, _shots)
+	enemies.end_targeting()
 
 
 func _repair_buildings() -> void:
@@ -473,7 +477,7 @@ func _repair_buildings() -> void:
 func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	deaths = enemies.remove_dead()
-	_blasts.append_array(bloater_blasts.resolve(deaths))
+	_blasts.append_array(bloater_blasts.resolve(deaths, soldiers))
 	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
 	for id in buildings.pending_destroyed():

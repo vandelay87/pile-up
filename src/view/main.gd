@@ -37,6 +37,7 @@ var _last_saved_json := ""
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
 @onready var _soldier_selection: SoldierSelection = $SoldierSelection
+@onready var _soldier_ranges: SoldierRanges = $SoldierRanges
 @onready var _combo_view: ComboView = $ComboView
 @onready var _overflow_view: OverflowView = $OverflowView
 
@@ -120,6 +121,7 @@ func _start_run(simulation: Simulation) -> void:
 	_power_overlay.setup(_simulation)
 	_selection.setup(_simulation)
 	_soldier_selection.setup(_simulation, _selection, _camera)
+	_soldier_ranges.setup(_simulation, _soldier_selection)
 
 
 func _restart() -> void:

@@ -72,15 +72,20 @@ class Building:
 		centre = Buildings.centre_of(kind, origin)
 
 
+## One instant hit, by a tower or a soldier: who fired, from where, and the enemy it hit, where.
 class Shot:
 	extends RefCounted
 
-	var tower_id: int
+	var shooter_id: int
+	var origin: Vector2
 	var target_id: int
 	var position: Vector2
 
-	func _init(shot_tower_id: int, shot_target_id: int, shot_position: Vector2) -> void:
-		tower_id = shot_tower_id
+	func _init(
+		shot_shooter_id: int, shot_origin: Vector2, shot_target_id: int, shot_position: Vector2
+	) -> void:
+		shooter_id = shot_shooter_id
+		origin = shot_origin
 		target_id = shot_target_id
 		position = shot_position
 
@@ -303,7 +308,7 @@ func _fire(tower: Building, enemies: Enemies, shots: Array[Shot]) -> void:
 	_hurt(tower, enemies, index, _settings.tower_damage)
 	tower.target_id = target
 	tower.cooldown = _settings.tower_cooldown_ticks
-	shots.append(Shot.new(tower.id, target, enemies.positions[index]))
+	shots.append(Shot.new(tower.id, tower.centre, target, enemies.positions[index]))
 
 
 func _grind(grinder: Building, enemies: Enemies) -> void:

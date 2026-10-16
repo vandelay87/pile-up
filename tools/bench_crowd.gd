@@ -59,6 +59,8 @@ static func digest(sim: Simulation) -> int:
 			soldiers.ids.slice(0, soldiers.count),
 			soldiers.positions.slice(0, soldiers.count),
 			soldiers.hp.slice(0, soldiers.count),
+			soldiers.targets.slice(0, soldiers.count),
+			soldiers.kills.slice(0, soldiers.count),
 		]
 	)
 

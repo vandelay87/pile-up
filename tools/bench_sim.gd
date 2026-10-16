@@ -10,8 +10,8 @@
 # towers, under the crush, grinding the crowd pressed on them and the tumblers crossing them.
 # Every CHAIN_INTERVAL ticks a wall is raised in the crowd and a chain of bloaters set off beside
 # it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
-# around the ring, and a group of them is sent across it through the crowd every
-# BenchCrowd.ORDER_INTERVAL ticks.
+# around the ring, firing into the crowd, and a group of them is sent across it through the crowd
+# every BenchCrowd.ORDER_INTERVAL ticks.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
@@ -61,6 +61,9 @@ class RunResult:
 	var walls_erased := 0
 	## Soldiers on the field at the end, out of BenchCrowd's army.
 	var soldiers := 0
+	## Shots the soldiers fired, and enemies they killed.
+	var soldier_shots := 0
+	var soldier_kills := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -89,6 +92,7 @@ func _init() -> void:
 	print("Grinders spent %d grinder-ticks grinding" % first.grinding_ticks)
 	print("%d bloaters blew up; chains erased %d walls" % [first.blasts, first.walls_erased])
 	print("%d of an army of %d soldiers on the field" % [first.soldiers, BenchCrowd.ARMY])
+	print("Soldiers fired %d shots and killed %d" % [first.soldier_shots, first.soldier_kills])
 
 	var failed := false
 	if first.repair_ticks == 0:
@@ -105,6 +109,9 @@ func _init() -> void:
 		failed = true
 	if first.soldiers != BenchCrowd.ARMY:
 		printerr("The army was not all fielded")
+		failed = true
+	if first.soldier_shots == 0 or first.soldier_kills == 0:
+		printerr("No soldier fired and killed")
 		failed = true
 	if first.digest != second.digest:
 		printerr("Two runs with the same seed ended in different states")
@@ -128,6 +135,14 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	var chain_wall := Vector2i(-1, -1)
 	sim.blasts.connect(
 		func(went_off: Array[Blasts.Blast]) -> void: result.blasts += went_off.size()
+	)
+	# Holding the soldiers rather than the sim keeps the sim free of a reference cycle.
+	var soldiers := sim.soldiers
+	sim.shots_fired.connect(
+		func(shots: Array[Buildings.Shot]) -> void:
+			for shot in shots:
+				if soldiers.index_of(shot.shooter_id) != Soldiers.NONE:
+					result.soldier_shots += 1
 	)
 	for t in WARMUP_TICKS + MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
@@ -160,6 +175,8 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 		if t % CHAIN_INTERVAL == 1 and chain_wall.x >= 0 and sim.piles.level(chain_wall) == 0:
 			result.walls_erased += 1
 	result.soldiers = sim.soldiers.count
+	for i in sim.soldiers.count:
+		result.soldier_kills += sim.soldiers.kills[i]
 	result.digest = hash(
 		[
 			BenchCrowd.digest(sim),

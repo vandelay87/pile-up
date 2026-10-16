@@ -27,7 +27,7 @@ var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
 var kinds := PackedByteArray()
-# The building that last damaged each enemy, or NONE: the killer if it dies.
+# The building or soldier that last damaged each enemy, or NONE: the killer if it dies.
 var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
 var structure_targets := PackedInt32Array()
@@ -63,6 +63,9 @@ var _last_space_push := Vector2.ZERO
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
 var _last_values := PackedFloat64Array()
+# Each enemy's sensible field value, worked out once between begin_targeting and end_targeting,
+# NAN until then; empty outside that window.
+var _target_values := PackedFloat64Array()
 var _ticks := 0
 
 
@@ -129,7 +132,7 @@ func index_of(id: int) -> int:
 	return _index_by_id.get(id, NONE)
 
 
-# Damage from the building with id [param by], or from NONE.
+# Damage from the building or soldier with id [param by], or from NONE.
 func damage(id: int, amount: float, by: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
@@ -137,7 +140,7 @@ func damage(id: int, amount: float, by: int) -> void:
 		last_hitters[index] = by
 
 
-# A debug kill: no building gets the credit.
+# A debug kill: nobody gets the credit.
 func kill(id: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
@@ -163,6 +166,7 @@ func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 	var low := Vector2i((pos - Vector2(reach, reach)).floor()) - Vector2i.ONE * _HASH_MARGIN
 	var high := Vector2i((pos + Vector2(reach, reach)).floor()) + Vector2i.ONE * _HASH_MARGIN
 	var reach_squared := reach * reach
+	var held := not _target_values.is_empty()
 	var best_id := NONE
 	var best_value := INF
 	var best_outranks := false
@@ -178,7 +182,13 @@ func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 					continue
 				if positions[i].distance_squared_to(pos) > reach_squared:
 					continue
-				var field_value := _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
+				var field_value: float
+				if held and not is_nan(_target_values[i]):
+					field_value = _target_values[i]
+				else:
+					field_value = _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
+					if held:
+						_target_values[i] = field_value
 				var ties_lower := field_value == best_value and ids[i] < best_id
 				var outranks := outranks_normal and not best_outranks
 				if best_id == NONE or outranks or field_value < best_value or ties_lower:
@@ -186,6 +196,19 @@ func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 					best_id = ids[i]
 					best_outranks = outranks_normal
 	return best_id
+
+
+## From here until [method end_targeting] enemies hold still and none is removed, so
+## [method target_in_range] works out each enemy's field value once, for every tower and soldier
+## picking a target.
+func begin_targeting() -> void:
+	_target_values.resize(count)
+	_target_values.fill(NAN)
+
+
+## Ends the window [method begin_targeting] opened.
+func end_targeting() -> void:
+	_target_values.clear()
 
 
 ## The indices of the living, walking enemies within [param reach] of one of the squares in

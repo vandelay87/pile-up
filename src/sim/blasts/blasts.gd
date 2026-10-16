@@ -46,8 +46,9 @@ func _init(
 
 
 ## Blows up every bloater in [param deaths], adding each blast kill to it in kill order, and
-## returns the blasts in the order they went off.
-func resolve(deaths: Deaths) -> Array[Blast]:
+## returns the blasts in the order they went off. A blast kill counts towards its killer's kills,
+## a building's or one of [param soldiers].
+func resolve(deaths: Deaths, soldiers: Soldiers) -> Array[Blast]:
 	var blasts: Array[Blast] = []
 	var radius := _settings.blast_radius
 	var k := 0
@@ -59,7 +60,7 @@ func resolve(deaths: Deaths) -> Array[Blast]:
 				_enemies.rebuild_spatial_hash()
 			var blast := Blast.new(deaths.positions[k], deaths.killers[k])
 			blasts.append(blast)
-			_kill_around(blast, radius, deaths)
+			_kill_around(blast, radius, deaths, soldiers)
 		k += 1
 	if blasts.is_empty():
 		return blasts
@@ -70,11 +71,12 @@ func resolve(deaths: Deaths) -> Array[Blast]:
 	return blasts
 
 
-func _kill_around(blast: Blast, radius: float, deaths: Deaths) -> void:
+func _kill_around(blast: Blast, radius: float, deaths: Deaths, soldiers: Soldiers) -> void:
 	for i in _enemies.living_within(blast.position, radius):
 		_enemies.kill(_enemies.ids[i])
 		deaths.add(_enemies.ids[i], _enemies.positions[i], _enemies.kinds[i], blast.killer, true)
 		_buildings.count_kill(blast.killer)
+		soldiers.count_kill(blast.killer)
 
 
 func _hurt_structures(centre: Vector2, radius: float) -> void:

@@ -3,6 +3,8 @@ extends Node2D
 
 const TINT := Color(1.0, 0.85, 0.45)
 const MUZZLE_HEIGHT := 52.0
+## How high above its feet a soldier fires from, before its pile lift.
+const SOLDIER_MUZZLE_HEIGHT := 16.0
 const HIT_HEIGHT := 12.0
 
 var _simulation: Simulation
@@ -37,17 +39,26 @@ func _launch(shots: Array[Buildings.Shot]) -> void:
 	var now := Time.get_ticks_msec()
 	var speed := _simulation.settings.tracer_speed
 	for shot in shots:
-		var muzzle := _simulation.buildings.building(shot.tower_id).centre
+		var muzzle := shot.origin
 		var flight := Flight.new()
 		flight.item = _take()
 		flight.target_id = shot.target_id
-		flight.from = GridTransform.grid_to_world(muzzle) + Vector2.UP * MUZZLE_HEIGHT
+		flight.from = GridTransform.grid_to_world(muzzle) + Vector2.UP * _muzzle_height(shot)
 		flight.to = GridTransform.grid_to_world(shot.position) + Vector2.UP * HIT_HEIGHT
 		flight.started_msec = now
 		flight.duration_msec = muzzle.distance_to(shot.position) / speed * 1000.0
 		var heading := (flight.to - flight.from).angle()
 		RenderingServer.canvas_item_set_transform(flight.item, Transform2D(heading, flight.from))
 		_flights.append(flight)
+
+
+# A tower fires from its top; a soldier from its chest, standing on its pile.
+func _muzzle_height(shot: Buildings.Shot) -> float:
+	var soldiers := _simulation.soldiers
+	var index := soldiers.index_of(shot.shooter_id)
+	if index == Soldiers.NONE:
+		return MUZZLE_HEIGHT
+	return SOLDIER_MUZZLE_HEIGHT + SoldierRenderer.lift(soldiers, index)
 
 
 func _process(_delta: float) -> void:
