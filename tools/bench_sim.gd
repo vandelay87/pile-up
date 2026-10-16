@@ -9,7 +9,8 @@
 # overflow at a surge, so enemies tumble over the ring. Grinders stand in the ring between the
 # towers, under the crush, grinding the crowd pressed on them and the tumblers crossing them.
 # Every CHAIN_INTERVAL ticks a wall is raised in the crowd and a chain of bloaters set off beside
-# it, blowing through the crowd and erasing the wall.
+# it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
+# around the ring, and ten of them are sent across it through the crowd every 120 ticks.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
@@ -57,6 +58,8 @@ class RunResult:
 	## Bloaters blown up, and walls the chains erased.
 	var blasts := 0
 	var walls_erased := 0
+	## Soldiers on the field at the end, out of BenchCrowd's army.
+	var soldiers := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -84,6 +87,7 @@ func _init() -> void:
 	print("A crush surged for %d ticks; %d enemies tumbled" % [first.surge_ticks, first.tumbles])
 	print("Grinders spent %d grinder-ticks grinding" % first.grinding_ticks)
 	print("%d bloaters blew up; chains erased %d walls" % [first.blasts, first.walls_erased])
+	print("%d of an army of %d soldiers on the field" % [first.soldiers, BenchCrowd.ARMY])
 
 	var failed := false
 	if first.repair_ticks == 0:
@@ -98,6 +102,9 @@ func _init() -> void:
 	if first.walls_erased == 0:
 		printerr("No bloater chain erased a wall")
 		failed = true
+	if first.soldiers != BenchCrowd.ARMY:
+		printerr("The army was not all fielded")
+		failed = true
 	if first.digest != second.digest:
 		printerr("Two runs with the same seed ended in different states")
 		failed = true
@@ -110,6 +117,7 @@ func _init() -> void:
 func _run(settings: Settings, map: MapData) -> RunResult:
 	var sim := Simulation.new(settings, map, RUN_SEED)
 	var crowd := BenchCrowd.new(sim, CROWD_SEED)
+	crowd.field_army()
 	var grinders := _build_grinders(sim)
 	_build_branch(sim)
 	_build_yards(sim)
@@ -122,6 +130,7 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	)
 	for t in WARMUP_TICKS + MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
+		crowd.send_army(t)
 		if t % PYLON_INTERVAL == PYLON_INTERVAL - 1:
 			_cut_or_relink(sim)
 		if t % REBUILD_INTERVAL == REBUILD_INTERVAL - 1:
@@ -149,6 +158,7 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 		_count_overflow(sim, result, tumbling)
 		if t % CHAIN_INTERVAL == 1 and chain_wall.x >= 0 and sim.piles.level(chain_wall) == 0:
 			result.walls_erased += 1
+	result.soldiers = sim.soldiers.count
 	result.digest = hash(
 		[
 			BenchCrowd.digest(sim),

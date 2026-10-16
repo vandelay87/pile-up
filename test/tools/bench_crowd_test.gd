@@ -85,3 +85,66 @@ func test_soldiers_on_the_field_change_the_state() -> void:
 	without.tick()
 
 	assert_int(BenchCrowd.digest(with_soldiers)).is_not_equal(BenchCrowd.digest(without))
+
+
+func test_the_army_stands_in_and_around_the_ring_some_of_it_on_walls() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+
+	crowd.field_army()
+
+	var soldiers := sim.soldiers
+	assert_int(soldiers.count).is_equal(BenchCrowd.ARMY)
+	var centre := Vector2(BASE.get_center())
+	var on_walls := 0
+	var spots := {}
+	# Each soldier stands at its cell's centre, up to a cell from the point that picked the cell.
+	var inner := BenchCrowd.ARMY_INNER_RADIUS - 1.0
+	var outer := BenchCrowd.ARMY_OUTER_RADIUS + 1.0
+	for i in soldiers.count:
+		assert_float(soldiers.positions[i].distance_to(centre)).is_between(inner, outer)
+		if soldiers.elevation(i) == Piles.WALL_LEVEL:
+			on_walls += 1
+		spots[soldiers.spot(i)] = true
+	assert_int(on_walls).is_greater(0)
+	assert_int(on_walls).is_less(BenchCrowd.ARMY)
+	assert_int(spots.size()).is_equal(BenchCrowd.ARMY)
+
+
+func test_every_order_interval_ten_soldiers_are_sent_across_the_ring() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+	crowd.field_army()
+	var walking := []
+	for t in 2 * BenchCrowd.ORDER_INTERVAL:
+		crowd.send_army(t)
+		sim.tick()
+		if t % BenchCrowd.ORDER_INTERVAL == 0:
+			walking.append(_walking(sim))
+
+	assert_array(walking).is_equal([BenchCrowd.ORDER_GROUP, 2 * BenchCrowd.ORDER_GROUP])
+
+
+func test_the_same_seed_with_the_army_reaches_the_same_state() -> void:
+	assert_int(BenchCrowd.digest(_run_with_army(7, 300))).is_equal(
+		BenchCrowd.digest(_run_with_army(7, 300))
+	)
+
+
+func _run_with_army(crowd_seed: int, ticks: int) -> Simulation:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, crowd_seed)
+	crowd.field_army()
+	for t in ticks:
+		crowd.top_up(CROWD)
+		crowd.send_army(t)
+		sim.tick()
+	return sim
+
+
+func _walking(sim: Simulation) -> int:
+	var walking := 0
+	for i in sim.soldiers.count:
+		if sim.soldiers.orders[i] != Soldiers.NONE:
+			walking += 1
+	return walking

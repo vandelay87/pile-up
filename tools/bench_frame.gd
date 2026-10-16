@@ -1,5 +1,6 @@
-# Runs the real Main scene with vsync off and a dense crowd near the base, raising the enemy
-# count until the p99 frame time no longer holds 60 fps, then prints the Performance table.
+# Runs the real Main scene with vsync off and a dense crowd near the base, with BenchCrowd's army
+# among it, raising the enemy count until the p99 frame time no longer holds 60 fps, then prints
+# the Performance table.
 # Run with:
 # godot --path . tools/bench_frame.tscn --write-movie <scratch>/bench.avi --fixed-fps 60
 extends Node
@@ -36,6 +37,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_crowd = BenchCrowd.new(_main.simulation, CROWD_SEED)
+	_crowd.field_army()
 	_start(FIRST_COUNT)
 
 
@@ -43,6 +45,7 @@ func _process(_delta: float) -> void:
 	if _crowd == null:
 		return
 	_crowd.top_up(_count)
+	_crowd.send_army(_frame)
 	_frame += 1
 	if _frame <= WARMUP_FRAMES:
 		return

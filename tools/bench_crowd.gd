@@ -1,5 +1,6 @@
 # Keeps a dense crowd of enemies in a ring around the base, with a ring of towers firing into it,
-# for the benchmarks.
+# for the benchmarks. It can field an army among them: soldiers in and around the ring, some on
+# walls it raises, ten of them sent across the ring through the crowd every ORDER_INTERVAL ticks.
 class_name BenchCrowd
 extends RefCounted
 
@@ -8,12 +9,21 @@ const OUTER_RADIUS := 14.0
 const BASE_HP := 1_000_000_000.0
 const TOWERS := 8
 const TOWER_RADIUS := 10.0
+const ARMY := 50
+const ARMY_ON_WALLS := 10
+const ARMY_INNER_RADIUS := INNER_RADIUS - 2.0
+const ARMY_OUTER_RADIUS := OUTER_RADIUS + 2.0
+const ORDER_GROUP := 10
+const ORDER_INTERVAL := 120
 
 ## Where the ring's towers stand (or stood, once the crowd breaks them).
 var tower_origins: Array[Vector2i] = []
 
 var _sim: Simulation
 var _rng := RandomNumberGenerator.new()
+# The army draws from its own stream, so the crowd is the same with it or without it.
+var _army_rng := RandomNumberGenerator.new()
+var _orders_sent := 0
 var _centre: Vector2
 
 
@@ -21,6 +31,7 @@ func _init(sim: Simulation, crowd_seed: int) -> void:
 	_sim = sim
 	_sim.run_state.base_hp = BASE_HP
 	_rng.seed = crowd_seed
+	_army_rng.seed = hash([crowd_seed, "army"])
 	_centre = Vector2(sim.map.base.get_center())
 	_sim.run_state.add_gold(TOWERS * _sim.settings.tower_cost)
 	for k in TOWERS:
@@ -69,10 +80,65 @@ func raise_wall() -> Vector2i:
 	return Vector2i(spot.floor())
 
 
+## Raises ARMY_ON_WALLS walls in and around the ring and stands the army there: a soldier on
+## each wall that landed, the rest on the ground, each on a cell of its own. Ticks once, for the
+## walls to land.
+func field_army() -> void:
+	var walls: Array[Vector2i] = []
+	for n in ARMY_ON_WALLS:
+		var spot := _army_spot()
+		var bodies := PackedVector2Array()
+		for body in Piles.WALL_LEVEL:
+			bodies.append(spot)
+		_sim.piles.queue_bodies(Deaths.bodies_at(bodies))
+		walls.append(Vector2i(spot.floor()))
+	_sim.tick()
+	var taken := {}
+	for cell in walls:
+		if _sim.piles.level(cell) == Piles.WALL_LEVEL and not taken.has(cell):
+			taken[cell] = true
+			_sim.soldiers.add(cell)
+	while _sim.soldiers.count < ARMY:
+		var cell := Vector2i(_army_spot().floor())
+		var free := _sim.soldiers.can_stand_on(cell) and not taken.has(cell)
+		if free and _sim.piles.level(cell) == 0:
+			taken[cell] = true
+			_sim.soldiers.add(cell)
+
+
+## On every ORDER_INTERVAL-th tick [param t], sends the next ORDER_GROUP soldiers in turn on a
+## Move across the ring, through the crowd, alternating Cluster and Line.
+func send_army(t: int) -> void:
+	if t % ORDER_INTERVAL != 0 or _sim.soldiers.count == 0:
+		return
+	var soldiers := _sim.soldiers
+	var ids := PackedInt32Array()
+	var mean := Vector2.ZERO
+	for k in ORDER_GROUP:
+		var i := (_orders_sent * ORDER_GROUP + k) % soldiers.count
+		ids.append(soldiers.ids[i])
+		mean += soldiers.positions[i] / ORDER_GROUP
+	var edge := Vector2(_sim.map.width, _sim.map.height)
+	var across := (2.0 * _centre - mean).clamp(Vector2.ZERO, edge)
+	var formation := Formations.CLUSTER if _orders_sent % 2 == 0 else Formations.LINE
+	_sim.queue_command(Commands.Move.new(ids, across, formation))
+	_orders_sent += 1
+
+
 func _free_spot() -> Vector2:
+	return _spot_in(_rng, INNER_RADIUS, OUTER_RADIUS)
+
+
+func _army_spot() -> Vector2:
+	return _spot_in(_army_rng, ARMY_INNER_RADIUS, ARMY_OUTER_RADIUS)
+
+
+# A point at a random angle and distance between [param inner] and [param outer] from the base's
+# centre, on a clear cell of the map.
+func _spot_in(rng: RandomNumberGenerator, inner: float, outer: float) -> Vector2:
 	while true:
-		var angle := _rng.randf_range(0.0, TAU)
-		var radius := _rng.randf_range(INNER_RADIUS, OUTER_RADIUS)
+		var angle := rng.randf_range(0.0, TAU)
+		var radius := rng.randf_range(inner, outer)
 		var pos := _centre + Vector2.from_angle(angle) * radius
 		var cell := Vector2i(pos.floor())
 		if _sim.map.in_bounds(cell) and not _sim.map.is_rock(cell) and not _sim.map.is_base(cell):

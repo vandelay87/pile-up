@@ -291,6 +291,10 @@ var soldier_wall_climb_slow: float:
 	get:
 		var percent: int = value("soldiers", "wall_climb_slow")
 		return percent / 100.0
+## A soldier's mass against an enemy's 1, in the contact pass.
+var soldier_mass: float:
+	get:
+		return value("soldiers", "mass")
 var soldier_cost: int:
 	get:
 		return value("soldiers", "cost")

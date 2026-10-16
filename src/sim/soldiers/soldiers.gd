@@ -281,11 +281,13 @@ func need_restarted() -> void:
 
 ## At [constant Simulation.Step.MOVE_UNITS], after [method UnitPaths.step]: gives the soldiers of
 ## ready fields their slots and paths, walks soldiers along their paths or back to their spots,
-## spaces them out, then holds every soldier off what is solid to it.
-func step() -> void:
+## pushes them and [param enemies] apart by mass, spaces them out, then holds every soldier off
+## what is solid to it.
+func step(enemies: Enemies) -> void:
 	_assign_slots()
 	_plan_paths()
 	_walk()
+	_push_enemies(enemies)
 	_space_out()
 	var radius := _settings.separation_radius
 	for i in count:
@@ -446,6 +448,15 @@ func _arrive(i: int) -> void:
 	_end_order(i)
 	if not returning:
 		_hold(i, slot)
+
+
+# Each soldier in order and the enemies overlapping it push apart, the overlap closed by mass:
+# the enemy takes mass / (mass + 1) of it and the soldier the rest.
+func _push_enemies(enemies: Enemies) -> void:
+	var mass := _settings.soldier_mass
+	var share := mass / (mass + 1.0)
+	for i in count:
+		positions[i] = enemies.shove_from(positions[i], share)
 
 
 # Pairs of soldiers closer than the personal-space radius push apart softly, every pair at once
