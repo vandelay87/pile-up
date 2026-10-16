@@ -35,6 +35,17 @@ func test_an_enemy_overlapping_a_soldier_is_pushed_five_times_as_far_as_the_sold
 	assert_float(enemy_pushed).is_equal_approx(5.0 * soldier_pushed, 1e-4)
 
 
+func test_a_soldier_and_an_enemy_push_apart_softly_as_enemies_do() -> void:
+	_sim = _sim_from(OPEN)
+	var id := _sim.soldiers.add(Vector2i(7, 1))
+	_sim.enemies.spawn(Vector2(7.8, 1.5), 10.0)
+
+	_sim.tick()
+
+	var apart := _position_of(id).distance_to(_sim.enemies.positions[0])
+	assert_float(apart).is_less(2.0 * _sim.settings.separation_radius - 0.01)
+
+
 func test_a_tumbling_enemy_neither_pushes_nor_is_pushed_by_a_soldier() -> void:
 	_sim = _sim_from(OPEN)
 	var id := _sim.soldiers.add(Vector2i(7, 1))
@@ -65,8 +76,9 @@ func test_a_standing_soldier_pushed_by_a_thin_stream_returns_to_its_spot() -> vo
 	assert_float(off).is_less_equal(Soldiers.SPOT_SLACK)
 
 
-func test_a_dense_crowd_pushes_a_soldier_line_back() -> void:
+func test_a_dense_crowd_pushes_a_soldier_line_back_under_a_full_contact_push() -> void:
 	_sim = _sim_from(CORRIDOR)
+	_sim.settings.change("soldiers", "contact_push", 1.0)
 	var ids := [_sim.soldiers.add(Vector2i(7, 1)), _sim.soldiers.add(Vector2i(7, 2))]
 	_spawn_crowd(Rect2(8.4, 1.2, 5.4, 1.6), 100)
 	var furthest := 0.0

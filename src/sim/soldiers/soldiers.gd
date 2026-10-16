@@ -450,13 +450,16 @@ func _arrive(i: int) -> void:
 		_hold(i, slot)
 
 
-# Each soldier in order and the enemies overlapping it push apart, the overlap closed by mass:
-# the enemy takes mass / (mass + 1) of it and the soldier the rest.
+# Each soldier in order and the enemies overlapping it push apart, closing the contact push's
+# share of each overlap a tick: soft, as enemies push each other, so a soldier sits in a crowd
+# rather than clearing a ring round itself. The push splits by mass: the enemy takes
+# mass / (mass + 1) of it and the soldier the rest.
 func _push_enemies(enemies: Enemies) -> void:
 	var mass := _settings.soldier_mass
+	var push := _settings.soldier_contact_push
 	var enemy_share := mass / (mass + 1.0)
 	for i in count:
-		positions[i] = enemies.push_away_from(positions[i], enemy_share)
+		positions[i] = enemies.push_away_from(positions[i], push, enemy_share)
 
 
 # Pairs of soldiers closer than the personal-space radius push apart softly, every pair at once

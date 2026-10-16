@@ -39,6 +39,7 @@ func test_reads_the_soldier_and_barracks_starting_numbers() -> void:
 	assert_float(settings.value("soldiers", "range_per_level")).is_equal_approx(0.5, 1e-6)
 	assert_int(settings.value("soldiers", "wall_climb_slow")).is_equal(75)
 	assert_float(settings.value("soldiers", "mass")).is_equal_approx(5.0, 1e-6)
+	assert_float(settings.value("soldiers", "contact_push")).is_equal_approx(0.5, 1e-6)
 	assert_float(settings.value("barracks", "hp")).is_equal_approx(100.0, 1e-6)
 	assert_int(settings.value("barracks", "cost")).is_equal(200)
 	assert_int(settings.value("barracks", "power_area")).is_equal(3)
