@@ -277,11 +277,11 @@ func _yard_stats(yard: Buildings.Building) -> Array[String]:
 	return lines
 
 
-# The queue's length, the head's time left at wave pace and the power area.
+# The queue's length, the head's time left during a wave and the power area.
 func _barracks_stats(barracks: Buildings.Building) -> Array[String]:
 	var queued := _simulation.barracks.queue_of(barracks.id).size()
 	var lines: Array[String] = ["Queue %d / %d" % [queued, Barracks.QUEUE_LENGTH]]
-	if queued > 0:
+	if queued > 0 and _simulation.waves.phase == Waves.Phase.WAVE:
 		var ticks := _simulation.barracks.ticks_left(barracks.id)
 		lines.append("Next in %.1f s" % (float(ticks) / Simulation.TICKS_PER_SECOND))
 	lines.append("Power area %d" % _simulation.buildings.power_area(barracks.kind))

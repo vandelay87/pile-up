@@ -7,6 +7,8 @@ extends RefCounted
 ## base, by the new-soldier rule.
 
 const QUEUE_LENGTH := 5
+## How many soldiers a shift-click Train asks for.
+const BATCH := 5
 const NOT_A_BARRACKS := "not a barracks"
 const BAD_COUNT := "the count must be 1 or 5"
 const QUEUE_FULL := "the queue is full"
@@ -92,7 +94,7 @@ func train_error(barracks_id: int, count := 1) -> String:
 	var trainer: Trainer = _by_id.get(barracks_id, null)
 	if trainer == null:
 		return NOT_A_BARRACKS
-	if count != 1 and count != QUEUE_LENGTH:
+	if count != 1 and count != BATCH:
 		return BAD_COUNT
 	if trainer.paid.size() >= QUEUE_LENGTH:
 		return QUEUE_FULL
@@ -103,9 +105,9 @@ func train_error(barracks_id: int, count := 1) -> String:
 	return ""
 
 
-## Queues [param count] soldiers (1 or 5) at a barracks, as many as its queue, capacity and gold
-## allow, paying for each; returns why none could be queued, or "". With [param instant] (the
-## build phase) the queue trains at once.
+## Queues [param count] soldiers (1 or [constant BATCH]) at a barracks, as many as its queue,
+## capacity and gold allow, paying for each; returns why none could be queued, or "". With
+## [param instant] (the build phase) the queue trains at once.
 func train(barracks_id: int, count: int, instant: bool) -> String:
 	var error := train_error(barracks_id, count)
 	if not error.is_empty():

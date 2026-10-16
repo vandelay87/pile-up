@@ -254,8 +254,7 @@ func _details_panel() -> PanelContainer:
 	_train.text = "Train soldier"
 	_train.focus_mode = Control.FOCUS_NONE
 	_train.pressed.connect(
-		func() -> void:
-			_selection.train(Barracks.QUEUE_LENGTH if Input.is_key_pressed(KEY_SHIFT) else 1)
+		func() -> void: _selection.train(Barracks.BATCH if Input.is_key_pressed(KEY_SHIFT) else 1)
 	)
 	_barracks_controls.add_child(_train)
 	var queue_label := Label.new()
@@ -421,7 +420,7 @@ func _show_barracks_controls() -> void:
 	var error := _simulation.barracks.train_error(id)
 	_train.disabled = not error.is_empty()
 	_train.tooltip_text = (
-		_sentence(error) if _train.disabled else "Shift-click queues %d" % Barracks.QUEUE_LENGTH
+		_sentence(error) if _train.disabled else "Shift-click queues %d" % Barracks.BATCH
 	)
 	var queued := _simulation.barracks.queue_of(id).size()
 	for slot in _slot_buttons.size():
