@@ -150,14 +150,15 @@ func test_a_soldier_in_an_enclosed_region_stops_where_the_anchor_is_out_of_its_r
 
 
 func test_a_building_placed_on_a_path_replans_it_and_soldiers_keep_walking_meanwhile() -> void:
-	# 40×30 is 1,200 cells, more than one tick's budget, so the new field settles over several.
+	# A rock wall down x = 30 with a gap at the bottom: the new field fills much of the map before
+	# it finds the way round, more than one tick's budget, so it settles over several.
 	var rows: Array[String] = []
-	for y in 30:
-		rows.append(".".repeat(40))
+	for y in 40:
+		rows.append(".".repeat(30) + ("#" if y < 34 else ".") + ".".repeat(29))
 	_sim = _sim_from(rows)
-	_sim.change_setting("run", "base_power_area", 40)
-	var id := _sim.soldiers.add(Vector2i(2, 20))
-	_move([id], Vector2(30.5, 1.5), Formations.CLUSTER)
+	_sim.change_setting("run", "base_power_area", 50)
+	var id := _sim.soldiers.add(Vector2i(20, 2))
+	_move([id], Vector2(45.5, 2.5), Formations.CLUSTER)
 	for tick in 30:
 		_sim.tick()
 	var on_path := _path_cells(id)[3]
@@ -177,19 +178,21 @@ func test_a_building_placed_on_a_path_replans_it_and_soldiers_keep_walking_meanw
 	assert_array(_rejections).is_empty()
 	assert_int(_sim.unit_paths.generation(_sim.soldiers.orders[0])).is_greater(generation)
 	assert_int(waited).is_greater(0)
-	var cells := _cells_walked(id, 3000)
-	assert_object(_spot_of(id)).is_equal(Vector2i(30, 1))
+	var cells := _cells_walked(id, 5000)
+	assert_object(_spot_of(id)).is_equal(Vector2i(45, 2))
 	assert_array(cells).not_contains([on_path])
 
 
 func test_a_long_order_settles_over_several_ticks_within_the_budget() -> void:
+	# A rock wall down x = 40 with a gap at the bottom: the way round is long and the field fills
+	# most of the map to find it.
 	var rows: Array[String] = []
 	for y in 60:
-		rows.append(".".repeat(80))
+		rows.append(".".repeat(40) + ("#" if y < 56 else ".") + ".".repeat(39))
 	_sim = _sim_from(rows)
 	var id := _sim.soldiers.add(Vector2i(79, 0))
 
-	_move([id], Vector2(2.5, 57.5), Formations.CLUSTER)
+	_move([id], Vector2(2.5, 2.5), Formations.CLUSTER)
 	var ticks_waiting := 0
 	while ticks_waiting < 100:
 		_sim.tick()
@@ -201,8 +204,8 @@ func test_a_long_order_settles_over_several_ticks_within_the_budget() -> void:
 		assert_vector(_position_of(id)).is_equal(Vector2(79.5, 0.5))
 
 	assert_int(ticks_waiting).is_greater(1)
-	_run_until_standing(3000)
-	assert_object(_spot_of(id)).is_equal(Vector2i(2, 57))
+	_run_until_standing(6000)
+	assert_object(_spot_of(id)).is_equal(Vector2i(2, 2))
 
 
 func test_a_soldier_pushed_where_it_cannot_reach_its_spot_stands_where_it_is() -> void:

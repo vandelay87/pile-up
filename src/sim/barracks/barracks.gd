@@ -93,7 +93,8 @@ func set_rally(barracks_id: int, cell: Vector2i) -> String:
 	if anchor == UnitPaths.NONE:
 		return "no cell a soldier can stand on"
 	_clear_rally(trainer)
-	trainer.rally_field = _paths.plan(anchor, true)
+	# New soldiers appear beside the barracks, so its rally field settles towards there first.
+	trainer.rally_field = _paths.plan(anchor, Vector2(trainer.area.get_center()), true)
 	_mark_changed(trainer)
 	return ""
 

@@ -144,3 +144,29 @@ func test_a_slot_built_over_moves_to_a_free_cell_no_other_soldier_takes() -> voi
 	for spot in spots:
 		unique[spot] = true
 	assert_int(unique.size()).is_equal(5)
+
+
+func test_soldiers_sent_onto_a_pile_get_past_those_already_standing_there() -> void:
+	_sim = _sim_from(
+		[
+			"................",
+			"................",
+			"........33333...",
+			"........33333...",
+			"........33333...",
+			"........33333...",
+			"........33333...",
+			"................",
+			"................",
+			"................",
+			"................",
+			"................",
+		]
+	)
+	var ids := _add_row(Vector2i(2, 8), 3)
+
+	_move(ids, Vector2(10.5, 4.5), Formations.CLUSTER)
+
+	# Unhindered, the last soldier stands in about 300 ticks; held back by the soldiers on its
+	# path, it took over 700.
+	assert_int(_run_until_standing(2000)).is_less(400)

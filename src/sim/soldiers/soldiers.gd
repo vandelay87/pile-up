@@ -196,7 +196,10 @@ func move(soldier_ids: PackedInt32Array, target: Vector2, formation: StringName)
 		if formation == Formations.CLUSTER
 		else Formations.line(_paths, _map, anchor, mean, target, going.size(), _spot_counts)
 	)
-	var field := _paths.plan(anchor)
+	var going_mean := Vector2.ZERO
+	for i in going:
+		going_mean += positions[i] / going.size()
+	var field := _paths.plan(anchor, going_mean)
 	var needed := formation_slots.duplicate()
 	for i in going:
 		_set_order(i, field, NONE)
@@ -258,18 +261,22 @@ func push_out_of(area: Rect2i) -> void:
 
 
 ## At [constant Simulation.Step.MOVE_UNITS], before [method UnitPaths.step]: each field restarted
-## since the last tick asks again for its soldiers' cells and slots.
+## since the last tick asks again for its soldiers' cells and slots, aimed at where they are now.
 func need_restarted() -> void:
 	for field in _paths.take_restarted():
 		var needed := PackedInt32Array()
+		var mean := Vector2.ZERO
+		var walkers := 0
 		for i in count:
 			if orders[i] == field:
 				needed.append(_cell_index(i))
+				mean += positions[i]
+				walkers += 1
 				if slots[i] != NONE:
 					needed.append(slots[i])
 		var unassigned: PackedInt32Array = _unassigned.get(field, PackedInt32Array())
 		needed.append_array(unassigned)
-		_paths.need(field, needed)
+		_paths.need(field, needed, mean / walkers if walkers > 0 else UnitPaths.NO_AIM)
 
 
 ## At [constant Simulation.Step.MOVE_UNITS], after [method UnitPaths.step]: gives the soldiers of
@@ -427,7 +434,7 @@ func _stand(i: int, step_length: float) -> void:
 
 # A standing soldier more than a cell off its spot plans a path back as for a Move, holding it.
 func _return(i: int) -> void:
-	var field := _paths.plan(spots[i])
+	var field := _paths.plan(spots[i], positions[i])
 	_set_order(i, field, spots[i])
 	_returning[i] = 1
 	_paths.need(field, PackedInt32Array([_cell_index(i), spots[i]]))
@@ -443,14 +450,15 @@ func _arrive(i: int) -> void:
 
 # Pairs of soldiers closer than the personal-space radius push apart softly, every pair at once
 # and each soldier's pushes averaged. A walking soldier takes the whole push of a pair with a
-# standing one, and two standing soldiers don't push each other. A push is held to half a
-# walking step, so a soldier always gets past those standing in its way.
+# standing one, and two standing soldiers don't push each other. A push is held to half the
+# soldier's own step, slowed by its cell, so it always gets past those standing in its way, on a
+# pile too.
 func _space_out() -> void:
 	var radius := _settings.personal_space_radius
 	var push := _settings.personal_space_push
 	if radius <= 0.0 or push <= 0.0:
 		return
-	var most := 0.5 * _settings.soldier_speed / Simulation.TICKS_PER_SECOND
+	var half_step := 0.5 * _settings.soldier_speed / Simulation.TICKS_PER_SECOND
 	_pushes.resize(count)
 	_pushes.fill(Vector2.ZERO)
 	var pushed := PackedInt32Array()
@@ -475,6 +483,7 @@ func _space_out() -> void:
 				pushed[j] += 1
 	for i in count:
 		if pushed[i] > 0:
+			var most := half_step * _paths.speed_factor(_cell_index(i))
 			positions[i] += (_pushes[i] / pushed[i]).limit_length(most)
 
 

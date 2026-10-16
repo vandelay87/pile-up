@@ -6,11 +6,14 @@
 class_name UnitPaths
 extends RefCounted
 
-## The most field cells settled in one tick, across every field in flight: about 0.5 ms on the
-## M5 release build. A cell count rather than a time, so runs replay exactly.
+## The most field cells settled in one tick, across every field in flight: about 0.8 ms on the
+## M5 release build, so an order across the map is ready in a handful of ticks. A cell count
+## rather than a time, so runs replay exactly.
 const PATH_SETTLE_CELLS := 200
 const NONE := -1
 const UNREACHABLE := INF
+const NO_AIM := Vector2(-1.0, -1.0)
+const _DIAGONAL_EXTRA := 0.41421356237309515
 const _OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0),
 	Vector2i(-1, 0),
@@ -48,6 +51,9 @@ class Field:
 	extends RefCounted
 
 	var anchor: int
+	## Where the field's soldiers are, as a map position: it settles towards there first, by the
+	## octile distance to it, so a long order is ready sooner. NO_AIM settles evenly outwards.
+	var aim := NO_AIM
 	## A rally field lives while its rally point stands, with or without soldiers on it.
 	var persistent := false
 	## Soldiers walking on this field.
@@ -161,22 +167,27 @@ func nearest_free(anchor: int, wanted: int, held: PackedInt32Array) -> PackedInt
 	return found
 
 
-## Starts a field from [param anchor] and returns its id. A rally field is
-## [param persistent]: it stays when no soldier walks on it.
-func plan(anchor: int, persistent := false) -> int:
+## Starts a field from [param anchor], settling towards [param aim] (where its soldiers are, or
+## [constant NO_AIM]), and returns its id. A rally field is [param persistent]: it stays when no
+## soldier walks on it.
+func plan(anchor: int, aim: Vector2, persistent := false) -> int:
 	var id := _next_id
 	_next_id += 1
 	var field := Field.new(_costs.size(), anchor)
+	field.aim = aim
 	field.persistent = persistent
 	_fields[id] = field
 	return id
 
 
-## Asks a field to settle [param cells] too; a stale field restarts first.
-func need(field_id: int, cells: PackedInt32Array) -> void:
+## Asks a field to settle [param cells] too; a stale field restarts first. A field that hasn't
+## settled anything yet (a restarted one) takes [param aim], where its soldiers are now, if given.
+func need(field_id: int, cells: PackedInt32Array, aim := NO_AIM) -> void:
 	var field := _fields[field_id]
 	if field.stale:
 		restart(field_id)
+	if aim != NO_AIM and field.order.is_empty():
+		field.aim = aim
 	for cell in cells:
 		if field.closed[cell] == 1:
 			field.bound = maxf(field.bound, field.values[cell])
@@ -353,6 +364,9 @@ func _settle(field: Field, budget: int, until_ready := true) -> int:
 	var steps := _steps
 	var width := _map.width
 	var height := _map.height
+	var aimed := field.aim != NO_AIM
+	var aim_x := field.aim.x - 0.5
+	var aim_y := field.aim.y - 0.5
 	var settled := 0
 	while settled < budget and not heap.is_empty() and not (until_ready and waiting.is_empty()):
 		var cell := heap.pop()
@@ -383,7 +397,20 @@ func _settle(field: Field, budget: int, until_ready := true) -> int:
 			if candidate < values[neighbour]:
 				values[neighbour] = candidate
 				parents[neighbour] = cell
-				heap.push(candidate, neighbour)
+				var key := candidate
+				if aimed:
+					# _guess, inlined: this is the hot loop.
+					var across := nx - aim_x
+					if across < 0.0:
+						across = -across
+					var down := ny - aim_y
+					if down < 0.0:
+						down = -down
+					if across > down:
+						key += across + _DIAGONAL_EXTRA * down
+					else:
+						key += down + _DIAGONAL_EXTRA * across
+				heap.push(key, neighbour)
 	return settled
 
 
@@ -409,7 +436,17 @@ func _reopen(field: Field, index: int) -> void:
 		if candidate < field.values[index]:
 			field.values[index] = candidate
 			field.parents[index] = from
-			field.heap.push(candidate, index)
+			field.heap.push(candidate + _guess(field, cell), index)
+
+
+# The octile distance from [param cell] to the field's aim: never more than the cost of walking
+# there, since no cell costs less than its length, so the field still settles exact values.
+func _guess(field: Field, cell: Vector2i) -> float:
+	if field.aim == NO_AIM:
+		return 0.0
+	var across := absf(cell.x - field.aim.x + 0.5)
+	var down := absf(cell.y - field.aim.y + 0.5)
+	return maxf(across, down) + _DIAGONAL_EXTRA * minf(across, down)
 
 
 func _cost_of(index: int) -> float:

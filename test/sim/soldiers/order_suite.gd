@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 
 ## Helpers for the order tests, at the Simulation seam. Each test draws its own map: '.' clear
-## ground, '#' rock, 'W' a wall (5 bodies landed before the test starts) and 'p' a level-2 pile.
+## ground, '#' rock, 'W' a wall (5 bodies landed before the test starts) 'p' a level-2 pile and
+## '3' or '4' a pile of that level.
 ## The base is 2×2 in the bottom-left corner, out of the way.
 
 var _sim: Simulation
@@ -88,15 +89,18 @@ func _position_of(id: int) -> Vector2:
 	return _sim.soldiers.positions[_sim.soldiers.index_of(id)]
 
 
-# Rows with the base's 2×2 in the bottom-left corner. 'W' cells get a wall and 'p' cells a
-# level-2 pile before the test starts.
+# Rows with the base's 2×2 in the bottom-left corner. 'W' cells get a wall, 'p' cells a level-2
+# pile and '3' or '4' cells a pile of that level before the test starts.
 func _sim_from(rows: Array[String]) -> Simulation:
 	var clear_rows: Array[String] = []
 	var bodies := PackedVector2Array()
 	for y in rows.size():
-		clear_rows.append(rows[y].replace("W", ".").replace("p", "."))
+		var clear := rows[y]
+		for mark: String in ["W", "p", "3", "4"]:
+			clear = clear.replace(mark, ".")
+		clear_rows.append(clear)
 		for x in rows[y].length():
-			var level: int = {"W": Piles.WALL_LEVEL, "p": 2}.get(rows[y][x], 0)
+			var level: int = {"W": Piles.WALL_LEVEL, "p": 2, "3": 3, "4": 4}.get(rows[y][x], 0)
 			for n in level:
 				bodies.append(Vector2(x + 0.5, y + 0.5))
 	var map := TestMaps.from_rows(clear_rows, Rect2i(0, rows.size() - 2, 2, 2))
