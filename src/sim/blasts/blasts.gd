@@ -5,7 +5,7 @@ extends RefCounted
 ## it died. Its blast kills each living enemy within the blast radius, credited to the bloater's
 ## killer, and a bloater it kills blows up in turn, so chains resolve breadth-first. Once every
 ## kill is credited, each building with a cell centre in reach of a blast takes the blast damage
-## once, as does the base, and every pile and wall in reach is erased.
+## once, as does the base and every living soldier, and every pile and wall in reach is erased.
 
 var _settings: Settings
 var _map: MapData
@@ -67,6 +67,7 @@ func resolve(deaths: Deaths, soldiers: Soldiers) -> Array[Blast]:
 	_enemies.remove_dead()
 	for blast in blasts:
 		_hurt_structures(blast.position, radius)
+		_hurt_soldiers(blast.position, radius, soldiers)
 		_erase_piles(blast.position, radius)
 	return blasts
 
@@ -86,6 +87,12 @@ func _hurt_structures(centre: Vector2, radius: float) -> void:
 			_buildings.damage(building.id, damage)
 	if _any_in_reach(_base_cells, centre, radius):
 		_run_state.damage_base(damage)
+
+
+func _hurt_soldiers(centre: Vector2, radius: float, soldiers: Soldiers) -> void:
+	for i in soldiers.count:
+		if soldiers.positions[i].distance_to(centre) <= radius:
+			soldiers.damage(soldiers.ids[i], _settings.blast_damage, true)
 
 
 func _erase_piles(centre: Vector2, radius: float) -> void:

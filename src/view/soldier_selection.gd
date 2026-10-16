@@ -125,7 +125,7 @@ func details() -> Array[String]:
 	var soldiers := _simulation.soldiers
 	var settings := _simulation.settings
 	var i := soldiers.index_of(_ids[0])
-	var high_ground := soldiers.range_bonus(i)
+	var high_ground := soldiers.range_of(i) - settings.soldier_range
 	var range_line := "Range %s" % _number(soldiers.range_of(i))
 	if high_ground > 0.0:
 		range_line += " (+%s high ground)" % _number(high_ground)
@@ -346,7 +346,7 @@ func _shared_targeting() -> StringName:
 	var soldiers := _simulation.soldiers
 	var shared := StringName()
 	for id in _ids:
-		var mode := soldiers.targeting(soldiers.index_of(id))
+		var mode := Enemies.TARGETINGS[soldiers.targetings[soldiers.index_of(id)]]
 		if shared.is_empty():
 			shared = mode
 		elif mode != shared:

@@ -1,7 +1,7 @@
 # Keeps a dense crowd of enemies in a ring around the base, with a ring of towers firing into it,
 # for the benchmarks. It can field an army among them: soldiers in and around the ring, some on
 # walls it raises, ORDER_GROUP of them sent across the ring through the crowd every ORDER_INTERVAL
-# ticks.
+# ticks, and those that die in it replaced.
 class_name BenchCrowd
 extends RefCounted
 
@@ -105,6 +105,22 @@ func field_army() -> void:
 		if free and _sim.piles.level(cell) == Piles.WALL_LEVEL:
 			taken[cell] = true
 			_sim.soldiers.add(cell)
+	_add_on_the_ground(taken)
+
+
+## Stands a soldier on the ground in and around the ring for each one the army has lost, back up
+## to [constant ARMY], each on a cell no soldier holds. Fields fewer when the ring runs out of
+## free cells.
+func top_up_army() -> void:
+	if _sim.soldiers.count >= ARMY:
+		return
+	var taken := {}
+	for i in _sim.soldiers.count:
+		taken[_sim.soldiers.spot(i)] = true
+	_add_on_the_ground(taken)
+
+
+func _add_on_the_ground(taken: Dictionary) -> void:
 	for attempt in ARMY * _TRIES_PER_SOLDIER:
 		if _sim.soldiers.count == ARMY:
 			return

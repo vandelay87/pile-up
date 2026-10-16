@@ -24,6 +24,7 @@
 [ext_resource type="Script" path="res://src/view/soldier_selection.gd" id="22"]
 [ext_resource type="Script" path="res://src/view/debug/unit_paths_overlay.gd" id="23"]
 [ext_resource type="Script" path="res://src/view/soldier_ranges.gd" id="24"]
+[ext_resource type="Script" path="res://src/view/soldier_deaths_view.gd" id="25"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -66,6 +67,9 @@ script = ExtResource("14")
 
 [node name="BlastRings" type="Node2D" parent="."]
 script = ExtResource("20")
+
+[node name="SoldierDeaths" type="Node2D" parent="."]
+script = ExtResource("25")
 
 [node name="Tracers" type="Node2D" parent="."]
 script = ExtResource("10")

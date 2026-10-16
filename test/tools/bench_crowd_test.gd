@@ -125,6 +125,30 @@ func test_every_order_interval_ten_soldiers_are_sent_across_the_ring() -> void:
 	assert_array(walking).is_equal([BenchCrowd.ORDER_GROUP, 2 * BenchCrowd.ORDER_GROUP])
 
 
+func test_top_up_army_replaces_soldiers_that_died_on_the_ground_in_and_around_the_ring() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+	crowd.field_army()
+	for k in 5:
+		sim.soldiers.damage(sim.soldiers.ids[k], _settings.soldier_hp)
+	sim.tick()
+	assert_int(sim.soldiers.count).is_equal(BenchCrowd.ARMY - 5)
+
+	crowd.top_up_army()
+
+	var soldiers := sim.soldiers
+	assert_int(soldiers.count).is_equal(BenchCrowd.ARMY)
+	var centre := Vector2(BASE.get_center())
+	var spots := {}
+	for i in soldiers.count:
+		var distance := soldiers.positions[i].distance_to(centre)
+		assert_float(distance).is_between(
+			BenchCrowd.ARMY_INNER_RADIUS - 1.0, BenchCrowd.ARMY_OUTER_RADIUS + 1.0
+		)
+		spots[soldiers.spot(i)] = true
+	assert_int(spots.size()).is_equal(BenchCrowd.ARMY)
+
+
 func test_the_same_seed_with_the_army_reaches_the_same_state() -> void:
 	assert_int(BenchCrowd.digest(_run_with_army(7, 300))).is_equal(
 		BenchCrowd.digest(_run_with_army(7, 300))

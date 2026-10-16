@@ -139,11 +139,6 @@ func path_left(index: int) -> PackedInt32Array:
 	return _walks[index].slice(path_cursors[index])
 
 
-## The targeting of the soldier at [param index]: one of [constant Enemies.TARGETINGS].
-func targeting(index: int) -> StringName:
-	return Enemies.TARGETINGS[targetings[index]]
-
-
 ## Sets [param mode] on each soldier in [param soldier_ids]; ids of soldiers no longer living
 ## are skipped, since one can die between the order and the drain. Returns an error, or "".
 func set_targeting(soldier_ids: PackedInt32Array, mode: StringName) -> String:
@@ -260,9 +255,9 @@ func push_out_of(area: Rect2i) -> void:
 			_hold(i, _map.index_of(cell))
 
 
-## At [constant Simulation.Step.MOVE_UNITS], before [method UnitPaths.step]: each field restarted
-## since the last tick asks again for its soldiers' cells and slots, aimed at where they are now.
-func need_restarted() -> void:
+# Before UnitPaths.step: each field restarted since the last tick asks again for its soldiers'
+# cells and slots, aimed at where they are now.
+func _need_restarted() -> void:
 	for field in _paths.take_restarted():
 		var needed := PackedInt32Array()
 		var mean := Vector2.ZERO
@@ -284,6 +279,8 @@ func need_restarted() -> void:
 ## pushes them and [param enemies] apart by mass, spaces them out, then holds every soldier off
 ## what is solid to it.
 func step(enemies: Enemies) -> void:
+	_need_restarted()
+	_paths.step()
 	_assign_slots()
 	_plan_paths()
 	_walk()
@@ -308,7 +305,7 @@ func fire(enemies: Enemies, shots: Array[Buildings.Shot]) -> void:
 		if target != Enemies.NONE and not _can_hit(enemies, target, positions[i], reach):
 			target = Enemies.NONE
 		if target == Enemies.NONE:
-			target = enemies.target_in_range(positions[i], reach, targeting(i))
+			target = enemies.target_in_range(positions[i], reach, Enemies.TARGETINGS[targetings[i]])
 		targets[i] = target
 		if cooldowns[i] > 0:
 			cooldowns[i] -= 1
@@ -325,6 +322,39 @@ func fire(enemies: Enemies, shots: Array[Buildings.Shot]) -> void:
 			targets[i] = Enemies.NONE
 
 
+## Takes [param amount] off the HP of the soldier with id [param id]; one a blast takes to 0 HP
+## is marked as a blast kill, and leaves no body.
+func damage(id: int, amount: float, by_blast := false) -> void:
+	var i := index_of(id)
+	if i == NONE or hp[i] <= 0.0:
+		return
+	hp[i] -= amount
+	if hp[i] <= 0.0 and by_blast:
+		blast_killed[i] = 1
+
+
+## At [constant Simulation.Step.REMOVE_DEAD], after blasts: removes every soldier at 0 HP,
+## leaving its order and spot, and returns their deaths in removal order.
+func remove_dead() -> SoldierDeaths:
+	var deaths := SoldierDeaths.new()
+	var i := 0
+	while i < count:
+		if hp[i] <= 0.0:
+			deaths.add(ids[i], positions[i], blast_killed[i] == 1)
+			_end_order(i)
+			_unhold(i)
+			_swap_remove(i)
+		else:
+			i += 1
+	return deaths
+
+
+## At wave end, every living soldier returns to full HP.
+func recover_all() -> void:
+	for i in count:
+		hp[i] = _settings.soldier_hp
+
+
 ## Counts a kill towards the soldier with id [param id]'s kills, if it is still living.
 func count_kill(id: int) -> void:
 	var index := index_of(id)
@@ -332,14 +362,10 @@ func count_kill(id: int) -> void:
 		kills[index] += 1
 
 
-## How far the soldier at [param index] reaches: its range plus the elevation bonus.
+## How far the soldier at [param index] reaches: its range plus the elevation bonus,
+## [member Settings.soldier_range_per_level] a level.
 func range_of(index: int) -> float:
-	return _settings.soldier_range + range_bonus(index)
-
-
-## The range the soldier at [param index] gains from its elevation alone.
-func range_bonus(index: int) -> float:
-	return _settings.soldier_range_per_level * elevation(index)
+	return _settings.soldier_range + _settings.soldier_range_per_level * elevation(index)
 
 
 ## Not rock, the base or a building, and on the map. Walls and piles are open ground.
@@ -689,6 +715,31 @@ func _next_ring(ring: Array[Vector2i], seen: PackedByteArray) -> Array[Vector2i]
 # no other yet.
 func _lower_index(cell: Vector2i, other: Vector2i) -> bool:
 	return other == _NO_CELL or _map.index_of(cell) < _map.index_of(other)
+
+
+func _swap_remove(index: int) -> void:
+	_index_by_id.erase(ids[index])
+	count -= 1
+	if index == count:
+		return
+	ids[index] = ids[count]
+	positions[index] = positions[count]
+	hp[index] = hp[count]
+	spots[index] = spots[count]
+	orders[index] = orders[count]
+	slots[index] = slots[count]
+	path_cursors[index] = path_cursors[count]
+	targetings[index] = targetings[count]
+	cooldowns[index] = cooldowns[count]
+	targets[index] = targets[count]
+	kills[index] = kills[count]
+	blast_killed[index] = blast_killed[count]
+	_walking_back[index] = _walking_back[count]
+	_holding[index] = _holding[count]
+	_returning[index] = _returning[count]
+	_walks[index] = _walks[count]
+	_path_generations[index] = _path_generations[count]
+	_index_by_id[ids[index]] = index
 
 
 func _grow() -> void:
