@@ -405,7 +405,7 @@ func _knock_off(knock_offs: Array[Overflow.KnockOff]) -> void:
 				_paths.need(orders[i], PackedInt32Array([_cell_index(i)]))
 
 
-# The free ground cell (level 0, and one a soldier can stand on) nearest [param from], by a
+# The ground cell (level 0, and one a soldier can stand on) nearest [param from], by a
 # breadth-first search out from it through cells a soldier can stand on, nearest by straight
 # distance within a ring, ties to the lowest cell index. _NO_CELL when none can be reached.
 func _ground_near(from: Vector2i) -> Vector2i:
@@ -414,22 +414,8 @@ func _ground_near(from: Vector2i) -> Vector2i:
 	var seen := PackedByteArray()
 	seen.resize(_map.width * _map.height)
 	seen[_map.index_of(from)] = 1
-	var ring: Array[Vector2i] = [from]
-	var centre := MapData.centre_of(from)
-	while not ring.is_empty():
-		var best := _NO_CELL
-		var best_distance := INF
-		for cell in ring:
-			if _piles.levels[_map.index_of(cell)] != 0:
-				continue
-			var distance := MapData.centre_of(cell).distance_squared_to(centre)
-			if distance < best_distance or (distance == best_distance and _lower_index(cell, best)):
-				best = cell
-				best_distance = distance
-		if best != _NO_CELL:
-			return best
-		ring = _next_ring(ring, seen)
-	return _NO_CELL
+	var on_ground := func(cell: Vector2i) -> bool: return _piles.levels[_map.index_of(cell)] == 0
+	return _nearest_in_rings([from], seen, MapData.centre_of(from), on_ground)
 
 
 func _assign_slots() -> void:
@@ -714,13 +700,23 @@ func _free_cell_beside(area: Rect2i) -> Vector2i:
 				continue
 			seen[_map.index_of(cell)] = 1
 			ring.append(cell)
+	var unheld := func(cell: Vector2i) -> bool: return _spot_counts[_map.index_of(cell)] == 0
+	return _nearest_in_rings(ring, seen, base_centre, unheld)
+
+
+# The cell [param wanted] accepts in [param ring] whose centre is nearest [param target], ties to
+# the lowest cell index, else the same in each ring further out by [method _next_ring]. _NO_CELL
+# when no ring holds one.
+func _nearest_in_rings(
+	ring: Array[Vector2i], seen: PackedByteArray, target: Vector2, wanted: Callable
+) -> Vector2i:
 	while not ring.is_empty():
 		var best := _NO_CELL
 		var best_distance := INF
 		for cell in ring:
-			if _spot_counts[_map.index_of(cell)] > 0:
+			if not wanted.call(cell):
 				continue
-			var distance := MapData.centre_of(cell).distance_squared_to(base_centre)
+			var distance := MapData.centre_of(cell).distance_squared_to(target)
 			if distance < best_distance or (distance == best_distance and _lower_index(cell, best)):
 				best = cell
 				best_distance = distance
