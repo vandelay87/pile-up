@@ -471,6 +471,9 @@ func _walls(cells: Array[Vector2i]) -> void:
 			bodies.append(Vector2(cell) + Vector2(0.5, 0.5))
 	_sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 	_sim.tick()
+	# A long line can take the fields more than a tick to settle in.
+	while _sim.routing.is_settling():
+		_sim.tick()
 
 
 # Spawns enemies spread in a grid across the area.

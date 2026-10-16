@@ -86,7 +86,7 @@ func test_pending_fields_leave_the_old_fields_in_place_until_they_swap_in() -> v
 	assert_bool(swapped).is_false()
 	assert_bool(_routing.is_settling()).is_true()
 	assert_bool(FieldChecks.routings_match(_routing, before, _map)).is_true()
-	assert_bool(_routing.step()).is_true()
+	FieldChecks.settle(_routing)
 	assert_bool(_routing.is_settling()).is_false()
 	assert_bool(_matches_full_rebuild()).is_true()
 
