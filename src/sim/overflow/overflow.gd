@@ -47,6 +47,9 @@ var _tumbles: Dictionary[int, Tumble] = {}
 # left in its window, by enemy id.
 var _landed_from: Dictionary[int, Vector2] = {}
 var _landed_ticks: Dictionary[int, int] = {}
+# The wall cells tumbles crossed this tick, each with its tumble's landing cell, in the order
+# they were crossed.
+var _knock_offs: Array[KnockOff] = []
 
 
 ## One barrier's gauge, and the stalled enemies filling it this tick.
@@ -81,6 +84,18 @@ class Crush:
 		stalled += 1
 		_centre_sum += pos
 		centre = _centre_sum / stalled
+
+
+## A wall cell a tumble crossed, and the cell that tumble lands on.
+class KnockOff:
+	extends RefCounted
+
+	var wall: Vector2i
+	var landing: Vector2i
+
+	func _init(wall_cell: Vector2i, landing_cell: Vector2i) -> void:
+		wall = wall_cell
+		landing = landing_cell
 
 
 ## One enemy's way over a barrier: the cells it crosses, ending on the one it lands on, and the
@@ -217,8 +232,10 @@ func tumble(id: int) -> Tumble:
 
 
 ## Fills and leaks each gauge from the enemies stalled in its band this tick, launches each
-## crush's tumbles, then moves every tumbling enemy. Switched off, only tumbles in flight go on.
+## crush's tumbles, then moves every tumbling enemy, recording each wall cell one crosses.
+## Switched off, only tumbles in flight go on.
 func step() -> void:
+	_knock_offs.clear()
 	_count_down_landings()
 	if not _settings.overflow_enabled:
 		_crushes.clear()
@@ -243,6 +260,14 @@ func step() -> void:
 		if crush.gauge <= 0.0 and not crush.active:
 			_crushes.erase(label)
 	_move_tumblers()
+
+
+## The wall cells tumbles crossed this tick, each with its landing cell, for the knock-off at
+## [constant Simulation.Step.MOVE_UNITS].
+func take_knock_offs() -> Array[KnockOff]:
+	var taken := _knock_offs
+	_knock_offs = []
+	return taken
 
 
 ## At [constant Simulation.Step.REMOVE_DEAD], the body of each enemy in [param deaths] that
@@ -429,8 +454,9 @@ func _end_beside_base(planned: Tumble, reached: Vector2i) -> Tumble:
 
 
 # Moves each tumbling enemy along its path at the tumble speed, ignoring slow, collision and
-# structures. Each cell it enters is ground by a working grinder there. One that reaches its
-# path's end lands. The dead stay where they fell until removal.
+# structures. Each wall cell it enters is recorded for the knock-off, and each cell it enters is
+# ground by a working grinder there. One that reaches its path's end lands. The dead stay where
+# they fell until removal.
 func _move_tumblers() -> void:
 	var speed := _settings.tumble_speed
 	for id: int in _tumbles.keys():
@@ -457,6 +483,8 @@ func _move_tumblers() -> void:
 			var cell := Vector2i(pos.floor())
 			if cell != tumbling.last_cell:
 				tumbling.last_cell = cell
+				if _structures.structure_at(cell) == Structures.Kind.WALL:
+					_knock_offs.append(KnockOff.new(cell, tumbling.landing()))
 				_buildings.grind_tumble(_enemies, i, cell)
 				if not _enemies.is_alive(i):
 					break
