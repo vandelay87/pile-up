@@ -13,10 +13,6 @@ extends Node2D
 const CLUSTER := &"cluster"
 const LINE := &"line"
 const FORMATION_NAMES := {CLUSTER: "Cluster", LINE: "Line"}
-const TARGETING_NAMES := {
-	Enemies.BLOATERS_FIRST: "Bloaters first",
-	Enemies.CLOSEST_TO_BASE: "Closest to base",
-}
 ## Shown for the targeting when the selected soldiers' modes differ.
 const MIXED := "Mixed"
 ## A left press and release further apart than this (screen pixels) is a box.
@@ -35,7 +31,7 @@ var formation := CLUSTER
 var _simulation: Simulation
 var _buildings: Selection
 var _camera: MapCamera
-## The selected soldiers' ids, in selection order.
+# The selected soldiers' ids, in selection order.
 var _ids := PackedInt32Array()
 var _groups: Dictionary[int, PackedInt32Array] = {}
 var _last_group := 0
@@ -84,7 +80,7 @@ func pick(id: int, shift: bool) -> void:
 ## The selected soldiers' targeting, or [constant MIXED] when they differ.
 func targeting_name() -> String:
 	var mode := _shared_targeting()
-	return MIXED if mode.is_empty() else TARGETING_NAMES[mode]
+	return MIXED if mode.is_empty() else Hud.TARGETING_NAMES[mode]
 
 
 ## Flips the selected soldiers' targeting; from Mixed it sets Bloaters first.
@@ -97,6 +93,7 @@ func flip_targeting() -> void:
 	_simulation.queue_command(Commands.SetSoldierTargeting.new(_ids, mode))
 
 
+## Flips the army-wide formation between Cluster and Line.
 func flip_formation() -> void:
 	formation = LINE if formation == CLUSTER else CLUSTER
 
@@ -148,6 +145,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		var button := event as InputEventMouseButton
 		if button.button_index != MOUSE_BUTTON_LEFT:
 			return
+		# While a repair yard is assigning, a click names the building, so soldiers aren't picked.
+		if _buildings.is_assigning():
+			if not button.pressed:
+				_buildings.click(GridTransform.world_to_cell(get_global_mouse_position()))
+			return
 		if button.pressed:
 			_pressed = true
 			_boxing = false
@@ -187,9 +189,13 @@ func _process(_delta: float) -> void:
 	if _simulation == null:
 		return
 	_drop_dead()
-	# A release over the HUD never reaches the world, so a box ends when the button is up.
+	# A release over the HUD never reaches the world, so a box ends when the button is up; a
+	# click that ends there is dropped rather than landing on the ground under the bar.
 	if _pressed and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_release(Input.is_key_pressed(KEY_SHIFT))
+		if _boxing:
+			_release(Input.is_key_pressed(KEY_SHIFT))
+		else:
+			_cancel_box()
 	queue_redraw()
 
 
@@ -209,8 +215,6 @@ func _release(shift: bool) -> void:
 			_ids.append(id)
 		else:
 			_ids = PackedInt32Array([id])
-		return
-	if shift and has_selection():
 		return
 	clear()
 	_buildings.click(GridTransform.world_to_cell(point))

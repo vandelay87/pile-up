@@ -42,7 +42,7 @@ const COMMAND_LABELS := {
 ## A barracks queue slot: queued (click to cancel) or empty.
 const QUEUED_SLOT := "■"
 const EMPTY_SLOT := "□"
-## A tower's targeting toggle, in button order.
+## The targeting modes' names: a tower's toggle, in button order, and the soldier card's.
 const TARGETING_NAMES := {
 	Enemies.BLOATERS_FIRST: "Bloaters first",
 	Enemies.CLOSEST_TO_BASE: "Closest to base",
@@ -76,7 +76,7 @@ var _next_wave := Button.new()
 var _stop := Button.new()
 var _soldier_targeting := Button.new()
 var _formation := Button.new()
-## The soldier card's buttons and the blanks that keep Next wave in its slot.
+# The soldier card's buttons and the blanks that keep Next wave in its slot.
 var _soldier_commands: Array[Control] = []
 var _soldier_tiles := HFlowContainer.new()
 var _paused := Label.new()
@@ -325,6 +325,7 @@ func _command_card() -> PanelContainer:
 	var card := _panel()
 	var commands := GridContainer.new()
 	commands.columns = COMMAND_COLUMNS
+	_stop.text = "Stop\n[S]"
 	_stop.disabled = true
 	_stop.tooltip_text = "Stops soldiers' orders, once they take orders"
 	_soldier_targeting.pressed.connect(func() -> void: _soldiers.flip_targeting())
@@ -441,7 +442,6 @@ func _show_command_card() -> void:
 		button.visible = not soldiers
 	if not soldiers:
 		return
-	_stop.text = "Stop\n[S]"
 	# Two lines, like the build buttons: "Bloaters" over "first [A]".
 	var targeting := _soldiers.targeting_name()
 	var cut := targeting.find(" ")

@@ -33,9 +33,9 @@ func centre_on(point: Vector2) -> void:
 	_move_to(point)
 
 
-# The arrow keys pan, unless a text field has the keyboard.
+# The arrow keys pan, unless a control (a debug field or slider) has the keyboard.
 func _process(delta: float) -> void:
-	if get_viewport().gui_get_focus_owner() is LineEdit:
+	if get_viewport().gui_get_focus_owner() != null:
 		return
 	var direction := Vector2(
 		float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
