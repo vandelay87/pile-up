@@ -294,6 +294,49 @@ func step(enemies: Enemies) -> void:
 		positions[i] = _solids.resolve(positions[i], radius)
 
 
+## At [constant Simulation.Step.UNITS_FIRE], in soldier order, by the tower's rules with the
+## soldier's numbers: each keeps its target while it is alive and in range, else picks again by
+## its targeting, and hits it whenever its cooldown is done, adding the shot to [param shots].
+func fire(enemies: Enemies, shots: Array[Buildings.Shot]) -> void:
+	var damage := _settings.soldier_damage
+	var cooldown := _settings.soldier_cooldown_ticks
+	for i in count:
+		var reach := range_of(i)
+		var target := targets[i]
+		if target != Enemies.NONE and not _can_hit(enemies, target, positions[i], reach):
+			target = Enemies.NONE
+		if target == Enemies.NONE:
+			target = enemies.target_in_range(positions[i], reach, targeting(i))
+		targets[i] = target
+		if cooldowns[i] > 0:
+			cooldowns[i] -= 1
+		if target == Enemies.NONE or cooldowns[i] > 0:
+			continue
+		var index := enemies.index_of(target)
+		enemies.damage(target, damage, ids[i])
+		if not enemies.is_alive(index):
+			kills[i] += 1
+		cooldowns[i] = cooldown
+		shots.append(Buildings.Shot.new(ids[i], positions[i], target, enemies.positions[index]))
+
+
+## Counts a kill towards the soldier with id [param id]'s kills, if it is still living.
+func count_kill(id: int) -> void:
+	var index := index_of(id)
+	if index != NONE:
+		kills[index] += 1
+
+
+## How far the soldier at [param index] reaches: its range plus the elevation bonus.
+func range_of(index: int) -> float:
+	return _settings.soldier_range + range_bonus(index)
+
+
+## The range the soldier at [param index] gains from its elevation alone.
+func range_bonus(index: int) -> float:
+	return _settings.soldier_range_per_level * elevation(index)
+
+
 ## Not rock, the base or a building, and on the map. Walls and piles are open ground.
 func can_stand_on(cell: Vector2i) -> bool:
 	return not _solids.is_solid(cell)
@@ -304,6 +347,16 @@ func take_added() -> PackedInt32Array:
 	var added := _added
 	_added = PackedInt32Array()
 	return added
+
+
+# Whether the enemy [param enemy_id] is alive and within [param reach] of [param from].
+func _can_hit(enemies: Enemies, enemy_id: int, from: Vector2, reach: float) -> bool:
+	var index := enemies.index_of(enemy_id)
+	return (
+		index != Enemies.NONE
+		and enemies.is_alive(index)
+		and enemies.positions[index].distance_squared_to(from) <= reach * reach
+	)
 
 
 func _assign_slots() -> void:
@@ -384,12 +437,14 @@ func _free_slot_near(i: int) -> int:
 	return _paths.nearest_standable(_centre(slots[i]), region, held)
 
 
-# Walking soldiers step along their paths at their speed times the slow of the cell under them;
-# a soldier on its slot stands there. A standing soldier pushed off its spot walks back, or plans
-# a path back when it is more than a cell away.
+# Walking soldiers step along their paths at their speed times the slow of the cell under them,
+# halved for one that had a target as the last tick's firing ended; a soldier on its slot stands
+# there. A standing soldier pushed off its spot walks back, or plans a path back when it is more
+# than a cell away.
 func _walk() -> void:
-	var step_length := _settings.soldier_speed / Simulation.TICKS_PER_SECOND
+	var full_step := _settings.soldier_speed / Simulation.TICKS_PER_SECOND
 	for i in count:
+		var step_length := full_step if targets[i] == Enemies.NONE else full_step / 2.0
 		if orders[i] == NONE:
 			_stand(i, step_length)
 			continue

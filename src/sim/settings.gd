@@ -283,6 +283,21 @@ var repair_per_tick: float:
 var soldier_hp: float:
 	get:
 		return value("soldiers", "hp")
+var soldier_damage: float:
+	get:
+		return value("soldiers", "damage")
+var soldier_cooldown_ticks: int:
+	get:
+		var per_second: float = value("soldiers", "fire_rate")
+		return interval_ticks(per_second)
+## A soldier's range on the ground, in cells.
+var soldier_range: float:
+	get:
+		return value("soldiers", "range")
+## The range a soldier gains a level up, in cells.
+var soldier_range_per_level: float:
+	get:
+		return value("soldiers", "range_per_level")
 var soldier_speed: float:
 	get:
 		return value("soldiers", "speed")
