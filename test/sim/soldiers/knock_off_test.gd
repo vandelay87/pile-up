@@ -49,6 +49,24 @@ func test_a_tumble_over_a_soldiers_wall_cell_knocks_it_to_the_landing_side_at_el
 	assert_object(_sim.soldiers.spot(index)).is_equal(WALL)
 
 
+func test_with_no_ground_past_the_wall_a_soldier_lands_where_the_tumble_lands() -> void:
+	# Every cell between the wall and the base is a level-2 pile; the lane west of the wall,
+	# where the crowd stands, is the only ground.
+	var bodies := PackedVector2Array()
+	for x in range(LANDING.x, BASE.position.x):
+		for n in 2:
+			bodies.append(Vector2(x + 0.5, 1.5))
+	_sim.piles.queue_bodies(Deaths.bodies_at(bodies))
+	_sim.tick()
+	var id := _sim.soldiers.add(WALL)
+	_crowd(12)
+	_run_until_tumbling()
+
+	var index := _sim.soldiers.index_of(id)
+	assert_object(_cell_of(id)).is_equal(LANDING)
+	assert_int(_sim.soldiers.elevation(index)).is_equal(2)
+
+
 func test_a_soldier_on_another_cell_of_the_wall_stays() -> void:
 	var id := _sim.soldiers.add(NOOK)
 	_crowd(12)

@@ -386,8 +386,9 @@ func _can_hit(enemies: Enemies, enemy_id: int, from: Vector2, reach: float) -> b
 
 
 # For each wall cell a tumble crossed, every soldier on it moves to the nearest ground cell to
-# that tumble's landing cell, at elevation 0. Its spot and order stay: a standing soldier plans
-# its way back, and a walking one plans its path again from where it landed.
+# that tumble's landing cell, at elevation 0, or, with no ground that side of the wall, onto the
+# landing cell itself as the tumbler does. Its spot and order stay: a standing soldier plans its
+# way back, and a walking one plans its path again from where it landed.
 func _knock_off(knock_offs: Array[Overflow.KnockOff]) -> void:
 	for knock in knock_offs:
 		var ground := _NO_CELL
@@ -405,17 +406,24 @@ func _knock_off(knock_offs: Array[Overflow.KnockOff]) -> void:
 				_paths.need(orders[i], PackedInt32Array([_cell_index(i)]))
 
 
-# The ground cell (level 0, and one a soldier can stand on) nearest [param from], by a
-# breadth-first search out from it through cells a soldier can stand on, nearest by straight
-# distance within a ring, ties to the lowest cell index. _NO_CELL when none can be reached.
-func _ground_near(from: Vector2i) -> Vector2i:
-	if not can_stand_on(from):
+# The ground cell (level 0, and one a soldier can stand on) nearest the landing cell
+# [param landing], by a breadth-first search out from it through cells a soldier can stand on
+# that aren't walls, so it never crosses back over the wall; nearest by straight distance within
+# a ring, ties to the lowest cell index. The landing cell itself, a pile, when no ground can be
+# reached, and _NO_CELL when a soldier can't stand there.
+func _ground_near(landing: Vector2i) -> Vector2i:
+	if not can_stand_on(landing):
 		return _NO_CELL
 	var seen := PackedByteArray()
 	seen.resize(_map.width * _map.height)
-	seen[_map.index_of(from)] = 1
+	seen[_map.index_of(landing)] = 1
 	var on_ground := func(cell: Vector2i) -> bool: return _piles.levels[_map.index_of(cell)] == 0
-	return _nearest_in_rings([from], seen, MapData.centre_of(from), on_ground)
+	var off_walls := func(cell: Vector2i) -> bool:
+		return can_stand_on(cell) and _piles.levels[_map.index_of(cell)] != Piles.WALL_LEVEL
+	var ground := _nearest_in_rings(
+		[landing], seen, MapData.centre_of(landing), on_ground, off_walls
+	)
+	return landing if ground == _NO_CELL else ground
 
 
 func _assign_slots() -> void:
@@ -701,14 +709,18 @@ func _free_cell_beside(area: Rect2i) -> Vector2i:
 			seen[_map.index_of(cell)] = 1
 			ring.append(cell)
 	var unheld := func(cell: Vector2i) -> bool: return _spot_counts[_map.index_of(cell)] == 0
-	return _nearest_in_rings(ring, seen, base_centre, unheld)
+	return _nearest_in_rings(ring, seen, base_centre, unheld, can_stand_on)
 
 
 # The cell [param wanted] accepts in [param ring] whose centre is nearest [param target], ties to
-# the lowest cell index, else the same in each ring further out by [method _next_ring]. _NO_CELL
-# when no ring holds one.
+# the lowest cell index, else the same in each ring further out through the cells [param open]
+# accepts, by [method _next_ring]. _NO_CELL when no ring holds one.
 func _nearest_in_rings(
-	ring: Array[Vector2i], seen: PackedByteArray, target: Vector2, wanted: Callable
+	ring: Array[Vector2i],
+	seen: PackedByteArray,
+	target: Vector2,
+	wanted: Callable,
+	open: Callable,
 ) -> Vector2i:
 	while not ring.is_empty():
 		var best := _NO_CELL
@@ -722,25 +734,24 @@ func _nearest_in_rings(
 				best_distance = distance
 		if best != _NO_CELL:
 			return best
-		ring = _next_ring(ring, seen)
+		ring = _next_ring(ring, seen, open)
 	return _NO_CELL
 
 
-# The cells a soldier can step to from [param ring] that haven't been seen: 8-way, without
-# cutting a corner past a cell it can't stand on.
-func _next_ring(ring: Array[Vector2i], seen: PackedByteArray) -> Array[Vector2i]:
+# The cells [param open] accepts that a soldier can step to from [param ring] and that haven't
+# been seen: 8-way, without cutting a corner past a cell [param open] turns down.
+func _next_ring(ring: Array[Vector2i], seen: PackedByteArray, open: Callable) -> Array[Vector2i]:
 	var next: Array[Vector2i] = []
 	for cell in ring:
 		for step in _NEIGHBOURS:
 			var neighbour := cell + step
-			if not can_stand_on(neighbour) or seen[_map.index_of(neighbour)] == 1:
+			if not open.call(neighbour) or seen[_map.index_of(neighbour)] == 1:
 				continue
 			var diagonal := step.x != 0 and step.y != 0
 			if (
 				diagonal
 				and not (
-					can_stand_on(cell + Vector2i(step.x, 0))
-					and can_stand_on(cell + Vector2i(0, step.y))
+					open.call(cell + Vector2i(step.x, 0)) and open.call(cell + Vector2i(0, step.y))
 				)
 			):
 				continue
