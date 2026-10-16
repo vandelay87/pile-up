@@ -32,9 +32,7 @@ static var _directions := PackedVector2Array()
 var last_rebuild_msec: float
 var last_update_msec: float
 var last_step_msec: float
-## The field cells the last update or step worked. An update only queues its cells for
-## [method step], so it works none.
-var last_update_cells := 0
+## The field cells the last step worked: checked, invalidated, reseeded or settled.
 var last_step_cells := 0
 
 var _settings: Settings
@@ -188,7 +186,6 @@ func update(cells: Array[Vector2i]) -> void:
 		_builds_stale = true
 		return
 	var started := Time.get_ticks_usec()
-	last_update_cells = 0
 	var reshaped := _apply_solid(cells)
 	for route: Route in Route.values():
 		_queue_pending(route, cells)
@@ -205,14 +202,14 @@ func step(budget := SETTLE_CELLS_PER_TICK) -> bool:
 		last_step_msec = 0.0
 		return false
 	var started := Time.get_ticks_usec()
-	var unspent := budget
+	var allowance := budget
 	var finished := true
 	for route: Route in Route.values():
 		var pending := _pending[route]
 		budget -= _repair(route, pending, budget)
 		pending.compact()
 		finished = finished and pending.is_settled()
-	last_step_cells = unspent - budget
+	last_step_cells = allowance - budget
 	if finished:
 		_swap_in_pending()
 	last_step_msec = (Time.get_ticks_usec() - started) / 1000.0

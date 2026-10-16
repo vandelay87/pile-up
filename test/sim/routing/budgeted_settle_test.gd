@@ -51,17 +51,14 @@ func test_a_tower_built_mid_wave_leaves_the_old_fields_until_both_swap_in_togeth
 
 
 func test_a_change_reaching_thousands_of_cells_works_no_more_than_the_budget_on_any_tick() -> void:
-	var update_cells := PackedInt32Array()
 	var step_cells := PackedInt32Array()
 
 	_sim.queue_command(Commands.Build.new(Buildings.TOWER, GAP))
 	_sim.tick()
-	update_cells.append(_sim.routing.last_update_cells)
 	step_cells.append(_sim.routing.last_step_cells)
 	var ticks := 1
 	while _sim.routing.is_settling() and ticks < MAX_TICKS:
 		_sim.tick()
-		update_cells.append(_sim.routing.last_update_cells)
 		step_cells.append(_sim.routing.last_step_cells)
 		ticks += 1
 
@@ -69,8 +66,6 @@ func test_a_change_reaching_thousands_of_cells_works_no_more_than_the_budget_on_
 	for cells in step_cells:
 		worked += cells
 	assert_int(worked).is_greater(2000)
-	for cells in update_cells:
-		assert_int(cells).is_zero()
 	for cells in step_cells:
 		assert_int(cells).is_less_equal(Routing.SETTLE_CELLS_PER_TICK)
 	assert_bool(FieldChecks.matches_full_rebuild(_sim)).is_true()

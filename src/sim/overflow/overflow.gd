@@ -162,6 +162,8 @@ func update(cells: Array[Vector2i]) -> void:
 ## barrier it overlaps most, ties to the lower old label; an old barrier passes its gauge to one
 ## new barrier.
 func relabel() -> void:
+	# Reads kinds once and checks them inline rather than calling is_breakable per neighbour: the
+	# calls were most of a relabel's cost.
 	var kinds := _structures.kinds()
 	var wall := Structures.Kind.WALL
 	var building := Structures.Kind.BUILDING
