@@ -63,7 +63,7 @@ func queue_of(barracks_id: int) -> PackedInt32Array:
 
 ## [member Settings.barracks_capacity] for each standing barracks, unpowered ones included.
 func capacity() -> int:
-	return _settings.barracks_capacity * _trainers.size()
+	return _settings.barracks_capacity * count()
 
 
 ## Living soldiers plus every queued one.
@@ -82,26 +82,39 @@ func ticks_left(barracks_id: int) -> int:
 	return maxi(0, _settings.training_ticks - trainer.progress)
 
 
-## Queues [param count] soldiers (1 or 5) at a barracks, as many as its queue, capacity and gold
-## allow, paying for each; returns why none could be queued, or "". With [param instant] (the
-## build phase) the queue trains at once.
-func train(barracks_id: int, count: int, instant: bool) -> String:
+## How many barracks stand.
+func count() -> int:
+	return _trainers.size()
+
+
+## Why a Train of [param count] at a barracks would queue none, or "" when it would queue some.
+func train_error(barracks_id: int, count := 1) -> String:
 	var trainer: Trainer = _by_id.get(barracks_id, null)
 	if trainer == null:
 		return NOT_A_BARRACKS
 	if count != 1 and count != QUEUE_LENGTH:
 		return BAD_COUNT
-	var cost := _settings.soldier_cost
-	var fits := mini(count, QUEUE_LENGTH - trainer.paid.size())
-	if fits <= 0:
+	if trainer.paid.size() >= QUEUE_LENGTH:
 		return QUEUE_FULL
-	fits = mini(fits, capacity() - used())
-	if fits <= 0:
+	if used() >= capacity():
 		return CAPACITY_FULL
+	if not _run_state.can_afford(_settings.soldier_cost):
+		return NOT_ENOUGH_GOLD
+	return ""
+
+
+## Queues [param count] soldiers (1 or 5) at a barracks, as many as its queue, capacity and gold
+## allow, paying for each; returns why none could be queued, or "". With [param instant] (the
+## build phase) the queue trains at once.
+func train(barracks_id: int, count: int, instant: bool) -> String:
+	var error := train_error(barracks_id, count)
+	if not error.is_empty():
+		return error
+	var trainer := _by_id[barracks_id]
+	var cost := _settings.soldier_cost
+	var fits := mini(mini(count, QUEUE_LENGTH - trainer.paid.size()), capacity() - used())
 	if cost > 0:
 		fits = mini(fits, _run_state.gold / cost)
-	if fits <= 0:
-		return NOT_ENOUGH_GOLD
 	for n in fits:
 		_run_state.spend(cost)
 		trainer.paid.append(cost)
