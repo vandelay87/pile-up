@@ -236,5 +236,5 @@ func _positions() -> PackedVector2Array:
 func _targetings() -> Array[StringName]:
 	var modes: Array[StringName] = []
 	for i in _sim.soldiers.count:
-		modes.append(_sim.soldiers.targeting(i))
+		modes.append(Enemies.TARGETINGS[_sim.soldiers.targetings[i]])
 	return modes

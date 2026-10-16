@@ -102,6 +102,7 @@ func _process(_delta: float) -> void:
 	if _dense_count > 0:
 		_crowd.top_up(_dense_count)
 	if _army and _measuring:
+		_crowd.top_up_army()
 		_crowd.send_army(_ticks)
 	_frame += 1
 	if _frame == WARMUP_FRAMES:

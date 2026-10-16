@@ -10,8 +10,8 @@
 # towers, under the crush, grinding the crowd pressed on them and the tumblers crossing them.
 # Every CHAIN_INTERVAL ticks a wall is raised in the crowd and a chain of bloaters set off beside
 # it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
-# around the ring, firing into the crowd, and a group of them is sent across it through the crowd
-# every BenchCrowd.ORDER_INTERVAL ticks.
+# around the ring, firing into the crowd and fought by it, a group of them is sent across it
+# through the crowd every BenchCrowd.ORDER_INTERVAL ticks, and those that die are replaced.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
@@ -59,11 +59,14 @@ class RunResult:
 	## Bloaters blown up, and walls the chains erased.
 	var blasts := 0
 	var walls_erased := 0
-	## Soldiers on the field at the end, out of BenchCrowd's army.
+	## Soldiers fielded at the start, out of BenchCrowd's army.
 	var soldiers := 0
 	## Shots the soldiers fired, and enemies they killed.
 	var soldier_shots := 0
 	var soldier_kills := 0
+	## Enemy-ticks spent attacking a soldier, summed over the enemies, and soldiers that died.
+	var attack_ticks := 0
+	var soldier_deaths := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -91,8 +94,14 @@ func _init() -> void:
 	print("A crush surged for %d ticks; %d enemies tumbled" % [first.surge_ticks, first.tumbles])
 	print("Grinders spent %d grinder-ticks grinding" % first.grinding_ticks)
 	print("%d bloaters blew up; chains erased %d walls" % [first.blasts, first.walls_erased])
-	print("%d of an army of %d soldiers on the field" % [first.soldiers, BenchCrowd.ARMY])
+	print("%d of an army of %d soldiers fielded" % [first.soldiers, BenchCrowd.ARMY])
 	print("Soldiers fired %d shots and killed %d" % [first.soldier_shots, first.soldier_kills])
+	print(
+		(
+			"Enemies spent %d enemy-ticks attacking soldiers; %d soldiers died"
+			% [first.attack_ticks, first.soldier_deaths]
+		)
+	)
 
 	var failed := false
 	if first.repair_ticks == 0:
@@ -113,6 +122,9 @@ func _init() -> void:
 	if first.soldier_shots == 0 or first.soldier_kills == 0:
 		printerr("No soldier fired and killed")
 		failed = true
+	if first.attack_ticks == 0:
+		printerr("No soldier was attacked")
+		failed = true
 	if first.digest != second.digest:
 		printerr("Two runs with the same seed ended in different states")
 		failed = true
@@ -126,11 +138,12 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	var sim := Simulation.new(settings, map, RUN_SEED)
 	var crowd := BenchCrowd.new(sim, CROWD_SEED)
 	crowd.field_army()
+	var result := RunResult.new()
+	result.soldiers = sim.soldiers.count
 	var grinders := _build_grinders(sim)
 	_build_branch(sim)
 	_build_yards(sim)
 	sim.queue_command(Commands.JumpToWave.new(WAVE))
-	var result := RunResult.new()
 	var tumbling: Dictionary[int, bool] = {}
 	var chain_wall := Vector2i(-1, -1)
 	sim.blasts.connect(
@@ -144,8 +157,12 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 				if soldiers.index_of(shot.shooter_id) != Soldiers.NONE:
 					result.soldier_shots += 1
 	)
+	sim.soldiers_died.connect(
+		func(deaths: SoldierDeaths) -> void: result.soldier_deaths += deaths.size()
+	)
 	for t in WARMUP_TICKS + MEASURED_TICKS:
 		crowd.top_up(ENEMIES)
+		crowd.top_up_army()
 		crowd.send_army(t)
 		if t % PYLON_INTERVAL == PYLON_INTERVAL - 1:
 			_cut_or_relink(sim)
@@ -172,9 +189,11 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 			if building.touching > 0:
 				result.grinding_ticks += 1
 		_count_overflow(sim, result, tumbling)
+		for i in sim.enemies.count:
+			if sim.enemies.soldier_targets[i] != Enemies.NONE:
+				result.attack_ticks += 1
 		if t % CHAIN_INTERVAL == 1 and chain_wall.x >= 0 and sim.piles.level(chain_wall) == 0:
 			result.walls_erased += 1
-	result.soldiers = sim.soldiers.count
 	for i in sim.soldiers.count:
 		result.soldier_kills += sim.soldiers.kills[i]
 	result.digest = hash(

@@ -52,6 +52,7 @@ func _init() -> void:
 	_draw_enemy(image)
 	_draw_soldier(image)
 	_draw_tracer(image)
+	_draw_death_effect(image)
 	_draw_blast_ring(image)
 	var error := image.save_png(Atlas.PATH)
 	if error != OK:
@@ -210,6 +211,22 @@ func _draw_tracer(image: Image) -> void:
 		for x in range(area.position.x, area.end.x):
 			var alpha := float(x - area.position.x + 1) / area.size.x
 			image.set_pixel(x, y, Color(WHITE, alpha))
+
+
+# Eight white streaks out from the centre on the ground, an ellipse's worth, each fading out.
+func _draw_death_effect(image: Image) -> void:
+	var area := Atlas.DEATH_EFFECT_REGION
+	var centre := Vector2(area.get_center())
+	var half := Vector2(area.size) / 2.0
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var offset := (Vector2(x, y) + Vector2(0.5, 0.5) - centre) / half
+			var distance := offset.length()
+			if distance > 1.0 or distance < 0.3:
+				continue
+			var spoke := fposmod(offset.angle(), TAU / 8.0)
+			if minf(spoke, TAU / 8.0 - spoke) <= 0.18:
+				image.set_pixel(x, y, Color(WHITE, 1.0 - distance))
 
 
 # A white ring on the ground, an ellipse filling its region, fading towards its inner edge.

@@ -471,7 +471,8 @@ func _move_tumblers() -> void:
 
 
 # Counts each band's stalled enemies, and sorts those within an attacker's reach of the band's
-# barrier into its front rank. Tumbling enemies count towards nothing.
+# barrier into its front rank. Tumbling enemies count towards nothing, nor do those held up
+# attacking a soldier.
 func _gather() -> void:
 	for crush: Crush in _crushes.values():
 		crush.clear_stalled()
@@ -481,9 +482,12 @@ func _gather() -> void:
 	var progress := _enemies.progress
 	var tumbling := _enemies.tumbling
 	var targets := _enemies.structure_targets
+	var soldier_targets := _enemies.soldier_targets
 	var fuses := _enemies.fuses
 	for i in _enemies.count:
 		if not _enemies.is_alive(i) or progress[i] >= stall or tumbling[i] == 1:
+			continue
+		if soldier_targets[i] != Enemies.NONE:
 			continue
 		var pos := positions[i]
 		var label := _band_labels[int(pos.y) * _map.width + int(pos.x)]

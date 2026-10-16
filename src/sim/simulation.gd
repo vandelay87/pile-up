@@ -15,6 +15,7 @@ signal building_destroyed(id: int)
 signal power_changed
 signal shots_fired(shots: Array[Buildings.Shot])
 signal soldiers_added(ids: PackedInt32Array)
+signal soldiers_died(deaths: SoldierDeaths)
 signal training_changed(barracks_id: int)
 signal blasts(went_off: Array[Blasts.Blast])
 signal phase_changed(phase: Waves.Phase)
@@ -66,6 +67,7 @@ var repair_yards: RepairYards
 var overflow: Overflow
 var unit_paths: UnitPaths
 var soldiers: Soldiers
+var soldier_attacks: SoldierAttacks
 var barracks: Barracks
 var bloater_blasts: Blasts
 var step_observer := Callable()
@@ -75,6 +77,8 @@ var speed := 1
 var tick_cost := TickCost.new()
 ## The deaths the last removal step took, read-only.
 var deaths := Deaths.new()
+## The soldiers the last removal step took, read-only.
+var soldier_deaths := SoldierDeaths.new()
 var enemies_left: int:
 	get:
 		return waves.enemies_left
@@ -100,6 +104,7 @@ var _reported_gold: int
 var _reported_base_hp: float
 var _reported_kills := 0
 var _payout_was_multiplied := false
+var _soldiers_died := false
 var _reported_enemies_left: int
 var _wave_ended := false
 var _reported_phase := Waves.Phase.BUILD
@@ -139,6 +144,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	unit_paths = UnitPaths.new(settings, map, occupancy, piles, structures)
 	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids, unit_paths)
+	soldier_attacks = SoldierAttacks.new(settings, routing, enemies, soldiers)
 	barracks = Barracks.new(settings, map, buildings, run_state, soldiers, unit_paths)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
@@ -338,6 +344,9 @@ func _emit_signals() -> void:
 	var added := soldiers.take_added()
 	if not added.is_empty():
 		soldiers_added.emit(added)
+	if _soldiers_died:
+		_soldiers_died = false
+		soldiers_died.emit(soldier_deaths)
 	for id in barracks.take_changed():
 		training_changed.emit(id)
 	if power_grid.take_changed():
@@ -453,6 +462,7 @@ func _move_units() -> void:
 	soldiers.need_restarted()
 	unit_paths.step()
 	soldiers.step(enemies)
+	soldier_attacks.step()
 
 
 func _buildings_act() -> void:
@@ -480,6 +490,13 @@ func _remove_dead() -> void:
 	_blasts.append_array(bloater_blasts.resolve(deaths, soldiers))
 	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
+	soldier_deaths = soldiers.remove_dead(deaths)
+	_soldiers_died = not soldier_deaths.is_empty()
+	if _soldiers_died:
+		soldier_attacks.end_on(soldier_deaths.ids)
+		piles.queue_bodies(soldier_deaths.bodies())
+		for id in soldier_deaths.ids:
+			combos.remove(id)
 	for id in buildings.pending_destroyed():
 		combos.remove(id)
 		barracks.remove(id)
@@ -494,6 +511,7 @@ func _check_wave_end() -> void:
 	if not run_state.is_game_over and waves.check_end():
 		_wave_ended = true
 		decay_piles()
+		soldiers.recover_all()
 		barracks.finish_queues()
 
 

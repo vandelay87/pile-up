@@ -14,7 +14,8 @@ const _FUSE_RAN_OUT := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
 const _PILE_LEVELS := Piles.WALL_LEVEL + 1
-const _PROGRESS := 0.02
+## How far an enemy's field value must drop for a tick to count as progress against a jam.
+const PROGRESS := 0.02
 # The weight of this tick's progress in its exponential average.
 const _PROGRESS_SMOOTHING := 0.05
 const _ROLL_STEPS := 40
@@ -31,6 +32,10 @@ var kinds := PackedByteArray()
 var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
 var structure_targets := PackedInt32Array()
+## The soldier each enemy is attacking (or holding at with its fuse lit), or NONE: set and
+## cleared by [SoldierAttacks] at [constant Simulation.Step.MOVE_UNITS]. An enemy with one holds
+## its ground at [constant Simulation.Step.MOVE_ENEMIES] and doesn't count as stalled.
+var soldier_targets := PackedInt32Array()
 var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
 var pace_rolls := PackedFloat32Array()
@@ -63,6 +68,8 @@ var _last_space_push := Vector2.ZERO
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
 var _last_values := PackedFloat64Array()
+# 1 for an enemy holding its ground this tick: attacking a structure or a soldier.
+var _attacking := PackedByteArray()
 # Each enemy's sensible field value, worked out once between begin_targeting and end_targeting,
 # NAN until then; empty outside that window.
 var _target_values := PackedFloat64Array()
@@ -108,6 +115,7 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	last_hitters[count] = NONE
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	structure_targets[count] = NONE
+	soldier_targets[count] = NONE
 	routes[count] = Routing.Route.SENSIBLE
 	last_rolled_cells[count] = NONE
 	pace_rolls[count] = _swarm_rng.randf_range(-1.0, 1.0)
@@ -259,6 +267,7 @@ func start_tumble(index: int) -> void:
 	tumbling[index] = 1
 	fuses[index] = 0
 	structure_targets[index] = NONE
+	soldier_targets[index] = NONE
 	progress[index] = 1.0
 	_last_values[index] = INF
 
@@ -322,20 +331,23 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	# Only a debug kill as commands drain leaves an enemy dead before REMOVE_DEAD; it stands
 	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
 	var fuse_ticks := _settings.fuse_ticks
+	# An enemy attacking a soldier looks for no structure until that attack ends.
+	_attacking.resize(count)
 	for i in count:
 		if fuses[i] > 0 and hp[i] > 0.0:
 			_burn_fuse(i)
-		var idle := hp[i] <= 0.0 or tumbling[i] == 1
+		var idle := hp[i] <= 0.0 or tumbling[i] == 1 or soldier_targets[i] != NONE
 		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
 		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
 			fuses[i] = fuse_ticks
+		_attacking[i] = 1 if structure_targets[i] != NONE or soldier_targets[i] != NONE else 0
 	_moved.resize(count)
 	for i in count:
 		var pos := positions[i]
 		if hp[i] <= 0.0 or tumbling[i] == 1:
 			_moved[i] = pos
 			continue
-		var attacking := structure_targets[i] != NONE
+		var attacking := _attacking[i] == 1
 		var spaces := spreads and not attacking
 		var separation := _neighbour_pushes(i, radius, push, cap, spaces, space_radius, space_push)
 		separation = separation.limit_length(radius)
@@ -513,7 +525,7 @@ func _structure_target(i: int, reach: float, jam_ticks: int) -> int:
 		return NONE
 	var route := routes[i] as Routing.Route
 	var field_value := _routing.sample_value(route, pos)
-	if field_value < _best_values[i] - _PROGRESS:
+	if field_value < _best_values[i] - PROGRESS:
 		_best_values[i] = field_value
 		_stuck_ticks[i] = 0
 	else:
@@ -584,7 +596,7 @@ func _neighbour_pushes(
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
-	var attacking := structure_targets[i] != NONE
+	var attacking := _attacking[i] == 1
 	var separating := true
 	var checked := 0
 	var from_peers := Vector2.ZERO
@@ -602,7 +614,7 @@ func _neighbour_pushes(
 					continue
 				var away := pos - positions[j]
 				var distance_squared := away.length_squared()
-				var other_attacking := structure_targets[j] != NONE
+				var other_attacking := _attacking[j] == 1
 				var separates := false
 				if near and separating:
 					if cap > 0 and checked == cap:
@@ -673,6 +685,7 @@ func _swap_remove(index: int) -> void:
 	last_hitters[index] = last_hitters[count]
 	heading_offsets[index] = heading_offsets[count]
 	structure_targets[index] = structure_targets[count]
+	soldier_targets[index] = soldier_targets[count]
 	routes[index] = routes[count]
 	last_rolled_cells[index] = last_rolled_cells[count]
 	pace_rolls[index] = pace_rolls[count]
@@ -695,6 +708,7 @@ func _grow() -> void:
 	last_hitters.resize(capacity)
 	heading_offsets.resize(capacity)
 	structure_targets.resize(capacity)
+	soldier_targets.resize(capacity)
 	routes.resize(capacity)
 	last_rolled_cells.resize(capacity)
 	pace_rolls.resize(capacity)

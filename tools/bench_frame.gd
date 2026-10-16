@@ -45,6 +45,7 @@ func _process(_delta: float) -> void:
 	if _crowd == null:
 		return
 	_crowd.top_up(_count)
+	_crowd.top_up_army()
 	_crowd.send_army(_frame)
 	_frame += 1
 	if _frame <= WARMUP_FRAMES:
