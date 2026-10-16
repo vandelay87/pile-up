@@ -43,6 +43,10 @@ func _init(sim: Simulation, crowd_seed: int) -> void:
 		tower_origins.append(origin)
 		_sim.queue_command(Commands.Build.new(Buildings.TOWER, origin))
 	_sim.tick()
+	# The towers re-settle the fields over a few ticks. A crowd arriving before they swap in
+	# would follow fields that run through the towers and attack them all at once.
+	while _sim.routing.is_settling():
+		_sim.tick()
 
 
 static func digest(sim: Simulation) -> int:

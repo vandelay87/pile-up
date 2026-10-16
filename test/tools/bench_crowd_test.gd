@@ -41,6 +41,20 @@ func test_top_up_fills_the_crowd_to_the_target() -> void:
 	assert_int(sim.enemies.count).is_equal(150)
 
 
+func test_the_crowd_arrives_without_attacking_the_towers() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+
+	crowd.top_up(CROWD)
+	sim.tick()
+
+	var attackers := 0
+	for i in sim.enemies.count:
+		if sim.enemies.structure_targets[i] != Enemies.NONE:
+			attackers += 1
+	assert_int(attackers).is_equal(0)
+
+
 func test_top_up_spawns_on_clear_cells_in_a_ring_around_the_base() -> void:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, 1)
