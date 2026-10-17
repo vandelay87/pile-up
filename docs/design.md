@@ -261,6 +261,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 - The base is a drilling rig mining precious minerals, and the enemies attack to stop it. The tone is Starship Troopers: the player's side is the intrusive, militaristic, authoritarian species, stealing the planet's minerals and wrecking it. Towers may be renamed turrets to fit.
 - **Start drill:** a cleared wave is the drill recharging, and the next wave starts when the drill starts again, so **Next wave** could become **Start drill**.
+- **Mined currency:** the drill mines a resource that is a currency. After a level's last wave, the player could keep mining for more, but lose it all if the base falls in a later wave.
 
 ### Enemies
 
@@ -283,6 +284,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
 - **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
 - A ranked queue of assignments for a repair yard.
+- **Mines:** each with a delay the player sets, from none to infinite, where infinite means the player sets it off by hand.
 
 ### Units
 
@@ -295,6 +297,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Units on buildings:** soldiers, or a later kind of unit, standing on buildings. In v4 buildings are solid to soldiers.
 - **More formations:** shapes beyond v4's cluster and line, such as a wedge or a ring, if play asks for them.
 - **Drawn lines:** a right-drag draws a line formation, its width and facing set by the drag, as in Total War or Company of Heroes, so the shape is part of the order. v4 reads one Formation setting at order time.
+- **No Formation setting:** drop the setting. A Move order clusters by default, and a line comes only from a drawn line (above).
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
 
 ### Details and art
@@ -320,9 +323,11 @@ Not built in the prototypes, but decisions should leave room for it.
   - An alien hive, slimy, where slime cells slow walking right down.
   - Open to more.
 - **Destructible rock:** blasts break rock, opening new routes for the enemies.
+- **Fog of war:** perhaps hide the map outside what the player's buildings and units can see.
 
 ### Runs
 
+- **Build phase time limit:** perhaps a minute, after which the next wave starts. Starting the next wave early fast-forwards to it, and Escape stops the fast-forward.
 - Power-ups, including interactions with piles (for example, flame setting piles alight).
 - Meta-progression between runs.
 - **Overworld map:** a map for choosing levels, perhaps with purchases between them and, later, saving. Open: how detailed it is, whether it holds a management layer, and whether what it holds lasts between runs or only within one.
