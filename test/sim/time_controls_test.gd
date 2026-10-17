@@ -91,6 +91,53 @@ func test_a_seed_and_recorded_commands_replay_to_an_identical_state() -> void:
 		assert_array(_field_values(replay, route)).is_equal(_field_values(live, route))
 
 
+func test_commands_drained_while_paused_replay_to_an_identical_state() -> void:
+	var live := _crowd_sim()
+	var recorded: Array[Array] = []
+	var queue := func(command: Commands.Command) -> void:
+		recorded.append([live.tick_count, command])
+		live.queue_command(command)
+	queue.call(Commands.AddSoldiers.new(4))
+	queue.call(Commands.NextWave.new())
+	for frame in 10:
+		live.run_frame()
+	queue.call(Commands.SetPaused.new(true))
+	live.run_frame()
+	queue.call(Commands.Build.new(Buildings.BARRACKS, Vector2i(2, 2)))
+	queue.call(Commands.SetSetting.new("soldiers", "speed", 4.0))
+	live.run_frame()
+	queue.call(Commands.Train.new(live.buildings.built[0].id, 1))
+	queue.call(
+		Commands.SetSoldierTargeting.new(live.soldiers.ids.slice(0, 2), Enemies.CLOSEST_TO_BASE)
+	)
+	live.run_frame()
+	live.run_frame()
+	queue.call(Commands.SetPaused.new(false))
+	for frame in 30:
+		live.run_frame()
+
+	var replay := _crowd_sim()
+	for tick in live.tick_count:
+		for entry in recorded:
+			if entry[0] == tick:
+				var command: Commands.Command = entry[1]
+				replay.queue_command(command)
+		replay.tick()
+
+	assert_int(live.tick_count).is_equal(41)
+	assert_int(replay.run_state.gold).is_equal(live.run_state.gold)
+	assert_array(_building_origins(replay)).is_equal([Vector2i(2, 2)])
+	assert_array(replay.barracks.queue_of(replay.buildings.built[0].id)).is_equal(
+		live.barracks.queue_of(live.buildings.built[0].id)
+	)
+	assert_float(replay.settings.soldier_speed).is_equal(4.0)
+	assert_array(Array(replay.soldiers.ids)).is_equal(Array(live.soldiers.ids))
+	assert_array(Array(replay.soldiers.positions)).is_equal(Array(live.soldiers.positions))
+	assert_array(Array(replay.soldiers.targetings)).is_equal(Array(live.soldiers.targetings))
+	assert_array(Array(replay.soldiers.targetings.slice(0, 4))).is_equal([1, 1, 0, 0])
+	assert_array(Array(replay.enemies.positions)).is_equal(Array(live.enemies.positions))
+
+
 func _building_origins(sim: Simulation) -> Array[Vector2i]:
 	var origins: Array[Vector2i] = []
 	for building in sim.buildings.built:
@@ -124,3 +171,47 @@ func test_a_step_taken_while_running_does_not_advance_a_later_pause() -> void:
 	_sim.run_frame()
 
 	assert_int(_sim.tick_count).is_equal(paused_at)
+
+
+func test_while_paused_a_build_applies_without_a_tick_running() -> void:
+	_pause()
+	var placed: Array[int] = []
+	_sim.building_placed.connect(func(id: int) -> void: placed.append(id))
+	var paused_at := _sim.tick_count
+
+	_sim.queue_command(Commands.Build.new(Buildings.PYLON, Vector2i(3, 3)))
+	_sim.run_frame()
+
+	assert_int(_sim.tick_count).is_equal(paused_at)
+	assert_array(_building_origins(_sim)).contains_exactly([Vector2i(3, 3)])
+	assert_int(placed.size()).is_equal(1)
+
+
+func test_while_paused_a_train_applies_without_a_tick_running() -> void:
+	_pause()
+	_sim.queue_command(Commands.Build.new(Buildings.BARRACKS, Vector2i(3, 3)))
+	_sim.run_frame()
+	var paused_at := _sim.tick_count
+
+	_sim.queue_command(Commands.Train.new(_sim.buildings.built[0].id, 1))
+	_sim.run_frame()
+
+	assert_int(_sim.tick_count).is_equal(paused_at)
+	assert_int(_sim.soldiers.count).is_equal(1)
+
+
+func test_while_paused_a_setting_change_applies_without_a_tick_running() -> void:
+	_pause()
+	var paused_at := _sim.tick_count
+
+	_sim.queue_command(Commands.SetSetting.new("enemies", "speed", 3.0))
+	_sim.run_frame()
+
+	assert_int(_sim.tick_count).is_equal(paused_at)
+	assert_float(_sim.settings.enemy_speed).is_equal(3.0)
+
+
+func _pause() -> void:
+	_sim = _crowd_sim()
+	_sim.queue_command(Commands.SetPaused.new(true))
+	_sim.run_frame()

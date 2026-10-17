@@ -1,8 +1,9 @@
 # Times the incremental field updates headless under a heavy wave: a dense crowd near the base,
 # with a body landing in it every tick, four times the v1 kill rate bench_sim uses, and a tower
 # built just outside the crowd every TOWER_INTERVAL ticks. Walls form in the crowd and its attacks
-# change their HP buckets and break them.
-# Run with: godot --headless --script res://tools/bench_repair.gd
+# change their HP buckets and break them. A tick's time is its update plus its share of settling
+# the pending fields.
+# Run with: godot --headless --script res://tools/bench_settle.gd
 extends SceneTree
 
 const RUN_SEED := 1
@@ -48,16 +49,18 @@ func _init() -> void:
 		_wall_hit = false
 		_levels_before = _sim.piles.levels.duplicate()
 		_sim.tick()
+		var routing := _sim.routing
+		var field_msec := routing.last_update_msec + routing.last_step_msec
 		if _tower_built:
-			_tower_msec.append(_sim.routing.last_update_msec)
+			_tower_msec.append(field_msec)
 		elif wall_update:
-			_wall_msec.append(_sim.routing.last_update_msec)
+			_wall_msec.append(field_msec)
 		elif _landed:
-			_landing_msec.append(_sim.routing.last_update_msec)
+			_landing_msec.append(field_msec)
 
 	print(
 		(
-			"Field repair under a heavy wave: %d enemies, a body every tick for %d ticks"
+			"Field settling under a heavy wave: %d enemies, a body every tick for %d ticks"
 			% [ENEMIES, MEASURED_TICKS]
 		)
 	)

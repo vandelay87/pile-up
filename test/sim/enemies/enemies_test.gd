@@ -97,6 +97,30 @@ func test_a_neighbour_cap_limits_the_neighbours_checked() -> void:
 			assert_float(drift).is_greater(0.05)
 
 
+func test_a_neighbour_cap_leaves_personal_space_seeing_every_neighbour() -> void:
+	_settings.change("enemies", "heading_offset", 0.0)
+	_settings.change("enemies", "neighbour_cap", 1)
+	_settings.change("enemies", "personal_space_radius", 1.5)
+	# Light enough that the pushes stay under the personal-space step limit.
+	_settings.change("enemies", "personal_space_push", 0.01)
+	var drifts := PackedFloat32Array()
+	for with_far: bool in [false, true]:
+		var enemies := _flowing_north()
+		var middle := enemies.spawn(Vector2(4.9, 3.5), _settings.enemy_hp)
+		enemies.spawn(Vector2(4.7, 3.5), _settings.enemy_hp)
+		# Separation's second neighbour, where the cap of 1 stops it.
+		enemies.spawn(Vector2(5.5, 3.5), _settings.enemy_hp)
+		if with_far:
+			# Two buckets east, past separation's 3×3, read after the cap stopped it.
+			enemies.spawn(Vector2(6.1, 3.5), _settings.enemy_hp)
+
+		_tick(enemies)
+
+		drifts.append(_position(enemies, middle).x - 4.9)
+
+	assert_float(drifts[1]).is_less(drifts[0] - 1e-3)
+
+
 func test_an_enemy_inside_rock_is_pushed_out_through_the_nearest_side() -> void:
 	var enemies := _enemies(["........", "...#....", "........", "........"], Rect2i(7, 3, 1, 1))
 	var id := enemies.spawn(Vector2(3.2, 1.5), _settings.enemy_hp)

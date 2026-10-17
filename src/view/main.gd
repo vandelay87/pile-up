@@ -20,6 +20,7 @@ var _last_saved_json := ""
 @onready var _camera: MapCamera = $Camera
 @onready var _world: Node2D = $World
 @onready var _enemy_renderer: EnemyRenderer = $EnemyRenderer
+@onready var _soldier_renderer: SoldierRenderer = $SoldierRenderer
 @onready var _flow_overlay: FlowOverlay = $FlowOverlay
 @onready var _debug_panel: DebugPanel = $DebugPanel
 @onready var _stats_readout: StatsReadout = $StatsReadout
@@ -28,12 +29,16 @@ var _last_saved_json := ""
 @onready var _tower_view: TowerView = $TowerView
 @onready var _tracers: Tracers = $Tracers
 @onready var _blast_rings: BlastRings = $BlastRings
+@onready var _soldier_deaths: SoldierDeathsView = $SoldierDeaths
 @onready var _drone_view: DroneView = $DroneView
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
+@onready var _unit_paths_overlay: UnitPathsOverlay = $UnitPathsOverlay
 @onready var _pile_overlay: PileOverlay = $PileOverlay
 @onready var _power_overlay: PowerOverlay = $PowerOverlay
 @onready var _selection: Selection = $Selection
+@onready var _soldier_selection: SoldierSelection = $SoldierSelection
+@onready var _soldier_ranges: SoldierRanges = $SoldierRanges
 @onready var _combo_view: ComboView = $ComboView
 @onready var _overflow_view: OverflowView = $OverflowView
 
@@ -54,6 +59,7 @@ func _ready() -> void:
 	_edge_highlight.setup(_map)
 	_add_overlays()
 	_hud.build_requested.connect(_placement.enter)
+	_placement.entered.connect(_soldier_selection.clear)
 	_start_run(Simulation.new(loaded.settings, _map, _new_seed()))
 	print(
 		(
@@ -97,22 +103,27 @@ func _start_run(simulation: Simulation) -> void:
 	_simulation.fields_changed.connect(_flow_overlay.queue_redraw)
 	_pile_layer.setup(_simulation)
 	_enemy_renderer.setup(_simulation, _world)
+	_soldier_renderer.setup(_simulation, _world)
 	_flow_overlay.setup(_simulation.routing, _map)
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
 	_combo_view.setup(_simulation)
 	_overflow_view.setup(_simulation)
-	_hud.setup(_simulation, _selection, _combo_view)
+	_hud.setup(_simulation, _selection, _soldier_selection, _combo_view)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
 	_blast_rings.setup(_simulation)
+	_soldier_deaths.setup(_simulation)
 	_drone_view.setup(_simulation)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)
+	_unit_paths_overlay.setup(_simulation)
 	_pile_overlay.setup(_simulation)
 	_power_overlay.setup(_simulation)
 	_selection.setup(_simulation)
+	_soldier_selection.setup(_simulation, _selection, _camera)
+	_soldier_ranges.setup(_simulation, _soldier_selection)
 
 
 func _restart() -> void:
@@ -147,6 +158,7 @@ func _add_overlays() -> void:
 	_debug_panel.add_overlay("Tower range circles", _range_overlay.show_ranges)
 	_debug_panel.add_overlay("Power grid", _power_overlay.show_grid)
 	_debug_panel.add_overlay("Overflow", _overflow_view.show_debug)
+	_debug_panel.add_overlay("Unit paths", _unit_paths_overlay.show_paths)
 
 
 func _draw_map(map: MapData) -> void:

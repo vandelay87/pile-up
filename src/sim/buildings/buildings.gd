@@ -5,6 +5,7 @@ const TOWER := &"tower"
 const GRINDER := &"grinder"
 const PYLON := &"pylon"
 const REPAIR_YARD := &"repair_yard"
+const BARRACKS := &"barracks"
 ## Every kind of building: its footprint, and the settings group holding its cost, hp and
 ## power_area. The one per-kind lookup; add new kinds here.
 const KINDS := {
@@ -12,12 +13,14 @@ const KINDS := {
 	GRINDER: {"footprint": Vector2i(2, 2), "settings": "grinders"},
 	PYLON: {"footprint": Vector2i(1, 1), "settings": "pylons"},
 	REPAIR_YARD: {"footprint": Vector2i(2, 2), "settings": "repair_yards"},
+	BARRACKS: {"footprint": Vector2i(2, 2), "settings": "barracks"},
 }
 const UNKNOWN_KIND := "unknown kind"
 const OFF_MAP := "off the map"
 const NEAR_SPAWN := "too close to a spawn edge"
 const OFF_GRID := "off the power grid"
 const OCCUPIED := "occupied"
+const BARRACKS_LIMIT := "barracks limit reached"
 const NOT_ENOUGH_GOLD := "not enough gold"
 const NOT_A_TOWER := "not a tower"
 const BAD_TARGETING := "the mode must be bloaters_first or closest_to_base"
@@ -37,7 +40,7 @@ var _piles: Piles
 var _run_state: RunState
 var _power_grid: PowerGrid
 var _by_id: Dictionary[int, Building] = {}
-var _next_id := 0
+var _ids: Ids
 var _field_changes: Array[Vector2i] = []
 var _destroyed: Array[int] = []
 
@@ -69,15 +72,20 @@ class Building:
 		centre = Buildings.centre_of(kind, origin)
 
 
+## One instant hit, by a tower or a soldier: who fired, from where, and the enemy it hit, where.
 class Shot:
 	extends RefCounted
 
-	var tower_id: int
+	var shooter_id: int
+	var origin: Vector2
 	var target_id: int
 	var position: Vector2
 
-	func _init(shot_tower_id: int, shot_target_id: int, shot_position: Vector2) -> void:
-		tower_id = shot_tower_id
+	func _init(
+		shot_shooter_id: int, shot_origin: Vector2, shot_target_id: int, shot_position: Vector2
+	) -> void:
+		shooter_id = shot_shooter_id
+		origin = shot_origin
 		target_id = shot_target_id
 		position = shot_position
 
@@ -89,6 +97,7 @@ func _init(
 	run_piles: Piles,
 	run_state: RunState,
 	power_grid: PowerGrid,
+	run_ids: Ids,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
@@ -96,6 +105,7 @@ func _init(
 	_piles = run_piles
 	_run_state = run_state
 	_power_grid = power_grid
+	_ids = run_ids
 	nearby.resize(_map.width * _map.height)
 
 
@@ -139,12 +149,17 @@ func can_place(kind: StringName, origin: Vector2i) -> bool:
 	return _placement_error(kind, origin).is_empty()
 
 
-## Why a build here would be rejected, or empty when it would succeed.
+## Why a build here would be rejected, or empty when it would succeed: placement, then the
+## barracks limit for a barracks, then gold.
 func build_error(kind: StringName, origin: Vector2i) -> String:
 	var error := _placement_error(kind, origin)
-	if error.is_empty() and not _run_state.can_afford(cost_of(kind)):
+	if not error.is_empty():
+		return error
+	if kind == BARRACKS and _count_of(BARRACKS) >= _settings.barracks_limit:
+		return BARRACKS_LIMIT
+	if not _run_state.can_afford(cost_of(kind)):
 		return NOT_ENOUGH_GOLD
-	return error
+	return ""
 
 
 ## Spends the cost and places a building at the end of [member built], returning it; returns
@@ -153,8 +168,7 @@ func build(kind: StringName, origin: Vector2i) -> Building:
 	if not build_error(kind, origin).is_empty():
 		return null
 	_run_state.spend(cost_of(kind))
-	var placed := Building.new(_next_id, kind, origin)
-	_next_id += 1
+	var placed := Building.new(_ids.next(), kind, origin)
 	placed.hp = max_hp(kind)
 	_occupancy.occupy(placed.footprint, placed.id)
 	_count_nearby(placed.footprint, 1)
@@ -259,8 +273,8 @@ func take_destroyed() -> Array[int]:
 	return taken
 
 
-## Step 5: each working building acts, in build order. Towers fire, returning their shots;
-## grinders hurt every enemy touching them.
+## At [constant Simulation.Step.BUILDINGS_ACT], each working building acts, in build order.
+## Towers fire, returning their shots; grinders hurt every enemy touching them.
 func act(enemies: Enemies) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for acting in built:
@@ -294,7 +308,7 @@ func _fire(tower: Building, enemies: Enemies, shots: Array[Shot]) -> void:
 	_hurt(tower, enemies, index, _settings.tower_damage)
 	tower.target_id = target
 	tower.cooldown = _settings.tower_cooldown_ticks
-	shots.append(Shot.new(tower.id, target, enemies.positions[index]))
+	shots.append(Shot.new(tower.id, tower.centre, target, enemies.positions[index]))
 
 
 func _grind(grinder: Building, enemies: Enemies) -> void:
@@ -332,6 +346,14 @@ func _destroy(target: Building) -> void:
 	_field_changes.append_array(target.footprint)
 	_destroyed.append(target.id)
 	_power_grid.recompute(self)
+
+
+func _count_of(kind: StringName) -> int:
+	var found := 0
+	for each in built:
+		if each.kind == kind:
+			found += 1
+	return found
 
 
 func _count_nearby(cells: Array[Vector2i], change: int) -> void:

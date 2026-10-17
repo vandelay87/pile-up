@@ -280,6 +280,56 @@ var repair_per_tick: float:
 	get:
 		var per_second: float = value("repair_yards", "repair_rate")
 		return per_second / Simulation.TICKS_PER_SECOND
+var soldier_hp: float:
+	get:
+		return value("soldiers", "hp")
+var soldier_damage: float:
+	get:
+		return value("soldiers", "damage")
+var soldier_cooldown_ticks: int:
+	get:
+		var per_second: float = value("soldiers", "fire_rate")
+		return interval_ticks(per_second)
+## A soldier's range on the ground, in cells.
+var soldier_range: float:
+	get:
+		return value("soldiers", "range")
+## The range a soldier gains a level up, in cells.
+var soldier_range_per_level: float:
+	get:
+		return value("soldiers", "range_per_level")
+var soldier_speed: float:
+	get:
+		return value("soldiers", "speed")
+## How much slower a soldier climbs over a wall, as a fraction.
+var soldier_wall_climb_slow: float:
+	get:
+		var percent: int = value("soldiers", "wall_climb_slow")
+		return percent / 100.0
+## A soldier's mass against an enemy's 1, in the contact pass.
+var soldier_mass: float:
+	get:
+		return value("soldiers", "mass")
+## The share of a soldier's overlap with an enemy closed each tick, in the contact pass.
+var soldier_contact_push: float:
+	get:
+		return value("soldiers", "contact_push")
+var soldier_cost: int:
+	get:
+		return value("soldiers", "cost")
+## Ticks a barracks spends training one soldier during a wave.
+var training_ticks: int:
+	get:
+		var seconds: float = value("soldiers", "training_time")
+		return ticks_from_seconds(seconds)
+## Soldiers each standing barracks adds to capacity.
+var barracks_capacity: int:
+	get:
+		return value("barracks", "capacity")
+## The most barracks standing at once.
+var barracks_limit: int:
+	get:
+		return value("barracks", "limit")
 var base_power_area: int:
 	get:
 		return value("run", "base_power_area")

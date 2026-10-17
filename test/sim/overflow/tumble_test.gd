@@ -463,7 +463,7 @@ func _row(y: int, left: int, right: int) -> Array[Vector2i]:
 	return cells
 
 
-# Lands a wall on each cell at step 1 of the next tick.
+# Lands a wall on each cell as bodies land on the next tick.
 func _walls(cells: Array[Vector2i]) -> void:
 	var bodies := PackedVector2Array()
 	for cell in cells:
@@ -471,6 +471,9 @@ func _walls(cells: Array[Vector2i]) -> void:
 			bodies.append(Vector2(cell) + Vector2(0.5, 0.5))
 	_sim.piles.queue_bodies(Deaths.bodies_at(bodies))
 	_sim.tick()
+	# A long line can take the fields more than a tick to settle in.
+	while _sim.routing.is_settling():
+		_sim.tick()
 
 
 # Spawns enemies spread in a grid across the area.

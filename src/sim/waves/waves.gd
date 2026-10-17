@@ -100,7 +100,7 @@ func spawn() -> void:
 				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER),
 				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
 			)
-			var pos := Vector2(cell) + Vector2(0.5, 0.5) + jitter
+			var pos := MapData.centre_of(cell) + jitter
 			if _bloater_slots[_spawned] == 1:
 				_enemies.spawn(pos, _bloater_hp, Enemies.Kind.BLOATER)
 			else:

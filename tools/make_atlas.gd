@@ -23,6 +23,10 @@ const GRINDER_HEIGHT := 20
 const GRINDER_MAW := Color(0.18, 0.16, 0.16)
 const TOOTH := Color(0.85, 0.4, 0.2)
 const TOOTH_HEIGHT := 5
+const BARRACKS := Color(0.55, 0.62, 0.42)
+const BARRACKS_HEIGHT := 26
+const ROOF_HEIGHT := 10
+const DOOR := Color(0.2, 0.2, 0.18)
 
 
 func _init() -> void:
@@ -41,11 +45,14 @@ func _init() -> void:
 	_draw_pylon(image)
 	_draw_grinder(image)
 	_draw_repair_yard(image)
+	_draw_barracks(image)
 	_draw_drone(image)
 	_draw_repair_effect(image)
 	_draw_unpowered_icon(image)
 	_draw_enemy(image)
+	_draw_soldier(image)
 	_draw_tracer(image)
+	_draw_death_effect(image)
 	_draw_blast_ring(image)
 	var error := image.save_png(Atlas.PATH)
 	if error != OK:
@@ -113,6 +120,20 @@ func _draw_repair_yard(image: Image) -> void:
 	_outline_diamond(image, top, footprint / 2.0 * 0.5, YARD)
 
 
+# A hut with a narrower roof block on top and a dark door on its left face.
+func _draw_barracks(image: Image) -> void:
+	var area := Atlas.region(Atlas.BARRACKS, Atlas.BARRACKS_SIZE)
+	_draw_box_tile(image, area, BARRACKS_HEIGHT, BARRACKS)
+	var footprint := Vector2(area.size.x, area.size.x / 2.0)
+	var foot := Vector2(area.get_center().x, area.end.y - footprint.y / 2.0)
+	_draw_box(image, foot - Vector2(0, BARRACKS_HEIGHT), footprint / 2.0 * 0.6, ROOF_HEIGHT, WHITE)
+	# The left face runs from the bottom corner up to the left corner; the door sits halfway.
+	var door := foot + Vector2(-footprint.x / 4.0, footprint.y / 4.0)
+	for y in range(roundi(door.y - 14), roundi(door.y)):
+		for x in range(roundi(door.x - 4), roundi(door.x + 4)):
+			image.set_pixel(x, y + roundi((door.x - x) * 0.5), DOOR)
+
+
 # A small body between two rotors, seen from the side.
 func _draw_drone(image: Image) -> void:
 	var area := Atlas.DRONE_REGION
@@ -167,12 +188,45 @@ func _draw_enemy(image: Image) -> void:
 				image.set_pixel(x, y, shade)
 
 
+# A round head over a narrower body with square shoulders, so a soldier reads apart from the
+# enemies' plain ovals.
+func _draw_soldier(image: Image) -> void:
+	var area := Atlas.SOLDIER_REGION
+	var head := Vector2(area.get_center().x, area.position.y + 5.0)
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var pixel := Vector2(x, y) + Vector2(0.5, 0.5)
+			var local := pixel - Vector2(area.position)
+			var on_head := pixel.distance_to(head) <= 4.5
+			var on_body := local.y >= 10.0 and absf(pixel.x - head.x) <= 5.5
+			if on_head:
+				image.set_pixel(x, y, WHITE)
+			elif on_body:
+				image.set_pixel(x, y, WHITE.darkened(0.2) if local.y >= 19.0 else WHITE)
+
+
 func _draw_tracer(image: Image) -> void:
 	var area := Atlas.TRACER_REGION
 	for y in range(area.position.y, area.end.y):
 		for x in range(area.position.x, area.end.x):
 			var alpha := float(x - area.position.x + 1) / area.size.x
 			image.set_pixel(x, y, Color(WHITE, alpha))
+
+
+# Eight white streaks out from the centre on the ground, an ellipse's worth, each fading out.
+func _draw_death_effect(image: Image) -> void:
+	var area := Atlas.DEATH_EFFECT_REGION
+	var centre := Vector2(area.get_center())
+	var half := Vector2(area.size) / 2.0
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var offset := (Vector2(x, y) + Vector2(0.5, 0.5) - centre) / half
+			var distance := offset.length()
+			if distance > 1.0 or distance < 0.3:
+				continue
+			var spoke := fposmod(offset.angle(), TAU / 8.0)
+			if minf(spoke, TAU / 8.0 - spoke) <= 0.18:
+				image.set_pixel(x, y, Color(WHITE, 1.0 - distance))
 
 
 # A white ring on the ground, an ellipse filling its region, fading towards its inner edge.

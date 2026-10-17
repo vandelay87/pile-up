@@ -4,10 +4,12 @@ extends Node2D
 ## View-only selection: clicking a building or the base selects it and draws its range (a
 ## tower's fire range, a repair yard's repair area, a pylon's or the base's power area). The
 ## HUD reads its details each frame. Clicking empty ground or Esc clears it; a destroyed
-## building clears itself. Placement sits later in the tree, so it sees clicks and Esc first.
+## building clears itself. [SoldierSelection] routes left clicks on the world here through
+## [method click]. Placement sits later in the tree, so it sees clicks and Esc first.
 ## A selected repair yard can be put in assign mode (the next click on a building in its
 ## repair area becomes its assignment; Esc cancels), have its assignment cleared or its repair
-## threshold set; a selected tower can have its targeting set. Each queues a command.
+## threshold set; a selected tower can have its targeting set; a selected barracks can train
+## soldiers and cancel queued ones. Each queues a command.
 
 const OUTLINE := Color(1.0, 1.0, 1.0, 0.9)
 const RANGE := Color(1.0, 0.9, 0.4, 0.8)
@@ -16,14 +18,14 @@ const UNPOWERED := Color(0.6, 0.6, 0.6, 0.6)
 const REPAIR_AREA := Color(0.35, 0.95, 0.45, 0.8)
 const REPAIR_AREA_TINT := Color(0.35, 0.95, 0.45, 0.1)
 const ASSIGNMENT := Color(0.35, 0.95, 0.45, 1.0)
-## A left press and release further apart than this (screen pixels) is a camera drag.
-const CLICK_SLOP := 6.0
+const RALLY := Color(1.0, 0.85, 0.3, 0.95)
+## The rally flag's pole height and flag width, in world pixels.
+const RALLY_POLE := 22.0
+const RALLY_FLAG := 12.0
 
 var _simulation: Simulation
 var _building_id := Occupancy.EMPTY
 var _base := false
-var _press_position := Vector2.ZERO
-var _pressed := false
 var _assigning := false
 
 
@@ -107,6 +109,43 @@ func set_tower_targeting(mode: StringName) -> void:
 		_simulation.queue_command(Commands.SetTargeting.new(_building_id, mode))
 
 
+func is_barracks_selected() -> bool:
+	var building := selected_building()
+	return building != null and building.kind == Buildings.BARRACKS
+
+
+## Queues [param count] soldiers (1, or 5 for a shift-click) at the selected barracks.
+func train(count: int) -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.Train.new(_building_id, count))
+
+
+## Sets the selected barracks' rally point on [param cell], as a right-click does.
+func set_rally(cell: Vector2i) -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.SetRallyPoint.new(_building_id, cell))
+
+
+## Clears the selected barracks' rally point.
+func clear_rally() -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.ClearRallyPoint.new(_building_id))
+
+
+func cancel_training(slot: int) -> void:
+	if is_barracks_selected():
+		_simulation.queue_command(Commands.CancelTraining.new(_building_id, slot))
+
+
+## A left click on [param cell]: names the building to assign while assigning, else selects
+## what is there, or clears the selection on empty ground.
+func click(cell: Vector2i) -> void:
+	if _assigning:
+		_assign_at(cell)
+	else:
+		_select_at(cell)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
@@ -116,22 +155,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				clear()
 			get_viewport().set_input_as_handled()
-	elif event is InputEventMouseButton:
-		var button := event as InputEventMouseButton
-		if button.button_index != MOUSE_BUTTON_LEFT:
-			return
-		# Left-drag pans the camera, so a selection happens on a release close to its press.
-		if button.pressed:
-			_pressed = true
-			_press_position = button.position
-		elif _pressed:
-			_pressed = false
-			if button.position.distance_to(_press_position) <= CLICK_SLOP:
-				var cell := GridTransform.world_to_cell(get_global_mouse_position())
-				if _assigning:
-					_assign_at(cell)
-				else:
-					_select_at(cell)
 
 
 func _process(_delta: float) -> void:
@@ -191,6 +214,8 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
 			lines.append_array(_yard_stats(building))
+		Buildings.BARRACKS:
+			lines.append_array(_barracks_stats(building))
 	return lines
 
 
@@ -200,6 +225,10 @@ func _status(building: Buildings.Building) -> String:
 		return "Unpowered"
 	if _simulation.repair_yards.is_under_repair(building.id):
 		return "Under repair"
+	return _activity(building)
+
+
+func _activity(building: Buildings.Building) -> String:
 	match building.kind:
 		Buildings.TOWER:
 			var reach := _simulation.settings.tower_range
@@ -212,6 +241,9 @@ func _status(building: Buildings.Building) -> String:
 		Buildings.REPAIR_YARD:
 			var on_job := _simulation.repair_yards.drone(building.id).is_on_job()
 			return "Repairing" if on_job else "Idle"
+		Buildings.BARRACKS:
+			var queued := _simulation.barracks.queue_of(building.id).size()
+			return "Training" if queued > 0 else "Idle"
 	return "Powering"
 
 
@@ -248,6 +280,17 @@ func _yard_stats(yard: Buildings.Building) -> Array[String]:
 	]
 	if _assigning:
 		lines.append("Click a building in the repair area")
+	return lines
+
+
+# The queue's length, the head's time left during a wave and the power area.
+func _barracks_stats(barracks: Buildings.Building) -> Array[String]:
+	var queued := _simulation.barracks.queue_of(barracks.id).size()
+	var lines: Array[String] = ["Queue %d / %d" % [queued, Barracks.QUEUE_LENGTH]]
+	if queued > 0 and _simulation.waves.phase == Waves.Phase.WAVE:
+		var ticks := _simulation.barracks.ticks_left(barracks.id)
+		lines.append("Next in %.1f s" % (float(ticks) / Simulation.TICKS_PER_SECOND))
+	lines.append("Power area %d" % _simulation.buildings.power_area(barracks.kind))
 	return lines
 
 
@@ -289,6 +332,25 @@ func _draw() -> void:
 	else:
 		var colour := POWER_AREA if building.powered else UNPOWERED
 		PowerGridDrawing.outline(self, grid.area_of(building.kind, building.origin), colour, 2.0)
+	if building.kind == Buildings.BARRACKS:
+		_draw_rally(building)
+
+
+# The rally flag on its cell and a line to it from the barracks.
+func _draw_rally(barracks: Buildings.Building) -> void:
+	var rally := _simulation.barracks.rally_point(barracks.id)
+	if rally == Barracks.NO_RALLY:
+		return
+	var foot := GridTransform.grid_to_world(MapData.centre_of(rally))
+	draw_dashed_line(GridTransform.grid_to_world(barracks.centre), foot, RALLY, 2.0, 6.0)
+	var top := foot - Vector2(0, RALLY_POLE)
+	draw_line(foot, top, RALLY, 2.0)
+	draw_colored_polygon(
+		PackedVector2Array(
+			[top, top + Vector2(RALLY_FLAG, RALLY_FLAG * 0.35), top + Vector2(0, RALLY_FLAG * 0.7)]
+		),
+		RALLY
+	)
 
 
 func _draw_repair_area(yard: Buildings.Building) -> void:

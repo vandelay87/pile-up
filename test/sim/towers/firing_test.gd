@@ -106,7 +106,7 @@ func test_towers_fire_in_build_order_and_the_shot_list_matches_the_shots() -> vo
 	assert_array(shot_lists).contains_exactly([3])
 	var tower_ids: Array[int] = []
 	for shot in _shots:
-		tower_ids.append(shot.tower_id)
+		tower_ids.append(shot.shooter_id)
 		assert_int(shot.target_id).is_equal(enemy)
 		assert_vector(shot.position).is_equal(_sim.enemies.positions[_sim.enemies.index_of(enemy)])
 	assert_array(tower_ids).contains_exactly([0, 1, 2])

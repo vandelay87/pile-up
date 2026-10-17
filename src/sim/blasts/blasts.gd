@@ -1,11 +1,11 @@
 class_name Blasts
 extends RefCounted
 
-## Step 7: every bloater in the death list blows up where it died. Its blast kills each living
-## enemy within the blast radius, credited to the bloater's killer, and a bloater it kills
-## blows up in turn, so chains resolve breadth-first. Once every kill is credited, each
-## building with a cell centre in reach of a blast takes the blast damage once, as does the
-## base, and every pile and wall in reach is erased.
+## At [constant Simulation.Step.REMOVE_DEAD], every bloater in the death list blows up where
+## it died. Its blast kills each living enemy within the blast radius, credited to the bloater's
+## killer, and a bloater it kills blows up in turn, so chains resolve breadth-first. Once every
+## kill is credited, each building with a cell centre in reach of a blast takes the blast damage
+## once, as does the base and every living soldier, and every pile and wall in reach is erased.
 
 var _settings: Settings
 var _map: MapData
@@ -16,12 +16,13 @@ var _run_state: RunState
 var _base_cells: Array[Vector2i]
 
 
-## One bloater blowing up: where, and who gets the credit for its kills.
+## One bloater blowing up: where, who gets the credit for its kills, and the soldiers it hurt.
 class Blast:
 	extends RefCounted
 
 	var position: Vector2
 	var killer: int
+	var soldiers_hit := PackedInt32Array()
 
 	func _init(blast_position: Vector2, blast_killer: int) -> void:
 		position = blast_position
@@ -46,8 +47,9 @@ func _init(
 
 
 ## Blows up every bloater in [param deaths], adding each blast kill to it in kill order, and
-## returns the blasts in the order they went off.
-func resolve(deaths: Deaths) -> Array[Blast]:
+## returns the blasts in the order they went off. A blast kill counts towards its killer's kills
+## if a building made it; a soldier's are counted as it is removed. Blasts hurt [param soldiers].
+func resolve(deaths: Deaths, soldiers: Soldiers) -> Array[Blast]:
 	var blasts: Array[Blast] = []
 	var radius := _settings.blast_radius
 	var k := 0
@@ -55,7 +57,7 @@ func resolve(deaths: Deaths) -> Array[Blast]:
 	while k < deaths.size():
 		if deaths.kinds[k] == Enemies.Kind.BLOATER:
 			if blasts.is_empty():
-				# Removal moved enemies between slots since step 3.
+				# Removal moved enemies between slots since REBUILD_SPATIAL_HASH.
 				_enemies.rebuild_spatial_hash()
 			var blast := Blast.new(deaths.positions[k], deaths.killers[k])
 			blasts.append(blast)
@@ -66,6 +68,7 @@ func resolve(deaths: Deaths) -> Array[Blast]:
 	_enemies.remove_dead()
 	for blast in blasts:
 		_hurt_structures(blast.position, radius)
+		_hurt_soldiers(blast, radius, soldiers)
 		_erase_piles(blast.position, radius)
 	return blasts
 
@@ -86,6 +89,13 @@ func _hurt_structures(centre: Vector2, radius: float) -> void:
 		_run_state.damage_base(damage)
 
 
+func _hurt_soldiers(blast: Blast, radius: float, soldiers: Soldiers) -> void:
+	for i in soldiers.count:
+		if soldiers.hp[i] > 0.0 and soldiers.positions[i].distance_to(blast.position) <= radius:
+			soldiers.damage(soldiers.ids[i], _settings.blast_damage, true)
+			blast.soldiers_hit.append(soldiers.ids[i])
+
+
 func _erase_piles(centre: Vector2, radius: float) -> void:
 	var low := Vector2i((centre - Vector2(radius, radius)).floor())
 	var high := Vector2i((centre + Vector2(radius, radius)).floor())
@@ -104,4 +114,4 @@ static func _any_in_reach(cells: Array[Vector2i], centre: Vector2, radius: float
 
 
 static func _in_reach(cell: Vector2i, centre: Vector2, radius: float) -> bool:
-	return (Vector2(cell) + Vector2(0.5, 0.5)).distance_to(centre) <= radius
+	return MapData.centre_of(cell).distance_to(centre) <= radius

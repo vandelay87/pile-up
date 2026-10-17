@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+# Builds the pile-up GDExtension into res://bin. One release build per platform serves the
+# editor, the tests and the exports: `scons -C native target=template_release`.
+
+env = SConscript("godot-cpp/SConstruct")
+env.Append(CPPPATH=["src/"])
+# No fused multiply-adds, so the scan rounds as the engine's GDScript maths does.
+if env.get("is_msvc", False):
+    env.Append(CCFLAGS=["/fp:precise"])
+else:
+    env.Append(CCFLAGS=["-ffp-contract=off"])
+library = env.SharedLibrary(
+    "../bin/libpileup{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+    source=Glob("src/*.cpp"),
+)
+Default(library)

@@ -4,6 +4,10 @@ extends RefCounted
 enum Route { SENSIBLE, DIRECT }
 
 const UNREACHABLE := INF
+## The most field cells worked in one step, across both pending fields: checked, invalidated,
+## reseeded or settled. About 1.5 ms on the M5 release build. A cell count rather than a time, so
+## runs replay exactly.
+const SETTLE_CELLS_PER_TICK := 900
 const NO_PARENT := Vector2i(-1, -1)
 const _OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0),
@@ -17,8 +21,8 @@ const _OFFSETS: Array[Vector2i] = [
 ]
 const _NO_OFFSET := 8
 const _REGION := 1
-const _INVALID := 2
-const _RESHAPED := 4
+const _RESHAPED := 2
+const _UNBUDGETED := -1
 
 static var _dxs := PackedInt32Array()
 static var _dys := PackedInt32Array()
@@ -27,6 +31,9 @@ static var _directions := PackedVector2Array()
 
 var last_rebuild_msec: float
 var last_update_msec: float
+var last_step_msec: float
+## The field cells the last step worked: checked, invalidated, reseeded or settled.
+var last_step_cells := 0
 
 var _settings: Settings
 var _map: MapData
@@ -39,6 +46,7 @@ var _solid := PackedByteArray()
 var _builds: Array[_FieldBuild] = []
 var _build_tasks := PackedInt64Array()
 var _builds_stale := false
+var _pending: Array[_PendingField] = []
 var _blend_cells := PackedInt32Array([0, 0, 0, 0])
 var _blend_weights := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var _marks := PackedByteArray()
@@ -52,6 +60,50 @@ class Field:
 	var parents := PackedInt32Array()
 	var parent_offsets := PackedByteArray()
 	var directions := PackedVector2Array()
+
+
+# A copy of one field being repaired, swapped in once it is settled. Each step works its queues in
+# order: the changed cells' neighbourhoods to check, the invalidated cells whose children are still
+# to find, the cells to reseed, then the heap. Reseeding waits until nothing is left to invalidate.
+class _PendingField:
+	extends RefCounted
+
+	var field := Field.new()
+	var heap := _Heap.new(64)
+	var changed := PackedInt32Array()
+	var reseeded := false
+	var checks := PackedInt32Array()
+	var next_check := 0
+	var invalid := PackedInt32Array()
+	var next_invalid := 0
+	var seeds := PackedInt32Array()
+	var next_seed := 0
+
+	func _init(live: Field) -> void:
+		field.values = live.values.duplicate()
+		field.parents = live.parents.duplicate()
+		field.parent_offsets = live.parent_offsets.duplicate()
+		field.directions = live.directions.duplicate()
+
+	func is_invalidating() -> bool:
+		return next_check < checks.size() or next_invalid < invalid.size()
+
+	func is_reseeding() -> bool:
+		return next_seed < seeds.size()
+
+	func is_settled() -> bool:
+		return not is_invalidating() and not is_reseeding() and heap.is_empty()
+
+	# Drops the queues already worked, once each is drained.
+	func compact() -> void:
+		if not is_invalidating():
+			checks.clear()
+			next_check = 0
+			invalid.clear()
+			next_invalid = 0
+		if not is_reseeding():
+			seeds.clear()
+			next_seed = 0
 
 
 class _FieldBuild:
@@ -109,7 +161,8 @@ func rebuild() -> bool:
 	if is_rebuilding():
 		_builds_stale = true
 		return false
-	_keep_sensible_before(false)
+	_keep_sensible_before()
+	_pending.clear()
 	_rebuild_now()
 	return true
 
@@ -125,25 +178,64 @@ func _rebuild_now() -> void:
 	last_rebuild_msec = (Time.get_ticks_usec() - started) / 1000.0
 
 
-func update(cells: Array[Vector2i]) -> bool:
+# Feeds [param cells] into the pending fields, copying the live ones if none are pending, and
+# queues their neighbourhoods for [method step] to repair. The fields read stay as they are until
+# [method step] swaps the pending ones in.
+func update(cells: Array[Vector2i]) -> void:
 	if is_rebuilding():
 		_builds_stale = true
-		return false
+		return
 	var started := Time.get_ticks_usec()
 	var reshaped := _apply_solid(cells)
-	var changed := false
 	for route: Route in Route.values():
-		changed = _repair(route, cells) or changed
+		_queue_pending(route, cells)
 	for cell in reshaped:
 		_marks[cell] &= ~_RESHAPED
 	last_update_msec = (Time.get_ticks_usec() - started) / 1000.0
-	return changed
+
+
+# Works at most [param budget] cells of the pending fields, across both, and swaps both in
+# together once they are settled. Returns whether they swapped in.
+func step(budget := SETTLE_CELLS_PER_TICK) -> bool:
+	last_step_cells = 0
+	if _pending.is_empty():
+		last_step_msec = 0.0
+		return false
+	var started := Time.get_ticks_usec()
+	var allowance := budget
+	var finished := true
+	for route: Route in Route.values():
+		var pending := _pending[route]
+		budget -= _repair(route, pending, budget)
+		pending.compact()
+		finished = finished and pending.is_settled()
+	last_step_cells = allowance - budget
+	if finished:
+		_swap_in_pending()
+	last_step_msec = (Time.get_ticks_usec() - started) / 1000.0
+	return finished
+
+
+func is_settling() -> bool:
+	return not _pending.is_empty()
+
+
+func _swap_in_pending() -> void:
+	for pending in _pending:
+		var field := pending.field
+		for cell in pending.changed:
+			field.directions[cell] = _directions[field.parent_offsets[cell]]
+	if _pending[Route.SENSIBLE].reseeded:
+		_keep_sensible_before()
+	_fields = [_pending[Route.SENSIBLE].field, _pending[Route.DIRECT].field]
+	_pending.clear()
 
 
 func start_rebuild() -> void:
 	if is_rebuilding():
 		_builds_stale = true
 		return
+	_pending.clear()
 	_start_builds()
 
 
@@ -158,7 +250,7 @@ func finish_rebuild() -> bool:
 	if _builds_stale:
 		_start_builds()
 		return false
-	_keep_sensible_before(false)
+	_keep_sensible_before()
 	_fields = [_builds[Route.SENSIBLE].field, _builds[Route.DIRECT].field]
 	_factors = [_builds[Route.SENSIBLE].factors, _builds[Route.DIRECT].factors]
 	_solid = _builds[Route.SENSIBLE].solid
@@ -174,17 +266,10 @@ func take_sensible_before() -> Field:
 	return before
 
 
-# Keeps the sensible field about to change; a field repaired in place is copied first.
-func _keep_sensible_before(copy: bool) -> void:
-	if _sensible_before != null:
-		return
-	var field := _fields[Route.SENSIBLE]
-	if copy:
-		var kept := Field.new()
-		kept.values = field.values.duplicate()
-		kept.directions = field.directions.duplicate()
-		field = kept
-	_sensible_before = field
+# Keeps the sensible field about to be replaced.
+func _keep_sensible_before() -> void:
+	if _sensible_before == null:
+		_sensible_before = _fields[Route.SENSIBLE]
 
 
 func value(route: Route, cell: Vector2i) -> float:
@@ -262,29 +347,47 @@ func _wait_for_builds() -> void:
 	_build_tasks.clear()
 
 
-func _repair(route: Route, cells: Array[Vector2i]) -> bool:
-	var field := _fields[route]
-	var factors := _factors[route]
-	var region := _apply_factors(route, factors, cells)
+# Queues the neighbourhoods of [param route]'s changed cells on its pending field, to check and
+# reseed.
+func _queue_pending(route: Route, cells: Array[Vector2i]) -> void:
+	var region := _apply_factors(route, _factors[route], cells)
 	if region.is_empty():
-		return false
-	if route == Route.SENSIBLE:
-		_keep_sensible_before(true)
-	var invalid := _invalidate(field, factors, region)
-	var changed := invalid.duplicate()
-	var heap := _Heap.new(64)
-	for seeds: PackedInt32Array in [region, invalid]:
-		for cell in seeds:
-			if _reseed(field, factors, cell, heap):
-				changed.append(cell)
-	_settle(_map.width, _map.height, factors, _solid, field, heap, changed)
-	for cell in changed:
-		field.directions[cell] = _directions[field.parent_offsets[cell]]
+		return
+	if _pending.is_empty():
+		_pending = [
+			_PendingField.new(_fields[Route.SENSIBLE]), _PendingField.new(_fields[Route.DIRECT])
+		]
+	var pending := _pending[route]
+	pending.reseeded = true
+	pending.checks.append_array(region)
+	pending.seeds.append_array(region)
 	for cell in region:
-		_marks[cell] = 0
-	for cell in invalid:
-		_marks[cell] = 0
-	return true
+		_marks[cell] &= ~_REGION
+
+
+# Works at most [param budget] cells of [param pending]: invalidating first, then reseeding, then
+# settling. Returns how many it worked.
+func _repair(route: Route, pending: _PendingField, budget: int) -> int:
+	var factors := _factors[route]
+	var worked := _invalidate(pending, factors, budget)
+	if pending.is_invalidating():
+		return worked
+	worked += _reseed_queued(pending, factors, budget - worked)
+	if pending.is_reseeding():
+		return worked
+	return (
+		worked
+		+ _settle(
+			_map.width,
+			_map.height,
+			factors,
+			_solid,
+			pending.field,
+			pending.heap,
+			pending.changed,
+			budget - worked
+		)
+	)
 
 
 func _apply_factors(
@@ -309,13 +412,18 @@ func _apply_factors(
 	return region
 
 
-func _invalidate(
-	field: Field, factors: PackedFloat64Array, region: PackedInt32Array
-) -> PackedInt32Array:
+# Checks up to [param budget] queued cells, invalidating each whose parent got dearer or that
+# can't be entered, then finds the children of the invalidated cells, invalidating them too.
+# Returns how many cells it worked.
+func _invalidate(pending: _PendingField, factors: PackedFloat64Array, budget: int) -> int:
+	var field := pending.field
 	var values := field.values
 	var parents := field.parents
-	var invalid := PackedInt32Array()
-	for cell in region:
+	var worked := 0
+	while worked != budget and pending.next_check < pending.checks.size():
+		var cell := pending.checks[pending.next_check]
+		pending.next_check += 1
+		worked += 1
 		if values[cell] == UNREACHABLE:
 			continue
 		var k := field.parent_offsets[cell]
@@ -323,16 +431,15 @@ func _invalidate(
 			factors[cell] == INF
 			or (k != _NO_OFFSET and _cost_via(factors, values, cell, k) > values[cell])
 		):
-			_marks[cell] |= _INVALID
-			invalid.append(cell)
+			_invalidate_cell(pending, cell)
 	var width := _map.width
 	var height := _map.height
 	var dxs := _dxs
 	var dys := _dys
-	var next := 0
-	while next < invalid.size():
-		var cell := invalid[next]
-		next += 1
+	while worked != budget and pending.next_invalid < pending.invalid.size():
+		var cell := pending.invalid[pending.next_invalid]
+		pending.next_invalid += 1
+		worked += 1
 		var x := cell % width
 		var y := cell / width
 		for k in 8:
@@ -341,13 +448,30 @@ func _invalidate(
 			if nx < 0 or ny < 0 or nx >= width or ny >= height:
 				continue
 			var child := ny * width + nx
-			if parents[child] == cell and _marks[child] & _INVALID == 0:
-				_marks[child] |= _INVALID
-				invalid.append(child)
-	for cell in invalid:
-		values[cell] = UNREACHABLE
-		_set_parent(field, cell, _NO_OFFSET, width)
-	return invalid
+			# An invalidated cell loses its parent, so none is found twice.
+			if parents[child] == cell:
+				_invalidate_cell(pending, child)
+	return worked
+
+
+func _invalidate_cell(pending: _PendingField, cell: int) -> void:
+	pending.field.values[cell] = UNREACHABLE
+	_set_parent(pending.field, cell, _NO_OFFSET, _map.width)
+	pending.invalid.append(cell)
+	pending.seeds.append(cell)
+	pending.changed.append(cell)
+
+
+# Reseeds up to [param budget] queued cells. Returns how many it worked.
+func _reseed_queued(pending: _PendingField, factors: PackedFloat64Array, budget: int) -> int:
+	var worked := 0
+	while worked != budget and pending.is_reseeding():
+		var cell := pending.seeds[pending.next_seed]
+		pending.next_seed += 1
+		worked += 1
+		if _reseed(pending.field, factors, cell, pending.heap):
+			pending.changed.append(cell)
+	return worked
 
 
 func _reseed(field: Field, factors: PackedFloat64Array, cell: int, heap: _Heap) -> bool:
@@ -474,13 +598,15 @@ static func _build_field(
 		var base_index := map.index_of(cell)
 		field.values[base_index] = 0.0
 		heap.push(0.0, base_index)
-	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array())
+	_settle(width, map.height, factors, solid, field, heap, PackedInt32Array(), _UNBUDGETED)
 
 	for cell in count:
 		field.directions[cell] = _directions[field.parent_offsets[cell]]
 	return field
 
 
+# Settles up to [param budget] cells from [param heap], or all of them when _UNBUDGETED, and
+# returns how many it settled.
 static func _settle(
 	width: int,
 	height: int,
@@ -488,19 +614,23 @@ static func _settle(
 	solid: PackedByteArray,
 	field: Field,
 	heap: _Heap,
-	changed: PackedInt32Array
-) -> void:
+	changed: PackedInt32Array,
+	budget: int,
+) -> int:
 	var values := field.values
 	var parents := field.parents
 	var parent_offsets := field.parent_offsets
 	var dxs := _dxs
 	var dys := _dys
 	var steps := _steps
-	while not heap.is_empty():
+	var settled := 0
+	while settled != budget and not heap.is_empty():
 		var current := heap.peek_value()
 		var cell := heap.pop()
-		if current > values[cell]:
+		# A change joining pending fields can invalidate a cell still queued at its old value.
+		if current != values[cell]:
 			continue
+		settled += 1
 		var x := cell % width
 		var y := cell / width
 		var entry_cost := factors[cell]
@@ -524,6 +654,7 @@ static func _settle(
 			parents[neighbour] = cell
 			parent_offsets[neighbour] = k
 			changed.append(neighbour)
+	return settled
 
 
 static func _set_parent(field: Field, cell: int, k: int, width: int) -> void:

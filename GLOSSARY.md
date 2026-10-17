@@ -169,6 +169,10 @@ _Avoid_: Stance, squad (nothing groups soldiers except the player's selection)
 The level of the cell a soldier stands on: 0 on the ground, up to 5 on a wall. The higher a soldier's elevation, the further it fires.
 _Avoid_: High ground (every level counts, not only the top), height
 
+**Knock-off**:
+A soldier standing on a wall being thrown off it when a tumble passes over its cell, onto the ground on the side the tumble lands, among the enemies that came over. It keeps its spot and makes its way back if it survives.
+_Avoid_: Knock-back, fall, dismount
+
 **Recover**:
 A soldier returning to full HP at the end of a wave. Nothing heals a soldier during one.
 _Avoid_: Heal, repair (only buildings are repaired)

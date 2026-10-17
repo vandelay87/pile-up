@@ -21,7 +21,7 @@ func _init(run_settings: Settings, run_map: MapData) -> void:
 	piles = Piles.new(settings, map, occupancy)
 	run_state = RunState.new(settings)
 	power_grid = PowerGrid.new(settings, map)
-	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid)
+	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid, Ids.new())
 	structures = Structures.new(map, occupancy, piles, buildings, run_state)
 
 

@@ -259,6 +259,7 @@ func _towered_field() -> Enemies:
 		var tower := _systems.build_tower(Vector2i(WALL.x, y))
 		assert_object(tower).is_not_null()
 		_routing.update(tower.footprint)
+		_routing.step()
 	_assert_next_cells_differ(Vector2i(BESIDE_OBSTACLE.floor()))
 	return enemies
 
@@ -311,9 +312,11 @@ func _add_bodies(cell: Vector2i, bodies: int) -> void:
 	_piles.queue_bodies(Deaths.bodies_at(positions))
 	_piles.land()
 	_routing.update(_piles.take_field_changes())
+	_routing.step()
 
 
 func _tick(enemies: Enemies) -> void:
 	_routing.update(_piles.take_field_changes())
+	_routing.step()
 	enemies.rebuild_spatial_hash()
 	enemies.move()

@@ -820,6 +820,8 @@ const SCHEMA := {
 			"apply": Settings.Apply.LIVE,
 		},
 	},
+	"soldiers": UnitSettingsSchema.SOLDIERS,
+	"barracks": UnitSettingsSchema.BARRACKS,
 	"combo":
 	{
 		"timer":

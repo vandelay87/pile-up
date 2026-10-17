@@ -5,6 +5,8 @@ const SCREENS_ACROSS := 1.75
 const MAX_ZOOM := 2.0
 const WHEEL_ZOOM_STEP := 1.1
 const PAN_GESTURE_SPEED := 16.0
+## How fast the arrow keys pan, in screen pixels a second.
+const KEY_PAN_SPEED := 900.0
 
 var _bounds: Rect2
 var _min_zoom := 1.0
@@ -26,6 +28,25 @@ func frame(map: MapData) -> void:
 	position = GridTransform.grid_to_world(Vector2(map.base.get_center()))
 
 
+## Centres the view on [param point], in world coordinates, within the map's bounds.
+func centre_on(point: Vector2) -> void:
+	_move_to(point)
+
+
+# The arrow keys pan, unless a control (a debug field or slider) has the keyboard.
+func _process(delta: float) -> void:
+	if get_viewport().gui_get_focus_owner() != null:
+		return
+	var direction := Vector2(
+		float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
+		float(Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_UP)),
+	)
+	if direction != Vector2.ZERO:
+		_move_to(position + direction * KEY_PAN_SPEED * delta / zoom)
+
+
+# A left-drag is the selection box, so panning is a middle-drag, a two-finger trackpad drag
+# or the arrow keys.
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
@@ -34,7 +55,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_zoom_at(button.position, WHEEL_ZOOM_STEP)
 			MOUSE_BUTTON_WHEEL_DOWN when button.pressed:
 				_zoom_at(button.position, 1.0 / WHEEL_ZOOM_STEP)
-			MOUSE_BUTTON_LEFT, MOUSE_BUTTON_MIDDLE:
+			MOUSE_BUTTON_MIDDLE:
 				_dragging = button.pressed
 	elif event is InputEventMouseMotion and _dragging:
 		var motion := event as InputEventMouseMotion

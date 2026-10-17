@@ -104,6 +104,22 @@ func is_breakable(index: int) -> bool:
 	)
 
 
+# Every cell's Kind, by index, for the loops that read the whole map.
+func kinds() -> PackedByteArray:
+	var building_ids := _occupancy.building_ids
+	var levels := _piles.levels
+	var cell_kinds := PackedByteArray()
+	cell_kinds.resize(levels.size())
+	for index in levels.size():
+		if _base_cells[index] == 1:
+			cell_kinds[index] = Kind.BASE
+		elif building_ids[index] != Occupancy.EMPTY:
+			cell_kinds[index] = Kind.BUILDING
+		elif levels[index] == Piles.WALL_LEVEL:
+			cell_kinds[index] = Kind.WALL
+	return cell_kinds
+
+
 # True when a structure is in this cell or one of its 8 neighbours.
 func is_nearby(index: int) -> bool:
 	return _near_base[index] == 1 or _piles.walls_nearby[index] > 0 or _buildings.nearby[index] > 0

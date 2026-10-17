@@ -14,24 +14,28 @@ const _FUSE_RAN_OUT := -1
 const _COLLISION_PASSES := 2
 const _HASH_MARGIN := 2
 const _PILE_LEVELS := Piles.WALL_LEVEL + 1
-const _PROGRESS := 0.02
+## How far an enemy's field value must drop for a tick to count as progress against a jam.
+const PROGRESS := 0.02
 # The weight of this tick's progress in its exponential average.
 const _PROGRESS_SMOOTHING := 0.05
 const _ROLL_STEPS := 40
 # Single-precision headings put an exact reversal a hair either side of pi, so a turn must
 # beat the turn-back angle by this much to count.
 const _TURN_SLACK := 1e-4
-const _FACES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 
 var count := 0
 var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
 var kinds := PackedByteArray()
-# The building that last damaged each enemy, or NONE: the killer if it dies.
+# The building or soldier that last damaged each enemy, or NONE: the killer if it dies.
 var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
 var structure_targets := PackedInt32Array()
+## The soldier each enemy is attacking (or holding at with its fuse lit), or NONE: set and
+## cleared by [SoldierAttacks] at [constant Simulation.Step.MOVE_UNITS]. An enemy with one holds
+## its ground at [constant Simulation.Step.MOVE_ENEMIES] and doesn't count as stalled.
+var soldier_targets := PackedInt32Array()
 var routes := PackedByteArray()
 var last_rolled_cells := PackedInt32Array()
 var pace_rolls := PackedFloat32Array()
@@ -44,6 +48,10 @@ var progress := PackedFloat32Array()
 var tumbling := PackedByteArray()
 # Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
 var fuses := PackedInt32Array()
+## True while [method move] runs the neighbour scan in the C++ GDExtension's NeighbourScan
+## (ADR 0001), false for the GDScript scan. On whenever the extension is loaded; tests turn it
+## off to compare the two.
+var native_scan := ClassDB.class_exists(&"NeighbourScan")
 
 var _settings: Settings
 var _map: MapData
@@ -51,6 +59,7 @@ var _occupancy: Occupancy
 var _piles: Piles
 var _routing: Routing
 var _structures: Structures
+var _solids: Solids
 var _rng: RandomNumberGenerator
 var _swarm_rng: RandomNumberGenerator
 var _next_id := 0
@@ -58,10 +67,19 @@ var _index_by_id := {}
 var _bucket_starts := PackedInt32Array()
 var _bucket_enemies := PackedInt32Array()
 var _moved := PackedVector2Array()
+# The personal-space push for the enemy being moved, from either neighbour scan.
+var _last_space_push := Vector2.ZERO
 var _best_values := PackedFloat64Array()
 var _stuck_ticks := PackedInt32Array()
 var _last_values := PackedFloat64Array()
+# 1 for an enemy holding its ground this tick: attacking a structure or a soldier.
+var _attacking := PackedByteArray()
+# Each enemy's sensible field value, worked out once between begin_targeting and end_targeting,
+# NAN until then; empty outside that window.
+var _target_values := PackedFloat64Array()
 var _ticks := 0
+# The NeighbourScan, typed loosely: without the extension the class doesn't exist.
+var _scan: RefCounted
 
 
 func _init(
@@ -80,6 +98,7 @@ func _init(
 	_piles = run_piles
 	_routing = run_routing
 	_structures = run_structures
+	_solids = Solids.new(_map, _occupancy, _piles, _structures, true)
 	_rng = rng
 	# The swarm spread rolls draw from their own stream so the heading offsets and route
 	# rolls stay as they were without it.
@@ -102,6 +121,7 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	last_hitters[count] = NONE
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	structure_targets[count] = NONE
+	soldier_targets[count] = NONE
 	routes[count] = Routing.Route.SENSIBLE
 	last_rolled_cells[count] = NONE
 	pace_rolls[count] = _swarm_rng.randf_range(-1.0, 1.0)
@@ -126,7 +146,7 @@ func index_of(id: int) -> int:
 	return _index_by_id.get(id, NONE)
 
 
-# Damage from the building with id [param by], or from NONE.
+# Damage from the building or soldier with id [param by], or from NONE.
 func damage(id: int, amount: float, by: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
@@ -134,7 +154,7 @@ func damage(id: int, amount: float, by: int) -> void:
 		last_hitters[index] = by
 
 
-# A debug kill: no building gets the credit.
+# A debug kill: nobody gets the credit.
 func kill(id: int) -> void:
 	var index := index_of(id)
 	if index != NONE:
@@ -160,6 +180,7 @@ func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 	var low := Vector2i((pos - Vector2(reach, reach)).floor()) - Vector2i.ONE * _HASH_MARGIN
 	var high := Vector2i((pos + Vector2(reach, reach)).floor()) + Vector2i.ONE * _HASH_MARGIN
 	var reach_squared := reach * reach
+	var held := not _target_values.is_empty()
 	var best_id := NONE
 	var best_value := INF
 	var best_outranks := false
@@ -175,7 +196,13 @@ func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 					continue
 				if positions[i].distance_squared_to(pos) > reach_squared:
 					continue
-				var field_value := _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
+				var field_value: float
+				if held and not is_nan(_target_values[i]):
+					field_value = _target_values[i]
+				else:
+					field_value = _routing.sample_value(Routing.Route.SENSIBLE, positions[i])
+					if held:
+						_target_values[i] = field_value
 				var ties_lower := field_value == best_value and ids[i] < best_id
 				var outranks := outranks_normal and not best_outranks
 				if best_id == NONE or outranks or field_value < best_value or ties_lower:
@@ -183,6 +210,19 @@ func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 					best_id = ids[i]
 					best_outranks = outranks_normal
 	return best_id
+
+
+## From here until [method end_targeting] enemies hold still and none is removed, so
+## [method target_in_range] works out each enemy's field value once, for every tower and soldier
+## picking a target.
+func begin_targeting() -> void:
+	_target_values.resize(count)
+	_target_values.fill(NAN)
+
+
+## Ends the window [method begin_targeting] opened.
+func end_targeting() -> void:
+	_target_values.clear()
 
 
 ## The indices of the living, walking enemies within [param reach] of one of the squares in
@@ -233,6 +273,7 @@ func start_tumble(index: int) -> void:
 	tumbling[index] = 1
 	fuses[index] = 0
 	structure_targets[index] = NONE
+	soldier_targets[index] = NONE
 	progress[index] = 1.0
 	_last_values[index] = INF
 
@@ -293,29 +334,66 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	_ticks += 1
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
-	# Only a debug kill at step 0 leaves an enemy dead before removal at step 7; it stands
+	# Only a debug kill as commands drain leaves an enemy dead before REMOVE_DEAD; it stands
 	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
 	var fuse_ticks := _settings.fuse_ticks
+	# An enemy attacking a soldier looks for no structure until that attack ends.
+	_attacking.resize(count)
 	for i in count:
 		if fuses[i] > 0 and hp[i] > 0.0:
 			_burn_fuse(i)
-		var idle := hp[i] <= 0.0 or tumbling[i] == 1
+		var idle := hp[i] <= 0.0 or tumbling[i] == 1 or soldier_targets[i] != NONE
 		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
 		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
 			fuses[i] = fuse_ticks
+		_attacking[i] = 1 if structure_targets[i] != NONE or soldier_targets[i] != NONE else 0
 	_moved.resize(count)
+	var separations := PackedVector2Array()
+	var space_pushes := PackedVector2Array()
+	if native_scan:
+		if _scan == null:
+			_scan = ClassDB.instantiate(&"NeighbourScan")
+		_scan.call(
+			&"scan",
+			count,
+			positions,
+			hp,
+			tumbling,
+			_attacking,
+			ids,
+			_bucket_starts,
+			_bucket_enemies,
+			_map.width,
+			_map.height,
+			radius,
+			push,
+			cap,
+			spreads,
+			space_radius,
+			space_push
+		)
+		separations = _scan.call(&"get_separations")
+		space_pushes = _scan.call(&"get_space_pushes")
 	for i in count:
 		var pos := positions[i]
 		if hp[i] <= 0.0 or tumbling[i] == 1:
 			_moved[i] = pos
 			continue
-		var separation := _separation(i, radius, push, cap).limit_length(radius)
-		if structure_targets[i] != NONE:
+		var attacking := _attacking[i] == 1
+		var spaces := spreads and not attacking
+		var separation: Vector2
+		if native_scan:
+			separation = separations[i]
+			_last_space_push = space_pushes[i]
+		else:
+			separation = _neighbour_pushes(i, radius, push, cap, spaces, space_radius, space_push)
+		separation = separation.limit_length(radius)
+		if attacking:
 			_moved[i] = pos + separation
 			continue
-		if spreads:
+		if spaces:
 			var clear_step := steps[kinds[i] * _PILE_LEVELS]
-			separation += _personal_space(i, space_radius, space_push).limit_length(clear_step)
+			separation += _last_space_push.limit_length(clear_step)
 		var turn := heading_offsets[i]
 		if wander > 0.0:
 			turn += wander * sin(wander_phases[i] + wander_angle)
@@ -326,12 +404,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	for i in count:
 		if hp[i] <= 0.0 or tumbling[i] == 1:
 			continue
-		var pos := _moved[i]
-		for _pass in _COLLISION_PASSES:
-			var resolved := _resolve_collision(pos, radius)
-			if resolved == pos:
-				break
-			pos = resolved
+		var pos := _held_off_solids(_moved[i], radius)
 		positions[i] = pos
 		if routes[i] == Routing.Route.SENSIBLE:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
@@ -344,6 +417,45 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	for i in count:
 		if structure_targets[i] != NONE and kinds[i] != Kind.BLOATER:
 			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+
+
+## At [constant Simulation.Step.MOVE_UNITS], the contact pass for a soldier's body at
+## [param pos], from the hash built at [constant Simulation.Step.REBUILD_SPATIAL_HASH]: every
+## living, non-tumbling enemy in the 3×3 buckets around it whose centre is closer than two body
+## radii is pushed apart from it along the line between them, closing [param push] of the overlap.
+## The enemy takes [param enemy_share] of that push and is held off walls and solids. Returns where
+## the soldier ends up, having taken the rest.
+func push_away_from(pos: Vector2, push: float, enemy_share: float) -> Vector2:
+	var radius := _settings.separation_radius
+	var spacing := 2.0 * radius
+	var spacing_squared := spacing * spacing
+	var cell := Vector2i(pos.floor())
+	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
+		var row := y * _map.width
+		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
+			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
+				var i := _bucket_enemies[slot]
+				if hp[i] <= 0.0 or tumbling[i] == 1:
+					continue
+				var away := positions[i] - pos
+				var distance_squared := away.length_squared()
+				if distance_squared >= spacing_squared:
+					continue
+				var distance := sqrt(distance_squared)
+				var direction := away / distance if distance > 1e-6 else Vector2.RIGHT
+				var shove := direction * (spacing - distance) * push
+				positions[i] = _held_off_solids(positions[i] + shove * enemy_share, radius)
+				pos -= shove * (1.0 - enemy_share)
+	return pos
+
+
+func _held_off_solids(pos: Vector2, radius: float) -> Vector2:
+	for _pass in _COLLISION_PASSES:
+		var resolved := _solids.resolve(pos, radius)
+		if resolved == pos:
+			break
+		pos = resolved
+	return pos
 
 
 # A lit fuse burns down a tick; one that runs out pops its bloater, with no killer.
@@ -450,7 +562,7 @@ func _structure_target(i: int, reach: float, jam_ticks: int) -> int:
 		return NONE
 	var route := routes[i] as Routing.Route
 	var field_value := _routing.sample_value(route, pos)
-	if field_value < _best_values[i] - _PROGRESS:
+	if field_value < _best_values[i] - PROGRESS:
 		_best_values[i] = field_value
 		_stuck_ticks[i] = 0
 	else:
@@ -492,122 +604,90 @@ func _distance_to_cell(pos: Vector2, index: int) -> float:
 	return pos.distance_to(pos.clamp(corner, corner + Vector2.ONE))
 
 
-# Pushes from overlapping peers are averaged: summed, they overcorrect in a packed crowd and
-# the enemy steps back and forth every tick. A walker takes the doubled push of each attacker
-# in full, so the crowd cannot squeeze attackers off their targets.
-func _separation(i: int, radius: float, push: float, cap: int) -> Vector2:
+# Separation and personal space from one scan of the buckets around enemy i: returns the
+# separation push, and leaves the personal-space push in _last_space_push when [param spaces].
+#
+# Separation pushes from overlapping peers are averaged: summed, they overcorrect in a packed
+# crowd and the enemy steps back and forth every tick. A walker takes the doubled push of each
+# attacker in full, so the crowd cannot squeeze attackers off their targets. Separation reads
+# the 3×3 buckets, up to the neighbour cap.
+#
+# Personal space is a soft push that keeps neighbours a personal-space radius apart, wider than
+# the collision spacing, so a column fans out across a corridor rather than single-filing. It
+# reads every neighbour within ceil(space_radius) buckets, past the cap and the 3×3, but not
+# attackers.
+#
+# Mirrored in native/src/neighbour_scan.cpp: keep the two in step.
+func _neighbour_pushes(
+	i: int,
+	radius: float,
+	push: float,
+	cap: int,
+	spaces: bool,
+	space_radius: float,
+	space_push: float
+) -> Vector2:
+	_last_space_push = Vector2.ZERO
 	var spacing := 2.0 * radius
 	var spacing_squared := spacing * spacing
+	var space_squared := space_radius * space_radius
+	var reach := ceili(space_radius) if spaces else 1
 	var width := _map.width
 	var pos := positions[i]
 	var cell := Vector2i(pos.floor())
-	var attacking := structure_targets[i] != NONE
+	var attacking := _attacking[i] == 1
+	var separating := true
 	var checked := 0
 	var from_peers := Vector2.ZERO
 	var peers := 0
 	var from_attackers := Vector2.ZERO
-	for y in range(maxi(cell.y - 1, 0), mini(cell.y + 2, _map.height)):
-		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, width)):
+	var from_space := Vector2.ZERO
+	for y in range(maxi(cell.y - reach, 0), mini(cell.y + reach + 1, _map.height)):
+		var near_row := absi(y - cell.y) <= 1
+		for x in range(maxi(cell.x - reach, 0), mini(cell.x + reach + 1, width)):
+			var near := near_row and absi(x - cell.x) <= 1
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
 				if j == i or tumbling[j] == 1:
 					continue
-				if cap > 0 and checked == cap:
-					return _separation_total(from_peers, peers, from_attackers)
-				checked += 1
 				var away := pos - positions[j]
-				if away.length_squared() >= spacing_squared:
-					continue
-				var other_attacking := structure_targets[j] != NONE
-				if attacking and not other_attacking:
+				var distance_squared := away.length_squared()
+				var other_attacking := _attacking[j] == 1
+				var separates := false
+				if near and separating:
+					if cap > 0 and checked == cap:
+						separating = false
+						if not spaces:
+							return _separation_total(from_peers, peers, from_attackers)
+					else:
+						checked += 1
+						separates = (
+							distance_squared < spacing_squared
+							and (other_attacking or not attacking)
+						)
+				var keeps_space := (
+					spaces and not other_attacking and distance_squared < space_squared
+				)
+				if not separates and not keeps_space:
 					continue
 				var distance := away.length()
 				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
-				var shove := direction * (spacing - distance) * push
-				if other_attacking and not attacking:
-					from_attackers += shove * 2.0
-				else:
-					from_peers += shove
-					peers += 1
+				if separates:
+					var shove := direction * (spacing - distance) * push
+					if other_attacking and not attacking:
+						from_attackers += shove * 2.0
+					else:
+						from_peers += shove
+						peers += 1
+				if keeps_space:
+					from_space += direction * (1.0 - distance / space_radius) * space_push
+	_last_space_push = from_space
 	return _separation_total(from_peers, peers, from_attackers)
 
 
 func _separation_total(from_peers: Vector2, peers: int, from_attackers: Vector2) -> Vector2:
 	return from_peers / maxi(peers, 1) + from_attackers
-
-
-# A soft push that keeps neighbours a personal-space radius apart, wider than the
-# collision spacing, so a column fans out across a corridor rather than single-filing.
-func _personal_space(i: int, space_radius: float, space_push: float) -> Vector2:
-	var reach := ceili(space_radius)
-	var radius_squared := space_radius * space_radius
-	var width := _map.width
-	var pos := positions[i]
-	var cell := Vector2i(pos.floor())
-	var total := Vector2.ZERO
-	for y in range(maxi(cell.y - reach, 0), mini(cell.y + reach + 1, _map.height)):
-		for x in range(maxi(cell.x - reach, 0), mini(cell.x + reach + 1, width)):
-			var bucket := y * width + x
-			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
-				var j := _bucket_enemies[slot]
-				if j == i or structure_targets[j] != NONE or tumbling[j] == 1:
-					continue
-				var away := pos - positions[j]
-				if away.length_squared() >= radius_squared:
-					continue
-				var distance := away.length()
-				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
-				total += direction * (1.0 - distance / space_radius) * space_push
-	return total
-
-
-func _resolve_collision(pos: Vector2, radius: float) -> Vector2:
-	var margin := Vector2(radius, radius)
-	pos = pos.clamp(margin, Vector2(_map.width, _map.height) - margin)
-	var low := Vector2i((pos - margin).floor())
-	var high := Vector2i((pos + margin).floor())
-	for y in range(low.y, high.y + 1):
-		for x in range(low.x, high.x + 1):
-			var blocked := Vector2i(x, y)
-			if not _is_impassable(blocked):
-				continue
-			var closest := pos.clamp(Vector2(blocked), Vector2(blocked + Vector2i.ONE))
-			var away := pos - closest
-			var distance := away.length()
-			if distance >= radius:
-				continue
-			if distance > 1e-6:
-				pos = closest + away / distance * radius
-			else:
-				pos = _leave_through_nearest_open_face(pos, blocked, radius)
-	return pos
-
-
-func _leave_through_nearest_open_face(pos: Vector2, cell: Vector2i, radius: float) -> Vector2:
-	var inside := pos - Vector2(cell)
-	var face_distances: Array[float] = [inside.x, 1.0 - inside.x, inside.y, 1.0 - inside.y]
-	var best_face := Vector2i.ZERO
-	var best_distance := INF
-	for k in _FACES.size():
-		if not _is_impassable(cell + _FACES[k]) and face_distances[k] < best_distance:
-			best_distance = face_distances[k]
-			best_face = _FACES[k]
-	if best_face == Vector2i.ZERO:
-		return pos
-	return pos + Vector2(best_face) * (best_distance + radius)
-
-
-func _is_impassable(cell: Vector2i) -> bool:
-	if not _map.in_bounds(cell):
-		return true
-	var index := _map.index_of(cell)
-	return (
-		_map.rock[index] == 1
-		or _structures.is_base(index)
-		or _occupancy.building_ids[index] != Occupancy.EMPTY
-		or _piles.levels[index] == Piles.WALL_LEVEL
-	)
 
 
 func _tie_break(i: int, j: int) -> Vector2:
@@ -644,6 +724,7 @@ func _swap_remove(index: int) -> void:
 	last_hitters[index] = last_hitters[count]
 	heading_offsets[index] = heading_offsets[count]
 	structure_targets[index] = structure_targets[count]
+	soldier_targets[index] = soldier_targets[count]
 	routes[index] = routes[count]
 	last_rolled_cells[index] = last_rolled_cells[count]
 	pace_rolls[index] = pace_rolls[count]
@@ -666,6 +747,7 @@ func _grow() -> void:
 	last_hitters.resize(capacity)
 	heading_offsets.resize(capacity)
 	structure_targets.resize(capacity)
+	soldier_targets.resize(capacity)
 	routes.resize(capacity)
 	last_rolled_cells.resize(capacity)
 	pace_rolls.resize(capacity)

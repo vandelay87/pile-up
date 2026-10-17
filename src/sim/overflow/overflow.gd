@@ -47,6 +47,9 @@ var _tumbles: Dictionary[int, Tumble] = {}
 # left in its window, by enemy id.
 var _landed_from: Dictionary[int, Vector2] = {}
 var _landed_ticks: Dictionary[int, int] = {}
+# The wall cells tumbles crossed this tick, each with its tumble's landing cell, in the order
+# they were crossed.
+var _knock_offs: Array[KnockOff] = []
 
 
 ## One barrier's gauge, and the stalled enemies filling it this tick.
@@ -83,6 +86,18 @@ class Crush:
 		centre = _centre_sum / stalled
 
 
+## A wall cell a tumble crossed, and the cell that tumble lands on.
+class KnockOff:
+	extends RefCounted
+
+	var wall: Vector2i
+	var landing: Vector2i
+
+	func _init(wall_cell: Vector2i, landing_cell: Vector2i) -> void:
+		wall = wall_cell
+		landing = landing_cell
+
+
 ## One enemy's way over a barrier: the cells it crosses, ending on the one it lands on, and the
 ## next one it is heading for.
 class Tumble:
@@ -101,7 +116,7 @@ class Tumble:
 
 	func add(cell: Vector2i) -> void:
 		cells.append(cell)
-		path.append(Vector2(cell) + Vector2(0.5, 0.5))
+		path.append(MapData.centre_of(cell))
 
 	## The cell it lands on.
 	func landing() -> Vector2i:
@@ -147,43 +162,54 @@ func update(cells: Array[Vector2i]) -> void:
 ## barrier it overlaps most, ties to the lower old label; an old barrier passes its gauge to one
 ## new barrier.
 func relabel() -> void:
+	# Reads kinds once and checks them inline rather than calling is_breakable per neighbour: the
+	# calls were most of a relabel's cost.
+	var kinds := _structures.kinds()
+	var wall := Structures.Kind.WALL
+	var building := Structures.Kind.BUILDING
+	var width := _map.width
+	var height := _map.height
 	var old_labels := _labels
 	_labels = PackedInt32Array()
 	_labels.resize(old_labels.size())
 	_labels.fill(NONE)
+	var labels := _labels
 	var barriers: Array[PackedInt32Array] = []
 	var stack := PackedInt32Array()
-	for index in _labels.size():
-		if _labels[index] != NONE or not _structures.is_breakable(index):
+	for index in labels.size():
+		if labels[index] != NONE or not (kinds[index] == wall or kinds[index] == building):
 			continue
+		var label := barriers.size()
 		var barrier := PackedInt32Array()
-		_labels[index] = barriers.size()
+		labels[index] = label
 		stack.append(index)
 		while not stack.is_empty():
 			var cell := stack[stack.size() - 1]
 			stack.remove_at(stack.size() - 1)
 			barrier.append(cell)
-			var at := _map.cell_of(cell)
-			for offset in _NEIGHBOURS:
-				var other := at + offset
-				if not _map.in_bounds(other):
-					continue
-				var other_index := _map.index_of(other)
-				if _labels[other_index] == NONE and _structures.is_breakable(other_index):
-					_labels[other_index] = barriers.size()
-					stack.append(other_index)
+			var x := cell % width
+			var y := cell / width
+			for ny in range(maxi(y - 1, 0), mini(y + 2, height)):
+				for nx in range(maxi(x - 1, 0), mini(x + 2, width)):
+					var other := ny * width + nx
+					var kind := kinds[other]
+					if labels[other] == NONE and (kind == wall or kind == building):
+						labels[other] = label
+						stack.append(other)
 		barriers.append(barrier)
 	var barrier_labels := _inherit(barriers, old_labels)
+	var barrier_cells := PackedInt32Array()
 	for k in barriers.size():
+		barrier_cells.append_array(barriers[k])
 		for cell in barriers[k]:
-			_labels[cell] = barrier_labels[k]
+			labels[cell] = barrier_labels[k]
 	var kept := {}
 	for label in barrier_labels:
 		kept[label] = true
 	for label: int in _crushes.keys():
 		if not kept.has(label):
 			_crushes.erase(label)
-	_mark_band()
+	_mark_band(kinds, barrier_cells)
 
 
 ## The crushes with any gauge, in label order.
@@ -217,8 +243,10 @@ func tumble(id: int) -> Tumble:
 
 
 ## Fills and leaks each gauge from the enemies stalled in its band this tick, launches each
-## crush's tumbles, then moves every tumbling enemy. Switched off, only tumbles in flight go on.
+## crush's tumbles, then moves every tumbling enemy, recording each wall cell one crosses.
+## Switched off, only tumbles in flight go on.
 func step() -> void:
+	_knock_offs.clear()
 	_count_down_landings()
 	if not _settings.overflow_enabled:
 		_crushes.clear()
@@ -245,9 +273,18 @@ func step() -> void:
 	_move_tumblers()
 
 
-## Step 7: the body of each enemy in [param deaths] that died mid-tumble, or within the
-## fall-back window of landing, lands where its tumble started instead, back the way it came,
-## so the overflow's dead don't build its barrier out ahead of it.
+## The wall cells tumbles crossed this tick, each with its landing cell, for the knock-off at
+## [constant Simulation.Step.MOVE_UNITS].
+func take_knock_offs() -> Array[KnockOff]:
+	var taken := _knock_offs
+	_knock_offs = []
+	return taken
+
+
+## At [constant Simulation.Step.REMOVE_DEAD], the body of each enemy in [param deaths] that
+## died mid-tumble, or within the fall-back window of landing, lands where its tumble started
+## instead, back the way it came, so the overflow's dead don't build its barrier out ahead of
+## it.
 func fall_back(deaths: Deaths) -> void:
 	if not _settings.bodies_fall_back:
 		return
@@ -428,8 +465,9 @@ func _end_beside_base(planned: Tumble, reached: Vector2i) -> Tumble:
 
 
 # Moves each tumbling enemy along its path at the tumble speed, ignoring slow, collision and
-# structures. Each cell it enters is ground by a working grinder there. One that reaches its
-# path's end lands. The dead stay where they fell until removal.
+# structures. Each wall cell it enters is recorded for the knock-off, and each cell it enters is
+# ground by a working grinder there. One that reaches its path's end lands. The dead stay where
+# they fell until removal.
 func _move_tumblers() -> void:
 	var speed := _settings.tumble_speed
 	for id: int in _tumbles.keys():
@@ -456,6 +494,8 @@ func _move_tumblers() -> void:
 			var cell := Vector2i(pos.floor())
 			if cell != tumbling.last_cell:
 				tumbling.last_cell = cell
+				if _structures.structure_at(cell) == Structures.Kind.WALL:
+					_knock_offs.append(KnockOff.new(cell, tumbling.landing()))
 				_buildings.grind_tumble(_enemies, i, cell)
 				if not _enemies.is_alive(i):
 					break
@@ -470,7 +510,8 @@ func _move_tumblers() -> void:
 
 
 # Counts each band's stalled enemies, and sorts those within an attacker's reach of the band's
-# barrier into its front rank. Tumbling enemies count towards nothing.
+# barrier into its front rank. Tumbling enemies count towards nothing, nor do those held up
+# attacking a soldier.
 func _gather() -> void:
 	for crush: Crush in _crushes.values():
 		crush.clear_stalled()
@@ -480,9 +521,12 @@ func _gather() -> void:
 	var progress := _enemies.progress
 	var tumbling := _enemies.tumbling
 	var targets := _enemies.structure_targets
+	var soldier_targets := _enemies.soldier_targets
 	var fuses := _enemies.fuses
 	for i in _enemies.count:
 		if not _enemies.is_alive(i) or progress[i] >= stall or tumbling[i] == 1:
+			continue
+		if soldier_targets[i] != Enemies.NONE:
 			continue
 		var pos := positions[i]
 		var label := _band_labels[int(pos.y) * _map.width + int(pos.x)]
@@ -555,36 +599,40 @@ func _inherit(barriers: Array[PackedInt32Array], old_labels: PackedInt32Array) -
 	return barrier_labels
 
 
-# Spreads out from every barrier a step at a time (8-way, through cells that aren't rock or
-# structure) up to the band. A cell reached from two barriers at once goes to the lower label.
-func _mark_band() -> void:
+# Spreads out from [param barrier_cells], every barrier's cells, a step at a time (8-way, through
+# cells that aren't rock or structure) up to the band. A cell reached from two barriers at once goes
+# to the lower label.
+func _mark_band(kinds: PackedByteArray, barrier_cells: PackedInt32Array) -> void:
 	var band := _settings.overflow_band
-	_band_labels.fill(NONE)
-	_band_steps.fill(_UNREACHED)
-	var frontier := PackedInt32Array()
-	for index in _labels.size():
-		if _labels[index] != NONE:
-			_band_steps[index] = 0
-			frontier.append(index)
+	var width := _map.width
+	var height := _map.height
+	var rock := _map.rock
+	var labels := _labels
+	var band_labels := _band_labels
+	var band_steps := _band_steps
+	band_labels.fill(NONE)
+	band_steps.fill(_UNREACHED)
+	band_mask.fill(0)
+	var frontier := barrier_cells
+	for cell in frontier:
+		band_steps[cell] = 0
 	for steps in range(1, band + 1):
 		var next := PackedInt32Array()
 		for cell in frontier:
-			var label := _labels[cell] if steps == 1 else _band_labels[cell]
-			var at := _map.cell_of(cell)
-			for offset in _NEIGHBOURS:
-				var other := at + offset
-				if not _map.in_bounds(other):
-					continue
-				var other_index := _map.index_of(other)
-				var reached := _band_steps[other_index]
-				if reached == _UNREACHED:
-					if _map.rock[other_index] == 1 or _structures.is_structure(other_index):
-						continue
-					_band_steps[other_index] = steps
-					_band_labels[other_index] = label
-					next.append(other_index)
-				elif reached == steps and label < _band_labels[other_index]:
-					_band_labels[other_index] = label
+			var label := labels[cell] if steps == 1 else band_labels[cell]
+			var x := cell % width
+			var y := cell / width
+			for ny in range(maxi(y - 1, 0), mini(y + 2, height)):
+				for nx in range(maxi(x - 1, 0), mini(x + 2, width)):
+					var other := ny * width + nx
+					var reached := band_steps[other]
+					if reached == _UNREACHED:
+						if rock[other] == 1 or kinds[other] != Structures.Kind.NONE:
+							continue
+						band_steps[other] = steps
+						band_labels[other] = label
+						band_mask[other] = 1
+						next.append(other)
+					elif reached == steps and label < band_labels[other]:
+						band_labels[other] = label
 		frontier = next
-	for index in band_mask.size():
-		band_mask[index] = 1 if _band_labels[index] != NONE else 0

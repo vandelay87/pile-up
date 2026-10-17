@@ -3,7 +3,7 @@ extends RefCounted
 
 const PATH := "res://assets/atlas.png"
 const UNIT := GridTransform.TILE_SIZE
-const SIZE_IN_UNITS := Vector2i(7, 7)
+const SIZE_IN_UNITS := Vector2i(9, 7)
 const SOURCE_ID := 0
 
 const CLEAR := Vector2i(0, 0)
@@ -21,11 +21,16 @@ const GRINDER := Vector2i(5, 1)
 const GRINDER_SIZE := Vector2i(2, 3)
 const REPAIR_YARD := Vector2i(5, 4)
 const REPAIR_YARD_SIZE := Vector2i(2, 3)
+const BARRACKS := Vector2i(7, 1)
+const BARRACKS_SIZE := Vector2i(2, 3)
 const DRONE_REGION := Rect2i(320, 0, 20, 12)
 const REPAIR_EFFECT_REGION := Rect2i(352, 0, 16, 16)
 const UNPOWERED_REGION := Rect2i(128, 0, 16, 16)
 const ENEMY_REGION := Rect2i(192, 96, 16, 24)
+const SOLDIER_REGION := Rect2i(224, 96, 16, 24)
 const TRACER_REGION := Rect2i(256, 96, 16, 4)
+## A burst of streaks on the ground where a soldier falls, drawn flat as the ground is.
+const DEATH_EFFECT_REGION := Rect2i(192, 0, 32, 16)
 ## A ring on the ground, one cell's radius across its widest diagonal when drawn at
 ## [constant BLAST_RING_SCALE] per cell of radius.
 const BLAST_RING_REGION := Rect2i(256, 160, 64, 32)
