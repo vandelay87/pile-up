@@ -1,5 +1,6 @@
 # Runs the real Main scene with vsync off and times each tick step with StepProfile, then prints
-# the per-step table and checks the case against its performance target (v4 spec, section 5).
+# the per-step table, then times each frame with FrameProfile and prints its split, and checks the
+# case against its performance target (v4 spec, section 5).
 # Cases, chosen by a user arg:
 #   --case=dense-1000  1,000 dense enemies from BenchCrowd: tick p99 ≤ 12 ms, frame p99 ≤ 16.7 ms
 #   --case=dense-1390  the wave-20 crowd, dense: frame mean ≤ 16.7 ms
@@ -13,6 +14,12 @@
 # tools/* from the macOS preset's exclude_filter, export with --export-release, then run one tick
 # a frame with:
 # pile-up.app/Contents/MacOS/pile-up --fixed-fps 60 -- --case=dense-1000
+# A frame is the wall-clock time from one _process call here to the next. This node is the scene's
+# root, so it processes before Main and every view node, and the frame holds this tick, the
+# previous frame's process callbacks (from this _process to frame_pre_draw) and its draw (from
+# frame_pre_draw to frame_post_draw, which bracket the draw with the default single-threaded
+# renderer). Neither Performance.TIME_PROCESS (that second's worst process + draw, set once a
+# second) nor the viewport's measured render time (read back from frames ago) is this frame's.
 extends Node
 
 const MAIN_SCENE := preload("res://src/view/main.tscn")
@@ -28,7 +35,6 @@ const CASES: Array[String] = ["dense-1000", "dense-1390", "wave-20"]
 var _main: Main
 var _sim: Simulation
 var _crowd: BenchCrowd
-var _viewport: RID
 var _case := "dense-1000"
 var _dense_count := 0
 var _profile := StepProfile.new()
@@ -36,7 +42,11 @@ var _frame := 0
 var _measuring := false
 var _ticked := false
 var _ticks := 0
-var _frame_msec := PackedFloat64Array()
+var _frames := FrameProfile.new()
+var _process_usec := 0
+var _pre_draw_usec := 0
+var _post_draw_usec := 0
+var _frame_setup_msec := 0.0
 var _enemies := PackedInt32Array()
 var _army := false
 
@@ -53,8 +63,8 @@ func _ready() -> void:
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
-	_viewport = get_viewport().get_viewport_rid()
-	RenderingServer.viewport_set_measure_render_time(_viewport, true)
+	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
+	RenderingServer.frame_post_draw.connect(_on_post_draw)
 	_main = MAIN_SCENE.instantiate() as Main
 	add_child(_main)
 	_sim = _main.simulation
@@ -80,21 +90,32 @@ func _on_step(step: Simulation.Step) -> void:
 	_profile.mark(step, Time.get_ticks_usec())
 
 
+func _on_pre_draw() -> void:
+	_pre_draw_usec = Time.get_ticks_usec()
+
+
+func _on_post_draw() -> void:
+	_post_draw_usec = Time.get_ticks_usec()
+	_frame_setup_msec = RenderingServer.get_frame_setup_time_cpu()
+
+
 # Main ticks in _physics_process, so this frame's tick has already run.
 func _process(_delta: float) -> void:
+	var now := Time.get_ticks_usec()
+	var last_process_usec := _process_usec
+	_process_usec = now
 	if _crowd == null:
 		return
 	if _ticked:
 		_ticked = false
-		_profile.finish_tick(_sim.tick_cost.last_msec())
+		var tick_msec := _sim.tick_cost.last_msec()
+		_profile.finish_tick(tick_msec)
 		_ticks += 1
 		_enemies.append(_sim.enemies.count)
-		var process := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
-		var render := (
-			RenderingServer.viewport_get_measured_render_time_cpu(_viewport)
-			+ RenderingServer.get_frame_setup_time_cpu()
-		)
-		_frame_msec.append(_sim.tick_cost.last_msec() + process + render)
+		var frame_msec := (now - last_process_usec) / 1000.0
+		var process_msec := (_pre_draw_usec - last_process_usec) / 1000.0
+		var render_msec := (_post_draw_usec - _pre_draw_usec) / 1000.0
+		_frames.add_frame(frame_msec, tick_msec, process_msec, render_msec, _frame_setup_msec)
 		if _done():
 			_print_report()
 			get_tree().quit()
@@ -119,6 +140,7 @@ func _done() -> bool:
 
 func _print_report() -> void:
 	var table := _profile.table()
+	var frames := _frames.table()
 	print("")
 	print(
 		(
@@ -142,8 +164,13 @@ func _print_report() -> void:
 	)
 	print(
 		(
-			"Enemies on the field: mean %.0f, max %d. Frame CPU mean %.2f / p99 %.2f ms."
-			% [_mean_count(_enemies), _max_count(_enemies), _mean(_frame_msec), _p99(_frame_msec)]
+			"Enemies on the field: mean %.0f, max %d. Frame mean %.2f / p99 %.2f ms."
+			% [
+				_mean_count(_enemies),
+				_max_count(_enemies),
+				frames.frame.mean_msec,
+				frames.frame.p99_msec,
+			]
 		)
 	)
 	print("")
@@ -156,7 +183,23 @@ func _print_report() -> void:
 	print("")
 	print("The last step runs to the tick's end, so it includes emitting the tick's signals.")
 	print("")
-	print(_verdict(table))
+	print("| Frame part | Mean | p99 | Max | Share | Mean in worst 1% of frames |")
+	print("|---|---|---|---|---|---|")
+	print(_row("**Frame**", frames.frame))
+	print(_row("Tick", frames.tick))
+	print(_row("Process", frames.process))
+	print(_row("Render", frames.render))
+	print(_row("Render: frame setup", frames.frame_setup))
+	print(_row("Other", frames.other))
+	print("")
+	print(
+		(
+			"Process runs from this bench's _process to frame_pre_draw. Render runs to"
+			+ " frame_post_draw, so it includes presenting. Other is the rest of the frame."
+		)
+	)
+	print("")
+	print(_verdict(table, frames))
 
 
 func _row(label: String, stats: StepProfile.Stats) -> String:
@@ -171,10 +214,10 @@ func _row(label: String, stats: StepProfile.Stats) -> String:
 	return "| %s | %.2f ms | %.2f ms | %.2f ms | %.1f%% | %.2f ms |" % values
 
 
-func _verdict(table: StepProfile.Table) -> String:
+func _verdict(table: StepProfile.Table, frames: FrameProfile.Table) -> String:
 	match _case:
 		"dense-1000":
-			var frame_p99 := _p99(_frame_msec)
+			var frame_p99 := frames.frame.p99_msec
 			var passed := (
 				frame_p99 <= FRAME_BUDGET_MSEC and table.tick.p99_msec <= DENSE_TICK_P99_MSEC
 			)
@@ -189,7 +232,7 @@ func _verdict(table: StepProfile.Table) -> String:
 				]
 			)
 		"dense-1390":
-			var frame_mean := _mean(_frame_msec)
+			var frame_mean := frames.frame.mean_msec
 			return (
 				"Target: frame mean %.2f ms against %.2f ms (%s)."
 				% [frame_mean, FRAME_BUDGET_MSEC, _pass_text(frame_mean <= FRAME_BUDGET_MSEC)]
@@ -207,19 +250,6 @@ func _verdict(table: StepProfile.Table) -> String:
 
 func _pass_text(passed: bool) -> String:
 	return "pass" if passed else "FAIL"
-
-
-func _mean(samples: PackedFloat64Array) -> float:
-	var total := 0.0
-	for sample in samples:
-		total += sample
-	return total / samples.size()
-
-
-func _p99(samples: PackedFloat64Array) -> float:
-	var sorted := samples.duplicate()
-	sorted.sort()
-	return sorted[ceili(sorted.size() * 0.99) - 1]
 
 
 func _mean_count(counts: PackedInt32Array) -> float:
