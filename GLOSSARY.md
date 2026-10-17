@@ -128,7 +128,7 @@ One enemy's fall over the wall or building in front of it during an overflow, fr
 _Avoid_: Climb, climber, jump
 
 **Perched**:
-An enemy standing on top of a building, where an overflow tumble landed it. It attacks that building until it dies or the building is destroyed.
+An enemy standing on top of a building or the base, where a tumble or a jump landed it. It attacks what it stands on until it dies or that is destroyed.
 _Avoid_: Mounted, climber, on the roof
 
 **Overflow tier**:
@@ -140,8 +140,12 @@ A second type of enemy that blows up when it dies, or by itself after a short fu
 _Avoid_: Bomber, kamikaze, creeper, exploding enemy
 
 **Jumper**:
-A type of enemy that jumps over walls, and over or onto buildings, without needing a crush.
+A type of enemy that always takes the direct route and jumps over walls, over or onto buildings, and onto the base, without needing a crush. A barrier too thick for one jump stops it.
 _Avoid_: Climber (a climb is never a tumble or a jump)
+
+**Jump**:
+A jumper's leap over the walls or buildings in its way, or onto a building or the base, crossing only a few cells and followed by a cooldown. It is never part of an overflow.
+_Avoid_: Tumble, climb, hop
 
 **Brute**:
 A type of enemy that always takes the direct route and breaks walls, buildings and the base much faster than other enemies. It never tumbles: it goes through a defence, never over it.
