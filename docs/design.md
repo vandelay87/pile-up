@@ -49,17 +49,18 @@ From v3, a crowd that stalls against a defence builds up until it tumbles over, 
 - **Pressure:** each crush has a gauge, drawn above the middle of its stalled enemies. It fills while enemies near the obstacle want to move but make no progress, faster the more of them there are, and leaks at a steady rate, so a passing clump drains away and early waves rarely fill it. A crush starts above one reading and ends below a lower one, so the gauge doesn't flicker.
 - **Overflow tiers:** the gauge has three segments: a **trickle** (one enemy now and then), a **stream** (a steady line) and a **surge** (the front ranks pouring over together). Each enemy that tumbles over takes something off the gauge, so a trickle can settle and a surge lasts only while the wave keeps feeding the crush.
 - **Who tumbles:** stalled enemies right against the obstacle that aren't attacking it, taken from anywhere along the front, so overflow comes over as a broad front rather than one line. Attackers keep attacking; they tumble only when every enemy at the front is attacking.
-- **The tumble:** an enemy tumbles straight over the piece of wall or building it is touching, on the side facing most towards the base, to the first free, uncrowded cell beyond it, then goes back to the sensible field. If nothing it touches faces forwards, it follows the direct field over instead. It falls fast, quicker than walking, is drawn raised, ignores collision with the obstacle and the crowd and isn't slowed by piles, and can be shot and killed on the way; its body falls back the way it came, landing where its tumble started, and so does the body of one killed within a second of landing, so the overflow's dead build a ramp behind it rather than a wall in front. There is no limit on how far a tumble crosses: a thick block of buildings still resists, because a long tumble keeps the enemy exposed to every tower in range. If a tumble reaches the base with no free cell, the enemy stops beside the base and attacks it. From v5, a tumble can stop on a building instead (see Perched enemies).
+- **The tumble:** an enemy tumbles straight over the piece of wall or building it is touching, on the side facing most towards the base, to the first free, uncrowded cell beyond it, then goes back to the sensible field. If nothing it touches faces forwards, it follows the direct field over instead. It falls fast, quicker than walking, is drawn raised, ignores collision with the obstacle and the crowd and isn't slowed by piles, and can be shot and killed on the way; its body falls back the way it came, landing where its tumble started, and so does the body of one killed within a second of landing, so the overflow's dead build a ramp behind it rather than a wall in front. There is no limit on how far a tumble crosses: a thick block of buildings still resists, because a long tumble keeps the enemy exposed to every tower in range. If a tumble reaches the base with no free cell, the enemy stops beside the base and attacks it. From v5, a tumble can stop on a building or the base instead (see Perched enemies).
 - **What it crosses:** nothing changes. Overflow goes over a defence; attacks still wear it down.
 - Towers target tumbling enemies like any other enemy, and route rolls and wave-tail push-through stay as they are.
 - **v3 numbers:** an enemy within the 3-cell band is stalled below 25% of its walking progress. The gauge fills 1.5 per stalled enemy per second and leaks 40 per second, so about 27 stalled enemies only hold it level, and a gauge drains within seconds once its crowd thins (raised from 0.5 and 5 after the tumbling playtest, which left a thinned crush lingering at trickle or stream). A crush starts above 10 and ends below 4. Trickle from 20, stream from 50, surge from 90, and the gauge tops out at 120. The tiers send 0.5, 3 and 15 enemies over per second, and each enemy that tumbles takes 2 off the gauge. A tumble moves at 180% of walking speed, and a landing cell is free while it holds fewer than 6 enemies.
 
 ### Perched enemies
 
-From v5, an overflow can land on the defence rather than past it, so a line of buildings is a weaker barrier than a wall.
+From v5, an overflow or a jumper can land on the defence rather than past it, so a line of buildings is a weaker barrier than a wall.
 
 - **Landing:** a tumble stops on the first building it crosses if that building has room, and the enemy is **perched** there. A full building is crossed as before. Walls never hold a perched enemy, so a tumble over a wall then a building stops on the building.
 - **Room:** each building holds a fixed number of perched enemies per cell of its footprint.
+- **The base:** a tumble that reaches the base perches on it if it has room, by the same rules and with its own room per cell; a full base keeps the old rule, and the enemy stops beside it and attacks. Its perched enemies never get down, since the run ends when it falls.
 - **Up there:** a perched enemy attacks the building it stands on, at the usual damage, whatever the building's state: unpowered and under repair change nothing. It stays on that building and never walks along a barrier. It is never part of a crush and fills no pressure gauge.
 - **Getting down:** only when its building is destroyed. It drops onto the freed footprint and goes back to the sensible field.
 - **Its body:** whenever a perched enemy dies, its body drops off the side of the building it came from, onto the nearest cell on that side that isn't a wall, drawn as a short fall. Bodies collect against the side facing the crush, never on a building and never across a wall.
@@ -156,6 +157,21 @@ From v5, an enemy that goes through a defence rather than over it, so a wall is 
 - **Crowd:** it has more mass than a normal enemy and less than a soldier, so it shoulders through the crowd and pushes a soldier line further than an enemy does. It is never picked to tumble, so it never perches: it crosses a defence only by breaking it. A stalled brute counts as one enemy towards a crush and its pressure.
 - **Soldiers:** it attacks a soldier only when the soldier is in its way, at the usual 2 damage per second; its extra damage is for structures only.
 - **Answers:** towers, grinders and soldiers hurt it like any enemy, and a blast kills it outright like any enemy within it. Targeting has no brute option.
+
+## Jumper
+
+From v5, an enemy that goes over a defence without a crush, so a thin line of walls is a hurdle rather than a stop, and thickness and layers are the answer.
+
+- **Jumper**: as tough as a normal enemy, a little faster, with the same mass and bounty. It grows with the waves' HP like any enemy.
+- **Route:** it follows the direct route from spawn to the base, always, like the brute. It never rolls to switch and the wave-tail rule doesn't apply to it. It needs no routing of its own.
+- **Jump:** when it reaches a wall or building in its way, it jumps over it at once, without waiting for a crush. One jump crosses at most a few cells of walls and buildings, so a barrier thicker than that stops it. After landing it can't jump again until a cooldown runs out, so a second line close behind the first catches it.
+- **Can't jump:** a jumper facing a barrier too thick for a jump, or on its cooldown, acts as a normal enemy: it attacks by the structure rule, counts towards a crush and its pressure, and can be picked to tumble. A tumble isn't its jump and doesn't start its cooldown.
+- **Landing:** a jump lands by the tumble's rule: it stops perched on the first building it crosses with room, or else lands on the first free, uncrowded cell beyond, then carries on along the direct route. It never stops on a wall.
+- **The base:** it jumps onto the base, never over it, and is perched there if the base has room; a full base it attacks from the ground.
+- **In the air:** a jump follows the tumble's rules: it's faster than walking, ignores collision with the obstacle, the crowd and soldiers, and can be shot and killed on the way. A jump over the wall cell a soldier stands on knocks the soldier off, and a jumper landing against a soldier attacks it like any enemy in its way. Killed in the air or within a second of landing, its body falls back to where the jump started.
+- **Piles:** it never jumps piles; levels 1–4 slow it like any enemy.
+- **Pressure:** a jump is never part of an overflow. It takes nothing off a gauge, and a jumper about to jump isn't stalled.
+- **Reading it:** a jump starts from a short crouch and is a high arc, where a tumble is a low, fast fall over the edge.
 
 ## Selecting buildings
 
@@ -300,7 +316,6 @@ Not built in the prototypes, but decisions should leave room for it.
 - Enemies that chase.
 - **Seekers:** enemies that seek out buildings even when they are not in the way. One that gets inside the defence goes for other buildings before the base, which gives it a chance to reach a generator and blow it up. Seekers go for units too.
 - **Perched enemies walking a barrier:** a perched enemy walks along linked buildings to spread its attack, still limited by each building's room. Left out of v5, which keeps perched enemies on the building they land on.
-- **Jumper:** an enemy that jumps over walls, and over or onto buildings.
 - **Small enemies:** die in about one shot, are faster and come in greater numbers: perhaps 2 count as 1 normal enemy in a wave's size. They pass through walls. They first appear on their own at the spawn edges.
 - **Carrier:** a bloated flying enemy full of small enemies. It drifts slowly towards the base and, close to it, releases them all. Shot down before then, it dies and releases them where it fell. Only towers can hurt it. Open: whether small enemies collide with each other or share space; either way they must look good in the final art.
 - **Boss:** a massive enemy in a level's last wave that walks slowly and destroys everything in its path. Its art changes as it takes damage, as its portrait would (see Dynamic portraits).
