@@ -36,18 +36,18 @@ func test_a_step_reports_its_p99_max_share_and_mean_inside_the_worst_ticks() -> 
 	assert_float(table.tick.p99_msec).is_equal_approx(100.0, 0.0001)
 	assert_float(table.tick.max_msec).is_equal_approx(101.0, 0.0001)
 	assert_float(table.tick.share).is_equal_approx(1.0, 0.0001)
-	assert_float(table.tick.worst_ticks_mean_msec).is_equal_approx(101.0, 0.0001)
+	assert_float(table.tick.worst_mean_msec).is_equal_approx(101.0, 0.0001)
 	var first := table.steps[FIRST]
 	assert_float(first.mean_msec).is_equal_approx(1.01, 0.0001)
 	assert_float(first.max_msec).is_equal_approx(2.0, 0.0001)
 	assert_float(first.share).is_equal_approx(0.019612, 0.00001)
-	assert_float(first.worst_ticks_mean_msec).is_equal_approx(1.0, 0.0001)
+	assert_float(first.worst_mean_msec).is_equal_approx(1.0, 0.0001)
 	var second := table.steps[SECOND]
 	assert_float(second.mean_msec).is_equal_approx(50.49, 0.0001)
 	assert_float(second.p99_msec).is_equal_approx(99.0, 0.0001)
 	assert_float(second.max_msec).is_equal_approx(100.0, 0.0001)
 	assert_float(second.share).is_equal_approx(0.980388, 0.00001)
-	assert_float(second.worst_ticks_mean_msec).is_equal_approx(100.0, 0.0001)
+	assert_float(second.worst_mean_msec).is_equal_approx(100.0, 0.0001)
 
 
 # Time.get_ticks_usec() passes 2^31 (2,147,483,648) after about 36 minutes up.

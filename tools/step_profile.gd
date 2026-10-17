@@ -3,23 +3,11 @@
 class_name StepProfile
 extends RefCounted
 
-## The worst ticks, as a share of all ticks, that each step reports its mean inside.
-const WORST_TICK_SHARE := 0.01
-
-
-class Stats:
-	var mean_msec := 0.0
-	var p99_msec := 0.0
-	var max_msec := 0.0
-	## The step's mean as a share of the tick's mean.
-	var share := 0.0
-	var worst_ticks_mean_msec := 0.0
-
 
 class Table:
-	var tick := Stats.new()
+	var tick := SampleStats.new()
 	## Indexed by Simulation.Step.
-	var steps: Array[Stats] = []
+	var steps: Array[SampleStats] = []
 
 
 var _tick_msec := PackedFloat64Array()
@@ -50,42 +38,13 @@ func finish_tick(tick_msec: float) -> void:
 
 
 func table() -> Table:
-	var worst := _worst_ticks()
-	var tick_mean := _mean(_tick_msec)
+	var worst := SampleStats.worst(_tick_msec)
+	var tick_mean := SampleStats.mean(_tick_msec)
 	var result := Table.new()
-	result.tick = _stats(_tick_msec, worst, tick_mean)
+	result.tick = SampleStats.of(_tick_msec, worst, tick_mean)
 	for step in Simulation.Step.size():
 		var column := PackedFloat64Array()
 		for row in _step_msec:
 			column.append(row[step])
-		result.steps.append(_stats(column, worst, tick_mean))
+		result.steps.append(SampleStats.of(column, worst, tick_mean))
 	return result
-
-
-func _worst_ticks() -> PackedInt32Array:
-	var order := PackedInt32Array(range(_tick_msec.size()))
-	var by_cost := Array(order)
-	by_cost.sort_custom(func(a: int, b: int) -> bool: return _tick_msec[a] > _tick_msec[b])
-	return PackedInt32Array(by_cost.slice(0, maxi(1, ceili(_tick_msec.size() * WORST_TICK_SHARE))))
-
-
-func _stats(samples: PackedFloat64Array, worst: PackedInt32Array, tick_mean: float) -> Stats:
-	var sorted := samples.duplicate()
-	sorted.sort()
-	var stats := Stats.new()
-	stats.mean_msec = _mean(samples)
-	stats.p99_msec = sorted[ceili(sorted.size() * 0.99) - 1]
-	stats.max_msec = sorted[-1]
-	stats.share = stats.mean_msec / tick_mean
-	var worst_total := 0.0
-	for i in worst:
-		worst_total += samples[i]
-	stats.worst_ticks_mean_msec = worst_total / worst.size()
-	return stats
-
-
-func _mean(samples: PackedFloat64Array) -> float:
-	var total := 0.0
-	for sample in samples:
-		total += sample
-	return total / samples.size()
