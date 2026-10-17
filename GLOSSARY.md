@@ -135,6 +135,14 @@ _Avoid_: Stage, phase
 A second type of enemy that blows up when it dies, or by itself after a short fuse once it reaches a structure or a soldier in its way. Its blast kills enemies, damages buildings and soldiers, and erases piles and walls, and it leaves no body.
 _Avoid_: Bomber, kamikaze, creeper, exploding enemy
 
+**Jumper**:
+A type of enemy that jumps over walls, and over or onto buildings, without needing a crush.
+_Avoid_: Climber (a climb is never a tumble or a jump)
+
+**Brute**:
+A type of enemy that always takes the direct route and breaks walls and buildings much faster than other enemies.
+_Avoid_: Tank, breaker
+
 ### Units
 
 **Unit**:
