@@ -295,7 +295,6 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Second unit:** a melee unit, space marines in bulky high-tech armour with chainsaw swords, sent to hold back the swarm as it floods through.
 - **Line of sight from elevation:** walls blocking a soldier's fire at lower elevation, so standing on a pile lets it see over a wall. Left out of v4, since a soldier holding fire has to show why, and soldiers behind their own wall line would go quiet.
 - **Units on buildings:** soldiers, or a later kind of unit, standing on buildings. In v4 buildings are solid to soldiers.
-- **More formations:** shapes beyond v4's cluster and line, such as a wedge or a ring, if play asks for them.
 - **Drawn lines:** a right-drag draws a line formation, its width and facing set by the drag, as in Total War or Company of Heroes, so the shape is part of the order. v4 reads one Formation setting at order time.
 - **No Formation setting:** drop the setting. A Move order clusters by default, and a line comes only from a drawn line (above).
 - Units could replace reanimation (raising piles into minions that fight enemies, perhaps with larger piles producing a single brute minion), which is dropped for now, though it ties in with piling up bodies.
