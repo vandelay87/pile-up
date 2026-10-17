@@ -144,6 +144,19 @@ From v3, a second enemy type that blows up, so a crowd can be broken from inside
 - **Combos and bounty:** a building, or from v4 a soldier, that kills a bloater gets every kill its blast makes, chained blasts included: each adds to its combo and pays its bounty × its tier. A bloater that blows itself up pays no bounty of its own, and its blast kills pay ×1.
 - Which waves have bloaters, and how many, is under Waves.
 
+## Brute
+
+From v5, an enemy that goes through a defence rather than over it, so a wall is a delay rather than a stop, and where a brute dies decides whether its breach closes again.
+
+- **Brute**: tougher and slower than a normal enemy, with a bigger bounty. It grows with the waves' HP like any enemy.
+- **Route:** it follows the direct route from spawn to the base, always. It never rolls to switch and the wave-tail rule doesn't apply to it; its route changes only as the direct field re-settles, as when a wall it breaks becomes a pile.
+- **Breaking:** it attacks a structure in its way by the structure rule, but deals much more damage per second than other enemies, to walls, every building and the base alike. A wall it destroys drops to level 3 as usual, so its breach is a hole the crowd pours through but still slows.
+- **Piles:** levels 1–4 slow it like any enemy, and it never breaks or flattens them.
+- **Body:** a brute's body adds 2 levels to the pile it lands on, stopping at a wall: on a level-4 pile it makes a wall and the second level is lost. A brute killed in its own breach half-fills it again. Killed by a blast, it leaves no body, like any enemy.
+- **Crowd:** it has more mass than a normal enemy and less than a soldier, so it shoulders through the crowd and pushes a soldier line further than an enemy does. It is never picked to tumble, so it never perches: it crosses a defence only by breaking it. A stalled brute counts as one enemy towards a crush and its pressure.
+- **Soldiers:** it attacks a soldier only when the soldier is in its way, at the usual 2 damage per second; its extra damage is for structures only.
+- **Answers:** towers, grinders and soldiers hurt it like any enemy, and a blast kills it outright like any enemy within it. Targeting has no brute option.
+
 ## Selecting buildings
 
 - Clicking a building or the base selects it. Clicking empty ground or pressing Esc clears the selection.
@@ -284,7 +297,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 ### Enemies
 
-- Brutes that always break walls, and enemies that chase.
+- Enemies that chase.
 - **Seekers:** enemies that seek out buildings even when they are not in the way. One that gets inside the defence goes for other buildings before the base, which gives it a chance to reach a generator and blow it up. Seekers go for units too.
 - **Perched enemies walking a barrier:** a perched enemy walks along linked buildings to spread its attack, still limited by each building's room. Left out of v5, which keeps perched enemies on the building they land on.
 - **Jumper:** an enemy that jumps over walls, and over or onto buildings.
@@ -300,6 +313,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Base turret:** an upgrade that arms the base with a turret of its own.
 - **Building upgrades:** towers with a higher fire rate, more damage or longer range; more drones per repair yard (perhaps with power-ups).
 - **One-sided walls:** walls that can only be attacked from one side, to encourage overflow to build up. Perhaps bloaters damage them too, and units (if added) walk through them both ways. Unsure: they may undercut the hook of piles building up. Perhaps the player can raise and lower them, like StarCraft's supply depots.
+- **Tough wall:** a level-6 pile above a wall, tougher than one. Prompted by the v5 brute's 2-level body landing on a level-4 pile, which stops at a wall. Open: whether normal bodies can make one (a wall can't take a body today), its HP and what it drops to when destroyed.
 - **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
 - **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
 - A ranked queue of assignments for a repair yard.
