@@ -12,7 +12,8 @@ Working title. All numbers are starting values to be tuned during playtesting, a
   - **v2**: power, plus a rework of v1 after playtesting
   - **v3**: pressure: overflow, the grinder, the bloater, per-building combos and repair as a trade-off, after the v2 playtest showed a late game that could not be broken (specified in `docs/specs/v3.md`)
   - **v4**: units: the soldier, trained in the barracks and directed by the player (lite RTS, never an RTS), with elevation tying soldiers to piles; it opens with a performance pass towards the 1,000-enemy target (specified in `docs/specs/v4.md`)
-  - Later prototypes are not set in stone: v5 could be anything. Power-ups and wildcards come when they are ready to be fleshed out
+  - **v5**: over and through: the jumper, which jumps over walls and onto buildings, the brute, which breaks through walls, and any enemy tumbling onto a building in an overflow, so soldiers and buildings have new problems to answer while piles and walls stay the heart of the game (to be specified in `docs/specs/v5.md`)
+  - Later prototypes are not set in stone. Power-ups and wildcards come when they are ready to be fleshed out
 - Pace: fast. Enemies die in about two tower hits, and many enemies on screen at once make piles, and then walls, likely to form.
 
 ## World and camera
@@ -244,6 +245,12 @@ Each prototype is played to answer a question, and what the playtest finds shape
 - **Question:** does pressure make the late game breakable, and give the player real answers to it? A crowd that stalls against a defence builds up until it tumbles over it, the bloater blows holes in piles, walls and buildings, and the grinder, per-building combos and repair as a trade-off are the player's tools.
 - **Found:** in tuning, the bloater count first grew far too fast with the waves, so it became a slow stepped count with a per-wave roll. Gold was tightened by raising starting gold and every cost by half, and pile decay was turned off because blasts now clear piles. v3 misses the 1,000-enemy target at 60 fps and was accepted as a prototype as it is.
 - **Verdict:** yes. Pressure makes the game more of a challenge.
+
+### v4: units
+
+- **Question:** do units the player directs give a satisfying answer to leaks and floods, without turning pile-up into an RTS?
+- **Found:** soldiers and buildings work well together. The performance pass met 1,000 dense enemies at 60 fps on the M5 release build, with a full army of 50. The starting numbers were kept as they were after tuning.
+- **Verdict:** yes.
 
 ## Finished game direction
 
