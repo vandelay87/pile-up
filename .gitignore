@@ -12,3 +12,10 @@
 
 # Tuning sessions (editor runs; kept numbers go in defaults.json)
 /data/settings/tuning-sessions/
+
+# GDExtension builds (CI builds them; locally: scons -C native target=template_release)
+/bin/*
+!/bin/pile_up.gdextension
+native/**/*.os
+native/**/*.o
+native/.sconsign.dblite
