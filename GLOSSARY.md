@@ -144,7 +144,7 @@ A type of enemy that jumps over walls, and over or onto buildings, without needi
 _Avoid_: Climber (a climb is never a tumble or a jump)
 
 **Brute**:
-A type of enemy that always takes the direct route and breaks walls and buildings much faster than other enemies.
+A type of enemy that always takes the direct route and breaks walls, buildings and the base much faster than other enemies. It never tumbles: it goes through a defence, never over it.
 _Avoid_: Tank, breaker
 
 ### Units
