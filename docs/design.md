@@ -65,6 +65,7 @@ From v5, an overflow or a jumper can land on the defence rather than past it, so
 - **Getting down:** only when its building is destroyed. It drops onto the freed footprint and goes back to the sensible field.
 - **Its body:** whenever a perched enemy dies, its body drops off the side of the building it came from, onto the nearest cell on that side that isn't a wall, drawn as a short fall. Bodies collect against the side facing the crush, never on a building and never across a wall.
 - **Answers:** towers and soldiers shoot it like any enemy, the tower it stands on included; there is no hit chance or cover. A grinder hurts every enemy perched on it. A perched bloater has reached a structure in its way, so it lights its fuse at once, and its blast kills perched enemies within it as usual. Perched enemies never attack soldiers, and soldiers can't push them off.
+- **Targeting:** there is no perched option. Closest to base already ranks a perched enemy ahead of the crowd it crossed, and one on the base ahead of all, while Bloaters first still puts a bloater in range before it.
 - **Reading it:** a perched enemy is drawn standing on top of its building, raised to its height. A selected building's panel adds **Perched: n / max**.
 
 ## Body piles
@@ -170,6 +171,7 @@ From v5, an enemy that goes over a defence without a crush, so a thin line of wa
 - **Landing:** a jump lands by the tumble's rule: it stops perched on the first building it crosses with room, or else lands on the first free, uncrowded cell beyond, then carries on along the direct route. It never stops on a wall.
 - **The base:** it jumps onto the base, never over it, and is perched there if the base has room; a full base it attacks from the ground.
 - **In the air:** a jump follows the tumble's rules: it's faster than walking, ignores collision with the obstacle, the crowd and soldiers, and can be shot and killed on the way. A jump over the wall cell a soldier stands on knocks the soldier off, and a jumper landing against a soldier attacks it like any enemy in its way. Killed in the air or within a second of landing, its body falls back to where the jump started.
+- **Answers:** towers and soldiers shoot it like any enemy, in the air or on the ground. In the air it is ranked by where it is, as a tumbling enemy is. Targeting has no jumper option.
 - **Piles:** it never jumps piles; levels 1–4 slow it like any enemy.
 - **Pressure:** a jump is never part of an overflow. It takes nothing off a gauge, and a jumper about to jump isn't stalled.
 - **Reading it:** a jump starts from a short crouch and is a high arc, where a tumble is a low, fast fall over the edge.
@@ -337,6 +339,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
 - **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
 - A ranked queue of assignments for a repair yard.
+- **Targeting overhaul:** rework the choice of what a tower or soldier shoots first, which v5 keeps as the two-way toggle (Bloaters first or Closest to base) with no option for perched enemies, jumpers or brutes. What replaces it is open. Extra control is welcome as long as it stays optional and the default plays well without it.
 - **Mines:** each with a delay the player sets, from none to infinite, where infinite means the player sets it off by hand.
 
 ### Units
