@@ -30,9 +30,9 @@ const NEIGHBOURS: Array[Vector2i] = [
 	Vector2i(1, 1),
 ]
 const JUMP_STYLES := [
-	{"name": "Hop", "crouch": 0.12, "air": 0.45, "arc": 40.0},
-	{"name": "High arc", "crouch": 0.25, "air": 0.8, "arc": 100.0},
-	{"name": "Pounce", "crouch": 0.4, "air": 0.3, "arc": 24.0},
+	{"name": "Hop", "crouch": 0.12, "air": 0.45, "arc": 10.0},
+	{"name": "High arc", "crouch": 0.25, "air": 0.8, "arc": 24.0},
+	{"name": "Pounce", "crouch": 0.4, "air": 0.3, "arc": 4.0},
 ]
 const TUMBLE_STYLES := [
 	"as now: raised flat, orange",
@@ -99,6 +99,8 @@ class Jump:
 	var tick := 0
 	var start_lift := 0.0
 	var end_lift := 0.0
+	## The lift at the top of the arc: the tallest thing crossed, plus the clearance.
+	var peak := 0.0
 
 
 class Perch:
@@ -392,6 +394,7 @@ func _plan_jump(i: int) -> Jump:
 		return null
 	var max_cells := int(_value("reach"))
 	var crossed := 0
+	var top := 0.0
 	var at := cell + best
 	for _step in max_cells + 4:
 		if not map.in_bounds(at):
@@ -402,22 +405,25 @@ func _plan_jump(i: int) -> Jump:
 		var kind := structures.structure_at(at)
 		if kind == Structures.Kind.BASE:
 			if _has_room(at):
-				return _new_jump(pos, _spot_in(at), at)
+				return _new_jump(pos, _spot_in(at), at, top)
 			break
 		if kind == Structures.Kind.BUILDING or kind == Structures.Kind.WALL:
 			crossed += 1
 			if crossed > max_cells:
 				break
 			if kind == Structures.Kind.BUILDING and _has_room(at):
-				return _new_jump(pos, _spot_in(at), at)
+				return _new_jump(pos, _spot_in(at), at, top)
+			top = maxf(top, WALL_TOP if kind == Structures.Kind.WALL else _roof(at))
 		elif enemies.count_in_cell(index) < _sim.settings.landing_crowd:
-			return _new_jump(pos, _spot_in(at), NONE_CELL)
+			return _new_jump(pos, _spot_in(at), NONE_CELL, top)
+		else:
+			top = maxf(top, _renderer._lift_at(MapData.centre_of(at)))
 		at += best
 	_blocked += 1
 	return null
 
 
-func _new_jump(from: Vector2, to: Vector2, perch_cell: Vector2i) -> Jump:
+func _new_jump(from: Vector2, to: Vector2, perch_cell: Vector2i, top: float) -> Jump:
 	var jump := Jump.new()
 	jump.from = from
 	jump.to = to
@@ -426,6 +432,7 @@ func _new_jump(from: Vector2, to: Vector2, perch_cell: Vector2i) -> Jump:
 	jump.air_ticks = maxi(int(_value("air") * Simulation.TICKS_PER_SECOND), 1)
 	jump.start_lift = _renderer._lift_at(from)
 	jump.end_lift = _roof(perch_cell) if perch_cell != NONE_CELL else _renderer._lift_at(to)
+	jump.peak = maxf(top, maxf(jump.start_lift, jump.end_lift)) + _value("arc")
 	return jump
 
 
@@ -520,7 +527,11 @@ func _draw_enemies() -> void:
 			_set_look(i, tint, jump.start_lift, Vector2(1.3, 0.65))
 			continue
 		var f := clampf(float(jump.tick) / jump.air_ticks, 0.0, 1.0)
-		var lift := lerpf(jump.start_lift, jump.end_lift, f) + _value("arc") * 4.0 * f * (1.0 - f)
+		# A parabola through the start, the peak at halfway and the end, so the arc only clears
+		# what's in the way, never a fixed height.
+		var line := lerpf(jump.start_lift, jump.end_lift, f)
+		var rise := maxf(jump.peak - lerpf(jump.start_lift, jump.end_lift, 0.5), 0.0)
+		var lift := line + rise * 4.0 * f * (1.0 - f)
 		var stretch := Vector2(0.85, 1.2) if f < 0.4 else Vector2.ONE
 		_set_look(i, tint, lift, stretch)
 		_raise(i, raised)
@@ -699,7 +710,7 @@ func _build_panel() -> void:
 		_button(styles, str(JUMP_STYLES[k]["name"]), _apply_style.bind(k))
 	_slider(column, "crouch", "Crouch (s)", 0.0, 0.8, 0.02)
 	_slider(column, "air", "Air time (s)", 0.1, 1.5, 0.05)
-	_slider(column, "arc", "Arc height (px)", 0.0, 200.0, 4.0)
+	_slider(column, "arc", "Clearance over tallest (px)", 0.0, 60.0, 2.0)
 	_slider(column, "reach", "Reach (wall/building cells)", 1.0, 6.0, 1.0, 3.0)
 	_slider(column, "cooldown", "Cooldown (s)", 0.0, 12.0, 0.5, 4.0)
 	_slider(column, "share", "Jumper share of wave (%)", 0.0, 60.0, 1.0, 10.0)
