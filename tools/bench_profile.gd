@@ -10,10 +10,8 @@
 # With --army, BenchCrowd's army stands in and around the crowd's ring and a group of its soldiers
 # is sent across the ring through the crowd every BenchCrowd.ORDER_INTERVAL ticks, alternating
 # Cluster and Line, so the unit steps' cost shows.
-# Run in the release export: in a copy of the project, set run/main_scene to this scene, drop
-# tools/* from the macOS preset's exclude_filter, export with --export-release, then run one tick
-# a frame with:
-# pile-up.app/Contents/MacOS/pile-up --fixed-fps 60 -- --case=dense-1000
+# Run in the release export, one tick a frame, on the Mac or the Windows PC, with:
+# GODOT_BIN=<godot> tools/bench_release.sh bench_profile dense-1000 [--army]
 extends Node
 
 const MAIN_SCENE := preload("res://src/view/main.tscn")

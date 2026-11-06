@@ -1,7 +1,8 @@
 # Runs the real Main scene with vsync off and a dense crowd near the base, with BenchCrowd's army
 # among it, raising the enemy count until the p99 frame time, timed by FrameTimer, no longer holds
 # 60 fps, then prints the Performance table.
-# Run in the release export the way tools/bench_profile.gd says, with this scene as the main scene.
+# Run in the release export, on the Mac or the Windows PC, with:
+# GODOT_BIN=<godot> tools/bench_release.sh bench_frame
 # Not with --write-movie: writing each frame out lands in the frame's time.
 extends Node
 
