@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs a bench in the release export, on the Mac or on the Windows PC under Git Bash, and prints
 # a machine fingerprint and the bench's tables as Markdown ready to paste into a PR. Exits with the
-# bench's status, so a missed target fails.
+# bench's status, or 1 when it prints a FAIL verdict, so a missed target fails.
 #
 # Exports a copy of the project with the bench as the main scene and tools/* exported, so the
 # working tree is left alone. Godot is $GODOT_BIN (on Windows the console exe, or Git Bash sees
@@ -176,7 +176,12 @@ echo "| Godot | ${godot_version:-unknown} |"
 echo "| Commit | $commit |"
 echo
 echo '```text'
-"$game" --fixed-fps 60 -- ${bench_args[@]+"${bench_args[@]}"} 2>&1 | tr -d '\r' | grep -v '^Godot Engine v'
+"$game" --fixed-fps 60 -- ${bench_args[@]+"${bench_args[@]}"} 2>&1 | tr -d '\r' | grep -v '^Godot Engine v' |
+	tee "$copy/bench.log"
 code=${PIPESTATUS[0]}
 echo '```'
+# The benches quit with 0 even on a missed target, so a FAIL verdict fails the run too.
+if [ "$code" -eq 0 ] && grep -q '(FAIL)\.$' "$copy/bench.log"; then
+	code=1
+fi
 exit "$code"

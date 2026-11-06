@@ -42,7 +42,7 @@ case $out in
 *.exe) game="${out%.exe}.console.exe" ;;
 esac
 mkdir -p "$(dirname "$game")"
-printf '#!/usr/bin/env bash\necho "Godot Engine v4.7.2.stable"\necho "TABLE $*"\nexit "${FAKE_BENCH_STATUS:-0}"\n' >"$game"
+printf '#!/usr/bin/env bash\necho "Godot Engine v4.7.2.stable"\necho "TABLE $*"\necho "${FAKE_VERDICT:-Target: (pass).}"\nexit "${FAKE_BENCH_STATUS:-0}"\n' >"$game"
 chmod +x "$game"
 FAKE
 
@@ -156,6 +156,11 @@ for row in CPU GPU OS Power Load; do
 done
 has "the table is in a code block" "$scratch/out" '```text'
 grep -q "^Godot Engine" "$scratch/out" && fail "the engine banner is in the table"
+
+project
+FAKE_VERDICT="Target: worst tick 9.00 ms against 8.00 ms (FAIL)." run Darwin bench_profile wave-20 &&
+	fail "a FAIL verdict with status 0 exited zero"
+has "a FAIL verdict is still printed" "$scratch/out" "(FAIL)."
 
 project
 rm "$scratch/project/bin/libpileup.macos.template_release.universal.dylib"
