@@ -14,6 +14,8 @@ class_names() {
 sim_classes=$(class_names src/sim)
 view_classes=$(class_names src/view)
 
+# The $s in single quotes are awk's.
+# shellcheck disable=SC2016
 find "${paths[@]}" -name '*.gd' -print0 | xargs -0 -r awk \
 	-v allowed="^(RefCounted${sim_classes:+|$sim_classes})$" \
 	-v view_classes="${view_classes:+(^|[^[:alnum:]_])($view_classes)([^[:alnum:]_]|$)}" '
