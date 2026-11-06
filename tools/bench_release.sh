@@ -4,7 +4,8 @@
 # bench's status, so a missed target fails.
 #
 # Exports a copy of the project with the bench as the main scene and tools/* exported, so the
-# working tree is left alone. Godot is $GODOT_BIN. On the Mac the native library is the local
+# working tree is left alone. Godot is $GODOT_BIN (on Windows the console exe, or Git Bash sees
+# none of its output). On the Mac the native library is the local
 # build in bin/; on Windows it is CI's native-windows artifact for HEAD's sha (through gh), or a
 # local scons build when there is none.
 #
@@ -86,29 +87,34 @@ trap 'rm -rf "$copy"' EXIT
 (cd "$root" && tar -cf - --exclude=./.git --exclude=./native --exclude=./build --exclude=./reports .) |
 	(cd "$copy" && tar -xf -)
 
-# Rewrites the copy's file $1 through the sed script $2 (no sed -i: it differs on the Mac).
+# Rewrites the copy's file $1 through the filter command that follows (no sed -i: it differs on
+# the Mac).
 rewrite() {
-	sed "$2" "$copy/$1" >"$copy/$1.new" && mv "$copy/$1.new" "$copy/$1"
+	local file="$copy/$1"
+	shift
+	"$@" <"$file" >"$file.new" && mv "$file.new" "$file"
 }
 
-rewrite project.godot "s|^run/main_scene=.*|run/main_scene=\"res://tools/$bench.tscn\"|"
-rewrite export_presets.cfg 's|^\(exclude_filter=.*\)tools/\*, |\1|'
+rewrite project.godot sed "s|^run/main_scene=.*|run/main_scene=\"res://tools/$bench.tscn\"|"
+rewrite export_presets.cfg sed 's|^\(exclude_filter=.*\)tools/\*, |\1|'
 
 dll=libpileup.windows.template_release.x86_64.dll
 
 # Puts the Windows dll in the copy's bin: CI's native-windows artifact for this sha when there is
-# one, or else a local release build.
+# one, or else a local release build. Any completed run will do, newest first: a run that failed
+# elsewhere still has the artifact, until it expires.
 fetch_dll() {
 	local sha run
 	sha=$(git -C "$root" rev-parse HEAD)
-	run=$(gh run list --commit "$sha" --workflow ci.yml --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null)
-	if [ -n "$run" ] && gh run download "$run" --name native-windows --dir "$copy/native-windows" >&2 &&
-		[ -f "$copy/native-windows/$dll" ]; then
-		echo "Native library: CI artifact from run $run" >&2
-		cp "$copy/native-windows/$dll" "$copy/bin/"
-		rm -rf "$copy/native-windows"
-		return
-	fi
+	for run in $(gh run list --commit "$sha" --workflow ci.yml --status completed --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+		if gh run download "$run" --name native-windows --dir "$copy/native-windows" >&2 &&
+			[ -f "$copy/native-windows/$dll" ]; then
+			echo "Native library: CI artifact from run $run" >&2
+			cp "$copy/native-windows/$dll" "$copy/bin/"
+			rm -rf "$copy/native-windows"
+			return
+		fi
+	done
 	echo "Native library: no CI artifact for $sha, building with scons" >&2
 	(cd "$root" && scons -C native target=template_release >&2) || exit 1
 	cp "$root/bin/$dll" "$copy/bin/"
@@ -119,6 +125,10 @@ commit=$(git -C "$root" rev-parse --short HEAD)
 
 case $(uname -s) in
 Darwin)
+	if [ ! -f "$root/bin/libpileup.macos.template_release.universal.dylib" ]; then
+		echo "bench_release: no native library in bin/; build it with: scons -C native target=template_release" >&2
+		exit 1
+	fi
 	fingerprint_mac
 	preset="macOS"
 	out="$copy/build/pile-up.app"
@@ -130,11 +140,13 @@ MINGW* | MSYS* | CYGWIN*)
 	out="$copy/build/pile-up.exe"
 	# A release exe is a GUI app, so Git Bash only sees its output through the console wrapper.
 	game="$copy/build/pile-up.console.exe"
-	awk -v name="name=\"$preset\"" '
+	# The $s in single quotes are awk's.
+	# shellcheck disable=SC2016
+	rewrite export_presets.cfg awk -v name="name=\"$preset\"" '
 		$0 == name { found = 1 }
 		{ print }
 		found && /^\[preset\.[0-9]+\.options\]$/ { print "debug/export_console_wrapper=2"; found = 0 }
-	' "$copy/export_presets.cfg" >"$copy/export_presets.cfg.new" && mv "$copy/export_presets.cfg.new" "$copy/export_presets.cfg"
+	'
 	fetch_dll
 	;;
 *)
@@ -159,7 +171,8 @@ echo "| GPU | ${gpu:-unknown} |"
 echo "| OS | ${os:-unknown} |"
 echo "| Power | ${power:-unknown} |"
 echo "| Load | ${load:-unknown} |"
-echo "| Godot | $("$GODOT_BIN" --version 2>/dev/null | tr -d '\r') |"
+godot_version=$("$GODOT_BIN" --version 2>/dev/null | tr -d '\r')
+echo "| Godot | ${godot_version:-unknown} |"
 echo "| Commit | $commit |"
 echo
 echo '```text'

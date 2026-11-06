@@ -125,7 +125,8 @@ run Darwin bench_profile dense-1000 --army || fail "mac run exited non-zero: $(c
 has "mac runs the export" "$scratch/out" "TABLE --fixed-fps 60 -- --case=dense-1000 --army"
 has "mac exports the macOS preset" "$scratch/export.log" "preset=macOS"
 has "the bench is the main scene" "$scratch/export.log" 'run/main_scene="res://tools/bench_profile.tscn"'
-has "tools/* is exported" "$scratch/export.log" 'exclude_filter="test/*, addons/gdUnit4/*, reports/*"'
+has "the preset still excludes" "$scratch/export.log" 'exclude_filter="test/*'
+grep '^exclude_filter=' "$scratch/export.log" | grep -qF 'tools/*' && fail "tools/* is still excluded"
 [ -z "$(cd "$scratch/project" && git status --porcelain)" ] || fail "the working tree changed"
 
 project
@@ -155,5 +156,10 @@ for row in CPU GPU OS Power Load; do
 done
 has "the table is in a code block" "$scratch/out" '```text'
 grep -q "^Godot Engine" "$scratch/out" && fail "the engine banner is in the table"
+
+project
+rm "$scratch/project/bin/libpileup.macos.template_release.universal.dylib"
+run Darwin bench_frame && fail "a mac run with no dylib exited zero"
+has "a missing dylib says how to build it" "$scratch/err" "scons -C native target=template_release"
 
 exit $status
