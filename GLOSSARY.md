@@ -211,6 +211,14 @@ _Avoid_: Playtest (a playtest is the human playing, not the file)
 One spawned group of enemies, from pressing "next wave" until the last of them dies.
 _Avoid_: Round, level
 
+**Burst**:
+A group of a wave's enemies spawned together on one stretch of the spawn edge. Late waves' bursts come so fast they run together into one flood.
+_Avoid_: Clump (a clump suggests a crush), pack, spawn group
+
+**Scattered enemy**:
+One of a wave's enemies spawned alone, on its own cell anywhere along the spawn edge, between the bursts.
+_Avoid_: Straggler (a straggler is left behind, not spawned apart)
+
 **Build phase**:
 The time between waves.
 _Avoid_: Intermission
