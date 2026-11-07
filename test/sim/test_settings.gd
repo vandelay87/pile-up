@@ -10,3 +10,9 @@ static func without_swarm_spread() -> Settings:
 	settings.change("enemies", "wander", 0.0)
 	settings.change("enemies", "personal_space_radius", 0.0)
 	return settings
+
+
+# Sets one scatter share for every wave, so a test sees fixed bursts and scattered enemies.
+static func set_scatter_share(settings: Settings, percent: int) -> void:
+	settings.change("waves", "scatter_share_start", percent)
+	settings.change("waves", "scatter_share_end", percent)

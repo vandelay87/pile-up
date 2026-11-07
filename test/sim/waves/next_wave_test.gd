@@ -35,7 +35,8 @@ func test_next_wave_starts_the_next_wave_and_announces_its_edges() -> void:
 
 	assert_int(_sim.run_state.wave).is_equal(1)
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.WAVE)
-	assert_int(_sim.enemies.count).is_equal(16)
+	# Wave 1 is 90% scattered: its one burst is the other 2 of its 20.
+	assert_int(_sim.enemies.count).is_equal(2)
 	assert_array(_events).contains_exactly(["phase WAVE", "wave %s" % ",".join(_sim.waves.edges)])
 
 

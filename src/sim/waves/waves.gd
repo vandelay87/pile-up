@@ -75,12 +75,12 @@ func bloater_count(wave: int) -> int:
 
 
 # Wave [param wave]'s spawns in order: its bursts, with its scattered enemies spread evenly
-# between them. Of a wave of N, round(N × scatter_share) are scattered and the rest come in
+# between them. Of a wave of N, round(N × scatter_share(wave)) are scattered and the rest come in
 # bursts of round(burst_size × burst_growth^(wave − 1)), the last one short. The k-th scattered
 # enemy (k from 0) comes after burst floor(k × bursts ÷ scattered).
 func spawn_plan(wave: int) -> PackedInt32Array:
 	var total := size(wave)
-	var scattered := roundi(total * _settings.scatter_share)
+	var scattered := roundi(total * scatter_share(wave))
 	var in_bursts := total - scattered
 	var burst := maxi(1, roundi(_settings.burst_size * pow(_settings.burst_growth, wave - 1)))
 	var bursts := ceili(float(in_bursts) / burst)
@@ -136,6 +136,14 @@ func spawn() -> void:
 		for _k in entry:
 			_spawn_on(_random_cell(stretch))
 	_spawn_budget += spawn_rate(_wave)
+
+
+# The share of wave [param wave] spawned as scattered enemies: scatter_share_start at wave 1,
+# falling in a straight line to scatter_share_end at scatter_share_end_wave, then holding there.
+func scatter_share(wave: int) -> float:
+	var span := _settings.scatter_share_end_wave - 1
+	var progress := 1.0 if span <= 0 else clampf(float(wave - 1) / span, 0.0, 1.0)
+	return lerpf(_settings.scatter_share_start, _settings.scatter_share_end, progress)
 
 
 # Enemies a second that wave [param wave] spawns at: spawn_rate, grown by spawn_rate_growth a

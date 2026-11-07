@@ -645,13 +645,31 @@ const SCHEMA := {
 			"unit": "cells along the edge for a wave-1 burst",
 			"apply": Settings.Apply.LIVE,
 		},
-		"scatter_share":
+		"scatter_share_start":
 		{
 			"type": TYPE_INT,
 			"min": 0,
 			"max": 100,
 			"step": 5,
-			"unit": "percent of the wave spawned singly",
+			"unit": "percent of wave 1 spawned singly",
+			"apply": Settings.Apply.LIVE,
+		},
+		"scatter_share_end":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent spawned singly from the end wave on",
+			"apply": Settings.Apply.LIVE,
+		},
+		"scatter_share_end_wave":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 50,
+			"step": 1,
+			"unit": "wave the scatter share reaches its end",
 			"apply": Settings.Apply.LIVE,
 		},
 		"wave_tail":

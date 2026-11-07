@@ -9,6 +9,7 @@ var _kills: Array[int]
 
 func before_test() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	TestSettings.set_scatter_share(settings, 10)
 	var rows: Array[String] = []
 	for y in 8:
 		rows.append("........")

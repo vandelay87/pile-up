@@ -38,6 +38,7 @@ func before_test() -> void:
 	_settings.change("piles", "slow_level_4", 75)
 	_settings.change("routing", "sensible_pile_weight", 5.0)
 	_settings.change("waves", "burst_size", 50)
+	TestSettings.set_scatter_share(_settings, 10)
 
 
 func test_outside_the_wave_tail_an_enemy_turned_back_takes_the_long_way() -> void:

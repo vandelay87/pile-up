@@ -88,10 +88,17 @@ var burst_growth: float:
 var burst_width: float:
 	get:
 		return value("waves", "burst_width")
-var scatter_share: float:
+var scatter_share_start: float:
 	get:
-		var percent: int = value("waves", "scatter_share")
+		var percent: int = value("waves", "scatter_share_start")
 		return percent / 100.0
+var scatter_share_end: float:
+	get:
+		var percent: int = value("waves", "scatter_share_end")
+		return percent / 100.0
+var scatter_share_end_wave: int:
+	get:
+		return value("waves", "scatter_share_end_wave")
 var wave_tail: int:
 	get:
 		return value("waves", "wave_tail")

@@ -94,7 +94,7 @@ func test_bloaters_take_scattered_slots_too() -> void:
 	_sim.settings.change("bloaters", "first_wave", 1)
 	_sim.settings.change("bloaters", "waves_per_step", 1)
 	_sim.settings.change("waves", "growth", 1.0)
-	_sim.settings.change("waves", "scatter_share", 100)
+	TestSettings.set_scatter_share(_sim.settings, 100)
 	_sim.queue_command(Commands.JumpToWave.new(20))
 
 	for tick in 30:

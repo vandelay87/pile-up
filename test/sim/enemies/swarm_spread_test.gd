@@ -12,7 +12,7 @@ func before_test() -> void:
 
 func test_with_no_scatter_enemies_spawn_in_bursts_of_the_burst_size() -> void:
 	_settings.change("waves", "wave_1_size", WAVE_SIZE)
-	_settings.change("waves", "scatter_share", 0)
+	TestSettings.set_scatter_share(_settings, 0)
 	var sim := _start_wave(_open_field())
 	var counts := PackedInt32Array([sim.enemies.count])
 
@@ -39,6 +39,7 @@ func test_bursts_keep_the_average_spawn_rate_over_a_wave() -> void:
 
 
 func test_each_enemy_rolls_a_pace_within_the_speed_variety() -> void:
+	TestSettings.set_scatter_share(_settings, 10)
 	var sim := _start_wave(_open_field())
 	assert_int(sim.enemies.count).is_equal(16)
 	var paces := {}

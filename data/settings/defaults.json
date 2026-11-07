@@ -79,7 +79,9 @@
 		"burst_size": 16,
 		"burst_growth": 1.05,
 		"burst_width": 6,
-		"scatter_share": 10,
+		"scatter_share_start": 90,
+		"scatter_share_end": 10,
+		"scatter_share_end_wave": 12,
 		"wave_tail": 10,
 		"wave_tail_per_wave": 2
 	},
