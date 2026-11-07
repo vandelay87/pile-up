@@ -10,8 +10,9 @@ func before_test() -> void:
 	_settings.change("enemies", "speed", 0.1)
 
 
-func test_enemies_spawn_in_bursts_of_the_clump_size() -> void:
+func test_with_no_scatter_enemies_spawn_in_bursts_of_the_burst_size() -> void:
 	_settings.change("waves", "wave_1_size", WAVE_SIZE)
+	_settings.change("waves", "scatter_share", 0)
 	var sim := _start_wave(_open_field())
 	var counts := PackedInt32Array([sim.enemies.count])
 
@@ -98,7 +99,7 @@ func _gap_after_spawning_two(personal_space: float) -> float:
 	_switch_swarm_spread_off()
 	_settings.change("enemies", "personal_space_radius", personal_space)
 	_settings.change("waves", "wave_1_size", 2)
-	_settings.change("waves", "clump_size", 2)
+	_settings.change("waves", "burst_size", 2)
 	var rows: Array[String] = [".".repeat(40)]
 	var edges: Array[String] = ["W"]
 	var sim := _start_wave(TestMaps.from_rows(rows, Rect2i(39, 0, 1, 1), edges))
@@ -115,7 +116,7 @@ func _switch_swarm_spread_off() -> void:
 	_settings.change("enemies", "wander", 0.0)
 	_settings.change("enemies", "personal_space_radius", 0.0)
 	_settings.change("waves", "wave_1_size", 1)
-	_settings.change("waves", "clump_size", 1)
+	_settings.change("waves", "burst_size", 1)
 
 
 func _corridor() -> MapData:

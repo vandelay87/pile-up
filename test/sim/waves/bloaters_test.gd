@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 # Bloaters: from the first bloater wave, a stepped count of each wave's spawns, rolled per wave,
-# are bloaters, picked at random among its clump bursts.
+# are bloaters, picked at random among its spawn slots.
 
 const WAVE_TICKS := 4000
 
@@ -82,7 +82,8 @@ func test_a_flooded_wave_spawns_only_bloaters_with_their_wave_hp() -> void:
 	_sim.queue_command(Commands.JumpToWave.new(20))
 	_sim.tick()
 
-	assert_int(_sim.enemies.count).is_equal(16)
+	# 20 enemies, 2 of them scattered: the first burst is the other 18.
+	assert_int(_sim.enemies.count).is_equal(18)
 	for i in _sim.enemies.count:
 		assert_int(_sim.enemies.kinds[i]).is_equal(Enemies.Kind.BLOATER)
 		assert_float(_sim.enemies.hp[i]).is_equal_approx(30.0 * pow(1.05, 19), 1e-3)

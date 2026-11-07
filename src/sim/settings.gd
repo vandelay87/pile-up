@@ -76,9 +76,22 @@ var turn_back_radians: float:
 	get:
 		var degrees: float = value("enemies", "turn_back_angle")
 		return deg_to_rad(degrees)
-var clump_size: int:
+var spawn_rate_growth: float:
 	get:
-		return value("waves", "clump_size")
+		return value("waves", "spawn_rate_growth")
+var burst_size: int:
+	get:
+		return value("waves", "burst_size")
+var burst_growth: float:
+	get:
+		return value("waves", "burst_growth")
+var burst_width: float:
+	get:
+		return value("waves", "burst_width")
+var scatter_share: float:
+	get:
+		var percent: int = value("waves", "scatter_share")
+		return percent / 100.0
 var wave_tail: int:
 	get:
 		return value("waves", "wave_tail")
