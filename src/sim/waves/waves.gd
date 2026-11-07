@@ -128,13 +128,13 @@ func spawn() -> void:
 		_spawn_budget -= _cost(entry)
 		_next_entry += 1
 		if entry == SCATTERED:
-			var cells := _map.spawn_cells(edges[_rng.randi_range(0, edges.size() - 1)])
-			_spawn_on(cells[_rng.randi_range(0, cells.size() - 1)])
+			var edge := edges[_rng.randi_range(0, edges.size() - 1)]
+			_spawn_on(_random_cell(_map.spawn_cells(edge)))
 			continue
 		var stretch := _stretch(edges[_bursts_spawned % edges.size()], entry)
 		_bursts_spawned += 1
 		for _k in entry:
-			_spawn_on(stretch[_rng.randi_range(0, stretch.size() - 1)])
+			_spawn_on(_random_cell(stretch))
 	_spawn_budget += spawn_rate(_wave)
 
 
@@ -191,7 +191,7 @@ func _cost(entry: int) -> float:
 # measured along the edge.
 func _stretch(edge: String, burst: int) -> Array[Vector2i]:
 	var cells := _map.spawn_cells(edge)
-	var centre := cells[_rng.randi_range(0, cells.size() - 1)]
+	var centre := _random_cell(cells)
 	var half := stretch_width(burst) / 2.0
 	var stretch: Array[Vector2i] = []
 	for cell in cells:
@@ -199,6 +199,10 @@ func _stretch(edge: String, burst: int) -> Array[Vector2i]:
 		if absi(offset.x) + absi(offset.y) <= half:
 			stretch.append(cell)
 	return stretch
+
+
+func _random_cell(cells: Array[Vector2i]) -> Vector2i:
+	return cells[_rng.randi_range(0, cells.size() - 1)]
 
 
 func _spawn_on(cell: Vector2i) -> void:
