@@ -9,6 +9,7 @@ var _kills: Array[int]
 
 func before_test() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	TestSettings.set_scatter_share(settings, 10)
 	var rows: Array[String] = []
 	for y in 8:
 		rows.append("........")
@@ -29,7 +30,8 @@ func test_enemies_left_starts_at_the_wave_size_with_unspawned_enemies_included()
 
 	_sim.tick()
 
-	assert_int(_sim.enemies.count).is_equal(16)
+	# Wave 3's first burst: round(16 × 1.05²) = 18.
+	assert_int(_sim.enemies.count).is_equal(18)
 	assert_int(_sim.enemies_left).is_equal(31)
 
 

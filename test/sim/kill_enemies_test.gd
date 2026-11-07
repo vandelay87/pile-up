@@ -10,7 +10,8 @@ var _events: Array[String]
 
 func before_test() -> void:
 	var settings := TestSettings.without_swarm_spread()
-	settings.change("waves", "clump_size", 20)
+	settings.change("waves", "burst_size", 20)
+	TestSettings.set_scatter_share(settings, 0)
 	var rows: Array[String] = []
 	for y in 12:
 		rows.append("............")

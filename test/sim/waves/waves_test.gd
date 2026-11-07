@@ -71,8 +71,9 @@ func test_second_edge_chance_sets_how_often_a_wave_uses_2_edges() -> void:
 			assert_int(waves.edges.size()).is_equal(1 if chance == 0 else 2)
 
 
-func test_a_clump_size_of_1_spawns_a_trickle_at_the_spawn_rate_over_the_edges() -> void:
-	_settings.change("waves", "clump_size", 1)
+func test_a_burst_size_of_1_spawns_a_trickle_at_the_spawn_rate_over_the_edges() -> void:
+	_settings.change("waves", "burst_size", 1)
+	TestSettings.set_scatter_share(_settings, 0)
 	_settings.change("waves", "second_edge_chance", 100)
 	var waves := _waves()
 	waves.start(1)

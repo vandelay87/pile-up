@@ -4,6 +4,9 @@ extends RefCounted
 enum Phase { BUILD, WAVE }
 
 const SPAWN_JITTER := 0.25
+# A spawn plan entry for one scattered enemy; every other entry is a burst's size.
+const SCATTERED := 0
+const MIN_STRETCH_WIDTH := 1.0
 
 var phase := Phase.BUILD
 var edges := PackedStringArray()
@@ -27,6 +30,10 @@ var _bloater_slots := PackedByteArray()
 var _spawned := 0
 var _size := 0
 var _spawn_budget := 0.0
+var _plan := PackedInt32Array()
+# The plan entry to spawn next, and how many bursts have landed, which picks the next one's edge.
+var _next_entry := 0
+var _bursts_spawned := 0
 var _wave := 0
 var _kills := 0
 
@@ -67,6 +74,29 @@ func bloater_count(wave: int) -> int:
 	return count
 
 
+# Wave [param wave]'s spawns in order: its bursts, with its scattered enemies spread evenly
+# between them. Of a wave of N, round(N × scatter_share(wave)) are scattered and the rest come in
+# bursts of round(burst_size × burst_growth^(wave − 1)), the last one short. The k-th scattered
+# enemy (k from 0) comes after burst floor(k × bursts ÷ scattered).
+func spawn_plan(wave: int) -> PackedInt32Array:
+	var total := size(wave)
+	var scattered := roundi(total * scatter_share(wave))
+	var in_bursts := total - scattered
+	var burst := maxi(1, roundi(_settings.burst_size * pow(_settings.burst_growth, wave - 1)))
+	var bursts := ceili(float(in_bursts) / burst)
+	var plan := PackedInt32Array()
+	var k := 0
+	while k < scattered and bursts == 0:
+		plan.append(SCATTERED)
+		k += 1
+	for i in bursts:
+		plan.append(mini(burst, in_bursts - i * burst))
+		while k < scattered and k * bursts / scattered == i:
+			plan.append(SCATTERED)
+			k += 1
+	return plan
+
+
 func enemy_hp(wave: int, kind := Enemies.Kind.NORMAL) -> float:
 	return _settings.enemy_hp_of(kind) * pow(_settings.hp_growth, wave - 1)
 
@@ -81,32 +111,53 @@ func start(wave: int) -> void:
 	_bloater_hp = enemy_hp(wave, Enemies.Kind.BLOATER)
 	_pick_bloater_slots(bloater_count(wave))
 	_spawned = 0
-	_spawn_budget = Simulation.TICKS_PER_SECOND * _settings.clump_size
+	_plan = spawn_plan(wave)
+	_next_entry = 0
+	_bursts_spawned = 0
+	_spawn_budget = _cost(_plan[0]) if not _plan.is_empty() else 0.0
 
 
-# Enemies arrive in bursts of clump_size, each on a random cell of the burst's edge.
-# A burst costs clump_size seconds of spawn rate, so the average rate holds.
+# Spawns the plan's entries in order, each once the budget covers it: a burst on a stretch of
+# the next of the wave's edges in turn, a scattered enemy alone on a random cell of a random
+# edge. Each tick adds the spawn rate to the budget, so the average rate holds.
 func spawn() -> void:
 	if phase != Phase.WAVE:
 		return
-	var clump := _settings.clump_size
-	var burst_cost := Simulation.TICKS_PER_SECOND * clump
-	while _spawned < _size and _spawn_budget >= burst_cost:
-		_spawn_budget -= burst_cost
-		var cells := _map.spawn_cells(edges[(_spawned / clump) % edges.size()])
-		for _k in mini(clump, _size - _spawned):
-			var cell := cells[_rng.randi_range(0, cells.size() - 1)]
-			var jitter := Vector2(
-				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER),
-				_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
-			)
-			var pos := MapData.centre_of(cell) + jitter
-			if _bloater_slots[_spawned] == 1:
-				_enemies.spawn(pos, _bloater_hp, Enemies.Kind.BLOATER)
-			else:
-				_enemies.spawn(pos, _hp)
-			_spawned += 1
-	_spawn_budget += _settings.spawn_rate
+	while _next_entry < _plan.size() and _spawn_budget >= _cost(_plan[_next_entry]):
+		var entry := _plan[_next_entry]
+		_spawn_budget -= _cost(entry)
+		_next_entry += 1
+		if entry == SCATTERED:
+			var edge := edges[_rng.randi_range(0, edges.size() - 1)]
+			_spawn_on(_random_cell(_map.spawn_cells(edge)))
+			continue
+		var stretch := _stretch(edges[_bursts_spawned % edges.size()], entry)
+		_bursts_spawned += 1
+		for _k in entry:
+			_spawn_on(_random_cell(stretch))
+	_spawn_budget += spawn_rate(_wave)
+
+
+# The share of wave [param wave] spawned as scattered enemies: scatter_share_start at wave 1,
+# falling in a straight line to scatter_share_end at scatter_share_end_wave, then holding there.
+func scatter_share(wave: int) -> float:
+	var span := _settings.scatter_share_end_wave - 1
+	var progress := 1.0 if span <= 0 else clampf(float(wave - 1) / span, 0.0, 1.0)
+	return lerpf(_settings.scatter_share_start, _settings.scatter_share_end, progress)
+
+
+# Enemies a second that wave [param wave] spawns at: spawn_rate, grown by spawn_rate_growth a
+# wave.
+func spawn_rate(wave: int) -> float:
+	return _settings.spawn_rate * pow(_settings.spawn_rate_growth, wave - 1)
+
+
+# How wide, in cells along the edge, a burst of [param burst] lands: burst_width for a burst of
+# burst_size, growing with the square root of the burst, and never under 1 cell.
+func stretch_width(burst: int) -> float:
+	return maxf(
+		MIN_STRETCH_WIDTH, _settings.burst_width * sqrt(float(burst) / _settings.burst_size)
+	)
 
 
 # The last stretch of a wave, when the stragglers push through rather than go the long way.
@@ -137,6 +188,41 @@ func _pick_bloater_slots(count: int) -> void:
 		if _bloater_slots[slot] == 0:
 			_bloater_slots[slot] = 1
 			picked += 1
+
+
+# Budget, in enemy-ticks, that a plan entry costs.
+func _cost(entry: int) -> float:
+	return Simulation.TICKS_PER_SECOND * maxi(entry, 1)
+
+
+# The spawn cells of [param edge] within half a burst's stretch of a random one of them,
+# measured along the edge.
+func _stretch(edge: String, burst: int) -> Array[Vector2i]:
+	var cells := _map.spawn_cells(edge)
+	var centre := _random_cell(cells)
+	var half := stretch_width(burst) / 2.0
+	var stretch: Array[Vector2i] = []
+	for cell in cells:
+		var offset := cell - centre
+		if absi(offset.x) + absi(offset.y) <= half:
+			stretch.append(cell)
+	return stretch
+
+
+func _random_cell(cells: Array[Vector2i]) -> Vector2i:
+	return cells[_rng.randi_range(0, cells.size() - 1)]
+
+
+func _spawn_on(cell: Vector2i) -> void:
+	var jitter := Vector2(
+		_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER), _rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
+	)
+	var pos := MapData.centre_of(cell) + jitter
+	if _bloater_slots[_spawned] == 1:
+		_enemies.spawn(pos, _bloater_hp, Enemies.Kind.BLOATER)
+	else:
+		_enemies.spawn(pos, _hp)
+	_spawned += 1
 
 
 func _pick_edges() -> PackedStringArray:
