@@ -32,6 +32,16 @@
 		"blast_radius": 2,
 		"blast_damage": 30
 	},
+	"jumpers": {
+		"speed": 2.4,
+		"reach": 3,
+		"cooldown": 4,
+		"crouch": 0.25,
+		"air_time": 0.8,
+		"first_wave": 8,
+		"share": 5,
+		"cap": 0
+	},
 	"brutes": {
 		"hp": 40,
 		"speed": 1.4,
@@ -159,6 +169,7 @@
 		"map_path": "res://data/maps/v3-flared.json"
 	},
 	"view": {
-		"tracer_speed": 60
+		"tracer_speed": 60,
+		"jump_clearance": 24
 	}
 }

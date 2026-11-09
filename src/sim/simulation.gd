@@ -70,6 +70,7 @@ var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
 var perches: Perches
+var jumps: Jumps
 var unit_paths: UnitPaths
 var soldiers: Soldiers
 var soldier_attacks: SoldierAttacks
@@ -153,6 +154,8 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	overflow = Overflow.new(
 		settings, map, structures, buildings, enemies, routing, perches, _system_rng("overflow")
 	)
+	jumps = Jumps.new(settings, map, structures, buildings, enemies, routing, perches)
+	enemies.jumps = jumps
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	unit_paths = UnitPaths.new(settings, map, occupancy, piles, structures)
 	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids, unit_paths)
@@ -471,6 +474,7 @@ func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
 	enemies.move(waves.in_wave_tail(), overflow.band_mask)
 	overflow.step()
+	jumps.step()
 	# Buildings.pending_destroyed is the live list, so it holds what perched attacks destroy too.
 	perches.step(buildings.pending_destroyed())
 
@@ -479,7 +483,9 @@ func _move_units() -> void:
 	_observe(Step.MOVE_UNITS)
 	soldiers.need_restarted()
 	unit_paths.step()
-	soldiers.step(enemies, overflow.take_knock_offs())
+	var knock_offs := overflow.take_knock_offs()
+	knock_offs.append_array(jumps.take_knock_offs())
+	soldiers.step(enemies, knock_offs)
 	soldier_attacks.step()
 
 
@@ -507,9 +513,10 @@ func _remove_dead() -> void:
 	deaths = enemies.remove_dead()
 	_blasts.append_array(bloater_blasts.resolve(deaths, soldiers))
 	perches.release_destroyed(buildings.pending_destroyed())
-	# A perched enemy's body drops off its building; a tumbler's falls back.
+	# A perched enemy's body drops off its building; a tumbler's or a jumper's falls back.
 	_perched_drops.append_array(perches.drop_cells(deaths))
 	overflow.fall_back(deaths)
+	jumps.fall_back(deaths)
 	piles.queue_bodies(deaths)
 	soldier_deaths = soldiers.remove_dead(deaths)
 	_soldiers_died = not soldier_deaths.is_empty()

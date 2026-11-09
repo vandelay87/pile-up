@@ -5,6 +5,9 @@ const TINT := Color(0.85, 0.3, 0.3)
 const BLOATER_TINT := Color(0.55, 0.85, 0.25)
 # Steel grey-blue.
 const BRUTE_TINT := Color(0.42, 0.52, 0.66)
+const JUMPER_TINT := Color(0.62, 0.32, 0.85)
+# A crouching jumper squashes down on the spot: wider and lower.
+const CROUCH_SQUASH := Vector2(1.2, 0.7)
 # An item's kind before it has drawn one.
 const _NO_KIND := 255
 const DIRECT_TINT := Color(0.95, 0.8, 0.2)
@@ -31,8 +34,9 @@ var _sprites: Array[RID] = []
 # Each item's sprite offset from the item: up by its lift, and back from where it sorts to its
 # feet for a perched enemy.
 var _offsets := PackedVector2Array()
-# The drawn scale of each item's sprite, its kind's size, and the kind it last drew.
-var _scales := PackedFloat32Array()
+# The drawn scale of each item's sprite (its kind's size, squashed while crouching), and the kind
+# it last drew.
+var _shapes := PackedVector2Array()
 var _kinds := PackedByteArray()
 var _shown := 0
 var _flash_ends := {}
@@ -75,7 +79,7 @@ func _process(_delta: float) -> void:
 	for i in range(_shown, count):
 		RenderingServer.canvas_item_set_visible(_items[i], true)
 		# A reused item may still carry its last enemy's flash or tint: draw it afresh.
-		_scales[i] = 0.0
+		_shapes[i] = Vector2.ZERO
 		_kinds[i] = _NO_KIND
 	_shown = count
 
@@ -92,6 +96,8 @@ func _process(_delta: float) -> void:
 		match states[i]:
 			Enemies.State.TUMBLING:
 				lift = _tumble_lift(i)
+			Enemies.State.JUMPING:
+				lift = _jump_lift(i)
 			Enemies.State.PERCHED:
 				# Sorted at the front corner of what it stands on, so its roof never hides it.
 				var target := _simulation.perches.perched_on(_enemies.ids[i])
@@ -101,10 +107,12 @@ func _process(_delta: float) -> void:
 				lift = _lift_at(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, sorted_at))
 		var offset := foot - sorted_at + Vector2(0, -lift)
-		var scale := sizes[kinds[i]]
-		if scale != _scales[i] or kinds[i] != _kinds[i]:
+		var shape := Vector2.ONE * sizes[kinds[i]]
+		if states[i] == Enemies.State.CROUCHING:
+			shape *= CROUCH_SQUASH
+		if shape != _shapes[i] or kinds[i] != _kinds[i]:
 			# Removal moves enemies between items, so a new kind here needs its own look.
-			_scales[i] = scale
+			_shapes[i] = shape
 			_offsets[i] = Vector2(NAN, NAN)
 			if kinds[i] != _kinds[i]:
 				_kinds[i] = kinds[i]
@@ -112,7 +120,7 @@ func _process(_delta: float) -> void:
 		if offset != _offsets[i]:
 			_offsets[i] = offset
 			RenderingServer.canvas_item_set_transform(
-				_sprites[i], Transform2D(0.0, Vector2(scale, scale), 0.0, offset)
+				_sprites[i], Transform2D(0.0, shape, 0.0, offset)
 			)
 	_draw_tints(count)
 
@@ -171,6 +179,29 @@ func _tumble_lift(i: int) -> float:
 	return lerpf(top, end, 1.0 - cos(clampf(fall, 0.0, 1.0) * PI / 2.0))
 
 
+# The jump's arc: from the ground where it crouched up to jump_clearance above the tallest wall,
+# building, base or pile on its way, peaking halfway through its air time, then down to where it
+# lands, a roof when it perches.
+func _jump_lift(i: int) -> float:
+	var pos := _enemies.positions[i]
+	var jump := _simulation.jumps.jump(_enemies.ids[i])
+	if jump == null or jump.is_crouching():
+		return _lift_at(pos)
+	var way := jump.way
+	var start := _lift_at(way.from)
+	var end := _lift_at(MapData.centre_of(way.landing()))
+	if way.perching:
+		end = Heights.of_target(_simulation, way.target)
+	var tallest := maxf(start, end)
+	for cell in way.cells:
+		tallest = maxf(tallest, Heights.of_cell(_simulation, cell))
+	var top := tallest + _settings.jump_clearance
+	var through := clampf(float(jump.flown) / jump.air_ticks, 0.0, 1.0)
+	if through <= 0.5:
+		return lerpf(start, top, sin(through * PI))
+	return lerpf(top, end, 1.0 - cos((through - 0.5) * PI))
+
+
 func _lift_at(pos: Vector2) -> float:
 	var shifted := pos - Vector2(0.5, 0.5)
 	var corner := Vector2i(shifted.floor())
@@ -196,6 +227,8 @@ func _tint(index: int) -> Color:
 			return BLOATER_TINT
 		Enemies.Kind.BRUTE:
 			return BRUTE_TINT
+		Enemies.Kind.JUMPER:
+			return JUMPER_TINT
 	return TINT
 
 
@@ -257,7 +290,7 @@ func _create_item() -> void:
 	_items.append(item)
 	_sprites.append(sprite)
 	_offsets.append(Vector2.ZERO)
-	_scales.append(1.0)
+	_shapes.append(Vector2.ONE)
 	_kinds.append(_NO_KIND)
 
 

@@ -229,6 +229,25 @@ var bloater_extra_chance: float:
 var bloater_size: float:
 	get:
 		return value("bloaters", "size")
+var jumper_speed: float:
+	get:
+		return value("jumpers", "speed")
+## How many wall and building cells a jump may cross before its landing.
+var jumper_reach: int:
+	get:
+		return value("jumpers", "reach")
+var jumper_cooldown_ticks: int:
+	get:
+		var seconds: float = value("jumpers", "cooldown")
+		return ticks_from_seconds(seconds)
+var jumper_crouch_ticks: int:
+	get:
+		var seconds: float = value("jumpers", "crouch")
+		return ticks_from_seconds(seconds)
+var jumper_air_ticks: int:
+	get:
+		var seconds: float = value("jumpers", "air_time")
+		return maxi(1, ticks_from_seconds(seconds))
 var brute_hp: float:
 	get:
 		return value("brutes", "hp")
@@ -384,6 +403,10 @@ var base_power_area: int:
 var tracer_speed: float:
 	get:
 		return value("view", "tracer_speed")
+## How far above the tallest thing on its path a jump's arc peaks, in world pixels.
+var jump_clearance: float:
+	get:
+		return value("view", "jump_clearance")
 var base_hp: int:
 	get:
 		return value("run", "base_hp")
@@ -502,6 +525,8 @@ func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:
 	match kind:
 		Enemies.Kind.BLOATER:
 			speed = bloater_speed
+		Enemies.Kind.JUMPER:
+			speed = jumper_speed
 		Enemies.Kind.BRUTE:
 			speed = brute_speed
 	return speed / Simulation.TICKS_PER_SECOND

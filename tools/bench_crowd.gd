@@ -1,7 +1,9 @@
 # Keeps a dense crowd of enemies in a ring around the base, with a ring of towers firing into it,
 # for the benchmarks. Brutes are mixed into the crowd at their count in a wave-20 wave, on the
 # direct route, each spawning near the ring's inner edge so it shoulders through the crowd to the
-# base, or a wall raised in its way, and breaks at it. It can field an army among them: soldiers
+# base, or a wall raised in its way, and breaks at it. Jumpers are mixed in at their share of the
+# crowd it tops up, on the direct route, jumping the towers and walls in their way and perching on
+# the towers and the base. It can field an army among them: soldiers
 # in and around the ring, some on walls it raises, ORDER_GROUP of them sent across the ring
 # through the crowd every ORDER_INTERVAL ticks, and those that die in it replaced.
 class_name BenchCrowd
@@ -77,13 +79,20 @@ static func digest(sim: Simulation) -> int:
 
 func top_up(target: int) -> void:
 	var enemies := _sim.enemies
-	var brutes := enemies.kinds.slice(0, enemies.count).count(Enemies.Kind.BRUTE)
+	var kinds := enemies.kinds.slice(0, enemies.count)
+	var brutes := kinds.count(Enemies.Kind.BRUTE)
+	var jumpers := kinds.count(Enemies.Kind.JUMPER)
 	var wanted := brute_count()
+	var share: int = _sim.settings.value("jumpers", "share")
+	var wanted_jumpers := roundi(target * share / 100.0)
 	while enemies.count < target:
 		if brutes < wanted:
 			var spot := _spot_in(_rng, INNER_RADIUS, INNER_RADIUS + BRUTE_BAND)
 			enemies.spawn(spot, _sim.settings.enemy_hp_of(Enemies.Kind.BRUTE), Enemies.Kind.BRUTE)
 			brutes += 1
+		elif jumpers < wanted_jumpers:
+			enemies.spawn(_free_spot(), _sim.settings.enemy_hp, Enemies.Kind.JUMPER)
+			jumpers += 1
 		else:
 			enemies.spawn(_free_spot(), _sim.settings.enemy_hp)
 

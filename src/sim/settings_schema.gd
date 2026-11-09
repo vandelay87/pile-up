@@ -171,6 +171,7 @@ const SCHEMA := {
 		},
 	},
 	"bloaters": EnemyKindsSchema.BLOATERS,
+	"jumpers": EnemyKindsSchema.JUMPERS,
 	"brutes": EnemyKindsSchema.BRUTES,
 	"piles":
 	{
@@ -873,6 +874,15 @@ const SCHEMA := {
 			"max": 200.0,
 			"step": 5.0,
 			"unit": "cells/s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"jump_clearance":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 1.0,
+			"unit": "px above the tallest thing on a jump's path",
 			"apply": Settings.Apply.LIVE,
 		},
 	},

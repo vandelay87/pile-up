@@ -57,6 +57,21 @@ func test_top_up_mixes_in_a_wave_20_count_of_brutes_on_the_direct_route() -> voi
 	assert_int(brutes).is_equal(2)
 
 
+func test_top_up_mixes_in_jumpers_at_their_share_on_the_direct_route() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+
+	crowd.top_up(200)
+
+	var jumpers := 0
+	for i in sim.enemies.count:
+		if sim.enemies.kinds[i] == Enemies.Kind.JUMPER:
+			jumpers += 1
+			assert_int(sim.enemies.routes[i]).is_equal(Routing.Route.DIRECT)
+	# 5% of 200.
+	assert_int(jumpers).is_equal(10)
+
+
 func test_the_crowd_arrives_without_attacking_the_towers() -> void:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, 1)

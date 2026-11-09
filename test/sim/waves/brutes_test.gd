@@ -49,7 +49,7 @@ func test_the_brute_roll_follows_the_seed_apart_from_the_bloater_roll() -> void:
 
 func test_special_counts_list_each_kind_and_give_brutes_fewer_when_the_wave_is_full() -> void:
 	_set_chances(0, 0)
-	assert_dict(_sim.waves.special_counts(18)).is_equal({"bloaters": 3, "jumpers": 0, "brutes": 2})
+	assert_dict(_sim.waves.special_counts(18)).is_equal({"bloaters": 3, "jumpers": 44, "brutes": 2})
 	assert_dict(_sim.waves.special_counts(4)).is_equal({"bloaters": 0, "jumpers": 0, "brutes": 0})
 
 	_sim.settings.change("waves", "growth", 1.0)
@@ -64,7 +64,9 @@ func test_a_wave_spawns_exactly_its_special_counts_with_brutes_on_the_direct_rou
 	var wave := 14
 	var counts := _sim.waves.special_counts(wave)
 	assert_int(counts["brutes"]).is_equal(3)
-	var spawned := {Enemies.Kind.NORMAL: 0, Enemies.Kind.BLOATER: 0, Enemies.Kind.BRUTE: 0}
+	var spawned := {}
+	for kind: Enemies.Kind in Enemies.Kind.values():
+		spawned[kind] = 0
 	_sim.queue_command(Commands.JumpToWave.new(wave))
 	var seen := {}
 	for tick in WAVE_TICKS:
@@ -105,7 +107,7 @@ func test_enemies_left_reports_the_next_waves_specials_in_the_build_phase_only()
 		_sim.tick()
 
 	assert_int(reports[-1][0]).is_equal(_sim.waves.size(18))
-	assert_dict(reports[-1][1]).is_equal({"bloaters": 3, "jumpers": 0, "brutes": 2})
+	assert_dict(reports[-1][1]).is_equal({"bloaters": 3, "jumpers": 44, "brutes": 2})
 	assert_dict(_sim.next_wave_specials).is_equal(reports[-1][1])
 
 
