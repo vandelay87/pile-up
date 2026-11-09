@@ -165,6 +165,27 @@ lacks "the earlier PC section is replaced" "$scratch/body" "old PC table"
 grep -q $'\r' "$scratch/body" && fail "the body kept Windows line endings"
 [ "$(grep -c '^### bench_profile' "$scratch/body")" -eq 1 ] || fail "a PC case is at the M5's level"
 
+# Performance last, then the PR's footer, with a PC section from an earlier run after the footer.
+footer='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
+project
+FAKE_BODY=$'## Performance\n\nn/a\n\n'"$footer"$'\n\n### PC (3080)\n\nold PC table' run 7 ||
+	fail "a body with a footer exited non-zero: $(cat "$scratch/err")"
+[ "$(grep -v '^$' "$scratch/body" | tail -1)" = "$footer" ] || fail "the footer isn't last"
+[ "$(sed -n '/^### PC (3080)$/,$p' "$scratch/body" | grep -cF "$footer")" -eq 1 ] ||
+	fail "the PC section isn't before the footer"
+lacks "with a footer, the earlier PC section is replaced" "$scratch/body" "old PC table"
+[ "$(grep -c '^### PC (3080)$' "$scratch/body")" -eq 1 ] || fail "the body with a footer has more than one PC section"
+project
+FAKE_BODY=$'## Performance\n\nM5 table\n\n### PC (3080)\n\nold PC table\n\n'"$footer" run 7 ||
+	fail "a re-bench before a footer exited non-zero: $(cat "$scratch/err")"
+[ "$(grep -v '^$' "$scratch/body" | tail -1)" = "$footer" ] || fail "on a re-bench, the footer isn't last"
+lacks "before a footer, the earlier PC section is replaced" "$scratch/body" "old PC table"
+has "before a footer, the M5's section is kept" "$scratch/body" "M5 table"
+project
+FAKE_BODY=$'## Summary\n\nx\n\n'"$footer" run 7 || fail "a footer with no Performance exited non-zero"
+[ "$(grep -v '^$' "$scratch/body" | tail -1)" = "$footer" ] || fail "with no Performance, the footer isn't last"
+has "with a footer and no Performance, one is added" "$scratch/body" "## Performance"
+
 project
 FAKE_BODY_LOST="$scratch/lost" run 7 || fail "a lost body read exited non-zero: $(cat "$scratch/err")"
 [ ! -e "$scratch/body" ] || fail "an unread body was overwritten"

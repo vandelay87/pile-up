@@ -75,6 +75,7 @@ report() {
 # Prints the PR body on stdin with the comment's tables as the last subsection of its Performance
 # section, "### PC (3080)" with its cases a level down so a re-bench still reads only the M5's.
 # An earlier PC subsection is dropped; a body with no Performance section gets one at the end.
+# Either way the PR's "🤖 Generated with" footer stays last.
 with_pc_section() {
 	{
 		echo "### PC (3080)"
@@ -87,9 +88,19 @@ with_pc_section() {
 			done = 1
 		}
 		{
-			if ($0 ~ /^## /) {
+			# The PR footer stays last: the section goes in before it, in a Performance section
+			# made for it if the body has none.
+			if ($0 ~ /^🤖 Generated with / && !done && (in_perf || !seen_perf)) {
+				if (!in_perf) { print "## Performance"; print "" }
+				emit()
+				print ""
+				skipping = 0
+			} else if ($0 ~ /^🤖 Generated with /) {
+				skipping = 0
+			} else if ($0 ~ /^## /) {
 				if (in_perf && !done) { emit(); print "" }
 				in_perf = ($0 == "## Performance")
+				if (in_perf) seen_perf = 1
 				skipping = 0
 			} else if (in_perf && $0 == "### PC (3080)") {
 				skipping = 1
