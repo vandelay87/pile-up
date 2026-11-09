@@ -329,6 +329,21 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Start drill:** a cleared wave is the drill recharging, and the next wave starts when the drill starts again, so **Next wave** could become **Start drill**.
 - **Mined currency:** the drill mines a resource that is a currency. After a level's last wave, the player could keep mining for more, but lose it all if the base falls in a later wave.
 
+### Mining mode
+
+A mode that may become the main game, in place of levels won by reaching a set wave. It grows out of Start drill and Mined currency above.
+
+- **Mining is the income:** the base mines minerals, and they are the gold the player spends. Kills pay nothing, so bounty and combo (see Towers and economy) would go or change.
+- **No waves:** the run is one stretch with no waves, lasting until the map's deposits are mined out.
+- **Mining speed:** the player sets how fast the base mines. The faster it mines, the more enemies come, so mining hard for more minerals or easing off for a quieter defence is a constant risk-and-reward choice.
+- **Drill on and off:** an alternative that keeps waves. While the base's drill is off no waves come, which in effect pauses the game; switched on, waves come with 30–60 seconds between them. Perhaps scattered enemies keep coming throughout, whatever the drill is doing.
+- **Large maps:** much bigger maps, perhaps StarCraft's size, under fog of war (see Levels), with mineral deposits scattered across them and highlighted. Expanding across a map wants a prototype of its own.
+- **Outposts:** the player explores to find deposits and sets up mining outposts or extra mining rigs on them, for more minerals and more power-ups and wildcards, which then need defending. Each one draws more enemies, so expanding is a gamble that pushes the player out rather than turtling. What the minerals buy must help against the extra enemies they bring.
+- **Map enemies:** enemies that live on the map outside any wave. Disturbing them could set off a bonus wave.
+- **Goal:** mining a set amount wins the run, but the player can keep mining past it for more, and what they mine could carry over between runs (see Meta-progression under Runs). Not settled: the goal might be dropped.
+- **Rare minerals:** each deposit has its own odds of what it gives, for example 90% gold and 10% something rarer.
+- **Rich vein:** mining has a chance to strike a vein that mines faster for a while.
+
 ### Enemies
 
 - Enemies that chase.
@@ -337,6 +352,7 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Small enemies:** die in about one shot, are faster and come in greater numbers: perhaps 2 count as 1 normal enemy in a wave's size. They pass through walls. They first appear on their own at the spawn edges.
 - **Carrier:** a bloated flying enemy full of small enemies. It drifts slowly towards the base and, close to it, releases them all. Shot down before then, it dies and releases them where it fell. Only towers can hurt it. Open: whether small enemies collide with each other or share space; either way they must look good in the final art.
 - **Boss:** a massive enemy in a level's last wave that walks slowly and destroys everything in its path. Its art changes as it takes damage, as its portrait would (see Dynamic portraits).
+- **Hit chance:** shots that can miss, and critical hits. Enemies perched on buildings could be harder to hit.
 - **Bunched late waves:** later waves spawn bigger and more tightly packed, rather than spread out, so they look more menacing.
 
 ### Buildings
@@ -348,6 +364,8 @@ Not built in the prototypes, but decisions should leave room for it.
 - **One-sided walls:** walls that can only be attacked from one side, to encourage overflow to build up. Perhaps bloaters damage them too, and units (if added) walk through them both ways. Unsure: they may undercut the hook of piles building up. Perhaps the player can raise and lower them, like StarCraft's supply depots.
 - **Tough wall:** a level-6 pile above a wall, tougher than one. Prompted by the v5 brute's 2-level body landing on a level-4 pile, which stops at a wall. Open: whether normal bodies can make one (a wall can't take a body today), its HP and what it drops to when destroyed.
 - **Power as a currency:** each building costs power, the base supplies some, and generators add more. A destroyed generator blows up like a bloater. This could absorb the earlier idea of a generator that powers an area cut off from the base's power grid.
+- **Switching buildings off:** any building can be switched off, and does nothing while off. Once power is a currency, a switched-off building uses none.
+- **Rubble:** a destroyed building leaves rubble that slows walking, where today it leaves nothing. Perhaps only part of it falls to rubble and a larger ruin of the structure is left standing. A ruin blocks like a building and has hit points of its own.
 - **Clean-up robot:** a ground drone that spends energy removing piles so the player can reorganise, and perhaps also demolishes buildings (selling or demolishing is still missing). It returns to its building to recharge. It works in the build phase, but can't recharge then.
 - A ranked queue of assignments for a repair yard.
 - **Targeting overhaul:** rework the choice of what a tower or soldier shoots first, which v5 keeps as the two-way toggle (Bloaters first or Closest to base) with no option for perched enemies, jumpers or brutes. What replaces it is open. Extra control is welcome as long as it stays optional and the default plays well without it.
@@ -368,6 +386,7 @@ Not built in the prototypes, but decisions should leave room for it.
 
 ### Details and art
 
+- **Art style:** classic Doom's look, brought to tower defence and lite RTS. Dynamic portraits (below) already borrow Doom's face.
 - Clicking anything, any unit, enemy or building, shows its details: status, kills, time alive. Open: whether this is performant with enemies as plain data.
 - **Connection lost:** when the subject of an open portrait dies, the portrait shows its death (an explosion, a blood splatter), then static and a "connection lost" message.
 - **Game log:** a running log of text alerts, such as a soldier dying off screen. v4 shows a soldier's death only where it falls.
@@ -378,6 +397,8 @@ Not built in the prototypes, but decisions should leave room for it.
 - **Blood:** a burst of blood when an enemy dies, and cells grow bloodier, through several levels, as more enemies die on them.
 - **A horde like liquid:** the swarm should read as a flow rather than one mass: pouring over in an overflow, spilling into pockets, smooth to watch. Some of this may already be there and only need the final art, with animations for enemies pressing together, tumbling and fighting.
 - A landing animation for bodies, with the final art.
+- **Rag-doll physics,** perhaps for enemies dying or thrown by blasts.
+- **Approach radar:** a radar that warns when enemies are close or the next wave is approaching.
 - Combo juice with the final art and audio: sound, effects and floating numbers.
 
 ### Levels
@@ -388,17 +409,20 @@ Not built in the prototypes, but decisions should leave room for it.
   - A crashed ship of the player's side, with tight corridors and malfunctioning or burning electronics.
   - An alien hive, slimy, where slime cells slow walking right down.
   - Open to more.
+- **Weather.**
 - **Destructible rock:** blasts break rock, opening new routes for the enemies.
 - **Fog of war:** perhaps hide the map outside what the player's buildings and units can see.
 
 ### Platform
 
-- **Optimise for Windows:** Windows is the main platform, but the prototypes are benchmarked on the M5 MacBook. The first Windows run (`tools/bench_release.sh`, #254) missed the 1,000-dense target with the army: frame p99 19.6 ms and tick p99 15.7 ms on an i7-12700K with an RTX 3080, against 11.9 ms and 10.2 ms on the M5. The tick alone is over its 12 ms budget, so the gap is in the simulation, not the drawing. This deserves its own wayfinding session after the prototype.
+- **Optimise for Windows:** Windows is the main platform, but the prototypes are benchmarked on the M5 MacBook. The first Windows run (`tools/bench_release.sh`, #254) missed the 1,000-dense target with the army: frame p99 19.6 ms and tick p99 15.7 ms on an i7-12700K with an RTX 3080, against 11.9 ms and 10.2 ms on the M5. The tick alone is over its 12 ms budget, so the gap is in the simulation, not the drawing. This deserves its own wayfinding session after the prototype. A suspicion to check then: the game may be using only one thread, where it should make the best use of the hardware it runs on, such as spreading work across cores.
 
 ### Runs
 
 - **Build phase time limit:** perhaps a minute, after which the next wave starts. Starting the next wave early fast-forwards to it, and Escape stops the fast-forward.
 - Power-ups, including interactions with piles (for example, flame setting piles alight).
+- **Shockwave:** a power-up or wildcard for the base that sends out a shockwave, crumbling every wall.
+- **Challenge mode:** survive a set number of waves, each with modifiers.
 - Meta-progression between runs.
 - **Overworld map:** a map for choosing levels, perhaps with purchases between them and, later, saving. Open: how detailed it is, whether it holds a management layer, and whether what it holds lasts between runs or only within one.
 - Special waves: a wave that, on a small chance, breaks the usual pattern, for example one with an abnormal number of bloaters, or far more of one special type. Further on, waves that mutate into a random mix of enemy types, and perhaps a power-up or wildcard that changes which types spawn. Prompted by the v5 jump prototype, which keeps jumpers mixed in for now: how enemies come in wants more variety later.
