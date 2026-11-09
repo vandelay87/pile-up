@@ -15,6 +15,9 @@ cat >"$fakes/gh" <<'FAKE'
 #!/usr/bin/env bash
 echo "gh $*" >>"$FAKE_CALLS"
 [ -n "${FAKE_GH_DOWN:-}" ] && echo "error connecting to api.github.com" >&2 && exit 1
+# The body read after the bench fails once $FAKE_BODY_LOST exists.
+[ "$4 $5" = "--json body" ] && [ -e "${FAKE_BODY_LOST:-/nonexistent}" ] && exit 1
+[ "$4 $5" = "--json body" ] && [ -n "${FAKE_BODY_LOST:-}" ] && touch "$FAKE_BODY_LOST"
 case "$1 $2" in
 "pr view")
 	case $5 in
@@ -22,9 +25,11 @@ case "$1 $2" in
 	labels) printf '%s\n' "${FAKE_LABELS-bench-pc}" ;;
 	esac
 	;;
-"pr comment")
+"pr comment" | "pr edit")
+	out=$FAKE_COMMENT
+	[ "$2" = edit ] && out=$FAKE_EDITED_BODY
 	while [ $# -gt 0 ]; do
-		[ "$1" = "--body-file" ] && cp "$2" "$FAKE_COMMENT"
+		[ "$1" = "--body-file" ] && cp "$2" "$out"
 		shift
 	done
 	;;
@@ -99,7 +104,7 @@ project() {
 	)
 	git clone -q "$scratch/origin" "$scratch/project"
 	: >"$scratch/calls"
-	rm -f "$scratch/comment"
+	rm -f "$scratch/comment" "$scratch/body"
 }
 
 # Runs the script in the scratch clone with the given args, keeping stdout in $scratch/out and
@@ -108,7 +113,7 @@ run() {
 	(
 		cd "$scratch/project" &&
 			PATH="$fakes:$PATH" BENCH_PC_TREE="$scratch/tree" FAKE_CALLS="$scratch/calls" \
-				FAKE_COMMENT="$scratch/comment" tools/bench_pc.sh "$@" >"$scratch/out" 2>"$scratch/err"
+				FAKE_COMMENT="$scratch/comment" FAKE_EDITED_BODY="$scratch/body" tools/bench_pc.sh "$@" >"$scratch/out" 2>"$scratch/err"
 	)
 }
 
@@ -143,6 +148,34 @@ has "the label is swapped to done" "$scratch/calls" "pr edit 7 --remove-label be
 [ "$(git -C "$scratch/project" rev-parse --abbrev-ref HEAD)" = main ] || fail "the clone left main"
 run 7 || fail "a second run in the same bench tree exited non-zero: $(cat "$scratch/err")"
 
+# The body as it is after a pass, with the M5's section, a PC section from an earlier run and a
+# section after it.
+body=$'## Summary\r\n\nx\n\n## Performance\n\n### bench_profile dense-1000\n\nM5 table\n\n### PC (3080)\n\nold PC table\n\n#### bench_profile dense-1000\n\nold\n\n## Notes\n\nkept'
+project
+FAKE_BODY=$body run 7 || fail "a re-bench exited non-zero: $(cat "$scratch/err")"
+has "the body gets the PC's tables" "$scratch/body" "TABLE bench_profile dense-1000"
+has "the PC section is a subsection" "$scratch/body" "### PC (3080)"
+has "the PC's cases are a level down" "$scratch/body" "#### bench_profile dense-1000"
+has "the M5's section is kept" "$scratch/body" "M5 table"
+has "the sections after are kept" "$scratch/body" "kept"
+lacks "the earlier PC section is replaced" "$scratch/body" "old PC table"
+[ "$(grep -c '^### PC (3080)$' "$scratch/body")" -eq 1 ] || fail "the body has more than one PC section"
+[ "$(sed -n '/^### PC (3080)$/,$p' "$scratch/body" | grep -c '^## Notes$')" -eq 1 ] ||
+	fail "the PC section isn't inside Performance"
+grep -q $'\r' "$scratch/body" && fail "the body kept Windows line endings"
+[ "$(grep -c '^### bench_profile' "$scratch/body")" -eq 1 ] || fail "a PC case is at the M5's level"
+
+project
+FAKE_BODY_LOST="$scratch/lost" run 7 || fail "a lost body read exited non-zero: $(cat "$scratch/err")"
+[ ! -e "$scratch/body" ] || fail "an unread body was overwritten"
+has "an unread body still swaps the label" "$scratch/calls" "--add-label bench-pc-done"
+rm -f "$scratch/lost"
+
+project
+FAKE_BODY=$'## Summary\n\nx' run 7 || fail "a body with no Performance exited non-zero"
+has "a body with no Performance gets one" "$scratch/body" "## Performance"
+has "with no Performance, the PC section is added" "$scratch/body" "### PC (3080)"
+
 project
 run 7 || fail "a body with no headings exited non-zero: $(cat "$scratch/err")"
 has "with no headings, dense-1000 is run" "$scratch/calls" "bench bench_profile dense-1000"
@@ -171,7 +204,7 @@ FAKE_CPU=70 run 7
 [ $? -eq 75 ] || fail "a loaded CPU didn't exit 75"
 lacks "busy runs no bench" "$scratch/calls" "bench "
 lacks "busy posts nothing" "$scratch/calls" "pr comment"
-lacks "busy leaves the labels" "$scratch/calls" "pr edit"
+lacks "busy leaves the PR alone" "$scratch/calls" "pr edit"
 [ ! -e "$scratch/tree" ] || fail "busy checked something out"
 
 project

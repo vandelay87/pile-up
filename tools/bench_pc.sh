@@ -5,8 +5,9 @@
 # pile-up-bench-pc beside the clone, made on the first run and forced clean on each), runs that commit's
 # tools/bench_release.sh for each case the PR's Performance section has a `### bench_...` heading
 # for (dense-1000 with and without the army when it has none), and posts one comment headed
-# "PC (3080)" with the fingerprinted tables. A missed target is still a result: the PC's numbers
-# are for information only.
+# "PC (3080)" with the fingerprinted tables. It also writes them into the PR body as the last
+# subsection of its Performance section, replacing an earlier run's. A missed target is still a
+# result: the PC's numbers are for information only.
 #
 # Exits 0 when it posted the tables and swapped the label to bench-pc-done (or the PR isn't
 # flagged any more), 75 when the PC is busy (a game running, or the CPU or GPU loaded) or GitHub
@@ -62,10 +63,49 @@ cases() {
 	fi
 }
 
-# Posts the comment in $comment and swaps the bench-pc label for $1.
+# Posts the comment in $comment and swaps the bench-pc label for $1, passing any further args to
+# that edit.
 report() {
+	local label=$1
+	shift
 	gh pr comment "$pr" --body-file "$comment" >/dev/null &&
-		gh pr edit "$pr" --remove-label bench-pc --add-label "$1" >/dev/null
+		gh pr edit "$pr" --remove-label bench-pc --add-label "$label" "$@" >/dev/null
+}
+
+# Prints the PR body on stdin with the comment's tables as the last subsection of its Performance
+# section, "### PC (3080)" with its cases a level down so a re-bench still reads only the M5's.
+# An earlier PC subsection is dropped; a body with no Performance section gets one at the end.
+with_pc_section() {
+	{
+		echo "### PC (3080)"
+		tail -n +2 "$comment" | sed 's/^### /#### /'
+	} >"$work/section"
+	tr -d '\r' | awk -v section="$work/section" '
+		function emit(line) {
+			while ((getline line < section) > 0) print line
+			close(section)
+			done = 1
+		}
+		{
+			if ($0 ~ /^## /) {
+				if (in_perf && !done) { emit(); print "" }
+				in_perf = ($0 == "## Performance")
+				skipping = 0
+			} else if (in_perf && $0 == "### PC (3080)") {
+				skipping = 1
+			} else if (skipping && $0 ~ /^### /) {
+				skipping = 0
+			}
+			if (!skipping) print
+		}
+		END {
+			if (!done) {
+				if (!in_perf) { print ""; print "## Performance" }
+				print ""
+				emit()
+			}
+		}
+	'
 }
 
 # Posts a failure: $1 is what failed, $2 a file whose tail is the error. Exits 1.
@@ -151,7 +191,14 @@ main() {
 		} >>"$comment"
 	done <"$work/cases"
 
-	report bench-pc-done || exit 1
+	# The body is read again, as the Mac may have edited it during the bench. If it can't be read,
+	# it's left alone rather than overwritten: the tables are in the comment either way.
+	local body_args=()
+	if gh pr view "$pr" --json body --jq .body >"$work/body" 2>/dev/null; then
+		with_pc_section <"$work/body" >"$work/new-body"
+		body_args=(--body-file "$work/new-body")
+	fi
+	report bench-pc-done ${body_args[@]+"${body_args[@]}"} || exit 1
 	echo "bench_pc: #$pr benched at $sha and labelled bench-pc-done"
 }
 

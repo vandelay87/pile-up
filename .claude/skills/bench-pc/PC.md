@@ -46,10 +46,10 @@ A run takes minutes, and longer when it builds the dll with `scons`. Run it with
 
 | Exit | What it did | You |
 |---|---|---|
-| 0 | posted the tables and set `bench-pc-done`, or found the PR no longer flagged | wait for the next event |
+| 0 | posted the tables (comment and PR body) and set `bench-pc-done`, or found the PR no longer flagged | wait for the next event |
 | 75 | touched nothing: the PC was busy (a game running, or CPU or GPU load over the limits in the script's header), or GitHub couldn't be read | wait. The next poll prints the PR again. |
 | 1 | posted the error and set `bench-pc-failed` | move on. It isn't retried until someone relabels. |
 
 Events that arrive during a run queue up, and the PR the run just finished may be printed again. Run it anyway: the script checks the label first, so a PR that's already done is a no-op.
 
-A run is done when the script has exited. On 0 or 1, its comment is on the PR.
+A run is done when the script has exited. On 0 or 1, its comment is on the PR, and on 0 its tables are in the body too.

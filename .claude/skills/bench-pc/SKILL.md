@@ -12,10 +12,10 @@ The PR is the channel, and its labels are the state:
 | Label | Meaning | Set by |
 |---|---|---|
 | `bench-pc` | waiting for the PC | the Mac |
-| `bench-pc-done` | the PC posted its tables | the PC |
+| `bench-pc-done` | the PC posted its tables as a comment and in the body's Performance section | the PC |
 | `bench-pc-failed` | the PC posted an error and won't retry | the PC |
 
-The PC's comment opens with `## PC (3080)`. History lives in those PR comments; there is no results file.
+The PC's tables go in the body as the `### PC (3080)` subsection, beside the M5's, and are replaced on a re-bench. Every run's tables also stay in a PR comment headed `## PC (3080)`. That's the history; there is no results file.
 
 **Rules for both sides:**
 
