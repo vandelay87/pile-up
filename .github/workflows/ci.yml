@@ -27,6 +27,7 @@ jobs:
       - run: tools/sim_budget_test.sh
       - run: shellcheck tools/*.sh
       - run: tools/bench_release_test.sh
+      - run: tools/bench_pc_test.sh
 
   # The GDExtension (native/, ADR 0001), one release build per platform, for the jobs below.
   native:
