@@ -115,7 +115,7 @@ func test_the_build_phase_counts_the_bloaters_the_next_wave_spawns() -> void:
 		_kill_the_wave(sim)
 		assert_int(sim.waves.phase).is_equal(Waves.Phase.BUILD)
 		assert_int(sim.enemies_left).is_equal(76)
-		var preview := sim.next_wave_bloaters
+		var preview: int = sim.next_wave_specials["bloaters"]
 		previews.append(preview)
 		while sim.is_decay_rebuild_in_flight():
 			sim.tick()

@@ -568,7 +568,8 @@ func _perch(i: int, tumbling: Tumble) -> bool:
 
 # Counts each band's stalled enemies, and sorts those within an attacker's reach of the band's
 # barrier into its front rank. Lifted enemies count towards nothing, nor do those held up
-# attacking a soldier.
+# attacking a soldier. A brute counts as stalled but is never put in a front rank, so it never
+# tumbles.
 func _gather() -> void:
 	for crush: Crush in _crushes.values():
 		crush.clear_stalled()
@@ -580,6 +581,7 @@ func _gather() -> void:
 	var targets := _enemies.structure_targets
 	var soldier_targets := _enemies.soldier_targets
 	var fuses := _enemies.fuses
+	var kinds := _enemies.kinds
 	for i in _enemies.count:
 		if not _enemies.is_alive(i) or progress[i] >= stall or lifted[i] == 1:
 			continue
@@ -594,7 +596,7 @@ func _gather() -> void:
 			crush = Crush.new(label)
 			_crushes[label] = crush
 		crush.add_stalled(pos)
-		if not _touches_barrier(pos, label, reach):
+		if kinds[i] == Enemies.Kind.BRUTE or not _touches_barrier(pos, label, reach):
 			continue
 		# A bloater holding with its fuse lit isn't attacking.
 		if targets[i] == Enemies.NONE or fuses[i] > 0:

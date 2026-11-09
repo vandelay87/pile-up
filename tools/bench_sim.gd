@@ -13,6 +13,7 @@
 # it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
 # around the ring, firing into the crowd and fought by it, a group of them is sent across it
 # through the crowd every BenchCrowd.ORDER_INTERVAL ticks, and those that die are replaced.
+# BenchCrowd mixes brutes into the crowd, breaking through the towers and walls.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
@@ -71,6 +72,8 @@ class RunResult:
 	## Enemy-ticks spent attacking a soldier, summed over the enemies, and soldiers that died.
 	var attack_ticks := 0
 	var soldier_deaths := 0
+	## Brute-ticks spent attacking a structure, summed over the brutes.
+	var brute_attack_ticks := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -113,7 +116,12 @@ func _init() -> void:
 		)
 	)
 
+	print("Brutes spent %d brute-ticks attacking structures" % first.brute_attack_ticks)
+
 	var failed := false
+	if first.brute_attack_ticks == 0:
+		printerr("No brute damaged a structure")
+		failed = true
 	if first.repair_ticks == 0:
 		printerr("No drone repaired anything")
 		failed = true
@@ -208,6 +216,9 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 		for i in sim.enemies.count:
 			if sim.enemies.soldier_targets[i] != Enemies.NONE:
 				result.attack_ticks += 1
+			var brute := sim.enemies.kinds[i] == Enemies.Kind.BRUTE
+			if brute and sim.enemies.structure_targets[i] != Enemies.NONE:
+				result.brute_attack_ticks += 1
 		if t % CHAIN_INTERVAL == 1 and chain_wall.x >= 0 and sim.piles.level(chain_wall) == 0:
 			result.walls_erased += 1
 	for i in sim.soldiers.count:

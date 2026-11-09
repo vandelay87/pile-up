@@ -3,6 +3,10 @@ extends Node
 
 const TINT := Color(0.85, 0.3, 0.3)
 const BLOATER_TINT := Color(0.55, 0.85, 0.25)
+# Steel grey-blue.
+const BRUTE_TINT := Color(0.42, 0.52, 0.66)
+# An item's kind before it has drawn one.
+const _NO_KIND := 255
 const DIRECT_TINT := Color(0.95, 0.8, 0.2)
 const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
@@ -27,8 +31,9 @@ var _sprites: Array[RID] = []
 # Each item's sprite offset from the item: up by its lift, and back from where it sorts to its
 # feet for a perched enemy.
 var _offsets := PackedVector2Array()
-# The drawn scale of each item's sprite: the bloater size for a bloater, else 1.
+# The drawn scale of each item's sprite, its kind's size, and the kind it last drew.
 var _scales := PackedFloat32Array()
+var _kinds := PackedByteArray()
 var _shown := 0
 var _flash_ends := {}
 var _flashed_items := PackedInt32Array()
@@ -71,12 +76,15 @@ func _process(_delta: float) -> void:
 		RenderingServer.canvas_item_set_visible(_items[i], true)
 		# A reused item may still carry its last enemy's flash or tint: draw it afresh.
 		_scales[i] = 0.0
+		_kinds[i] = _NO_KIND
 	_shown = count
 
 	var positions := _enemies.positions
 	var states := _enemies.states
 	var kinds := _enemies.kinds
-	var bloater_size := _settings.bloater_size
+	var sizes := PackedFloat32Array()
+	for kind: Enemies.Kind in Enemies.Kind.values():
+		sizes.append(_settings.enemy_size_of(kind))
 	for i in count:
 		var foot := GridTransform.grid_to_world(positions[i])
 		var sorted_at := foot
@@ -93,12 +101,14 @@ func _process(_delta: float) -> void:
 				lift = _lift_at(positions[i])
 		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, sorted_at))
 		var offset := foot - sorted_at + Vector2(0, -lift)
-		var scale := bloater_size if kinds[i] == Enemies.Kind.BLOATER else 1.0
-		if scale != _scales[i]:
+		var scale := sizes[kinds[i]]
+		if scale != _scales[i] or kinds[i] != _kinds[i]:
 			# Removal moves enemies between items, so a new kind here needs its own look.
 			_scales[i] = scale
 			_offsets[i] = Vector2(NAN, NAN)
-			RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
+			if kinds[i] != _kinds[i]:
+				_kinds[i] = kinds[i]
+				RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 		if offset != _offsets[i]:
 			_offsets[i] = offset
 			RenderingServer.canvas_item_set_transform(
@@ -181,7 +191,12 @@ func _lift_at(pos: Vector2) -> float:
 
 # The enemy at [param index]'s own colour.
 func _tint(index: int) -> Color:
-	return BLOATER_TINT if _enemies.kinds[index] == Enemies.Kind.BLOATER else TINT
+	match _enemies.kinds[index]:
+		Enemies.Kind.BLOATER:
+			return BLOATER_TINT
+		Enemies.Kind.BRUTE:
+			return BRUTE_TINT
+	return TINT
 
 
 # A burning bloater's tint: its own, pulsing towards the fuse tint faster and faster as the
@@ -243,6 +258,7 @@ func _create_item() -> void:
 	_sprites.append(sprite)
 	_offsets.append(Vector2.ZERO)
 	_scales.append(1.0)
+	_kinds.append(_NO_KIND)
 
 
 func _exit_tree() -> void:

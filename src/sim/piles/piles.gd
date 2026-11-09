@@ -14,6 +14,8 @@ var _map: MapData
 var _occupancy: Occupancy
 var _rng: RandomNumberGenerator
 var _queued := PackedVector2Array()
+# The levels each queued body adds, in step with _queued.
+var _queued_levels := PackedByteArray()
 var _field_changes: Array[Vector2i] = []
 var _changed_mask := PackedByteArray()
 
@@ -45,26 +47,30 @@ func wall_hp(cell: Vector2i) -> float:
 	return wall_hps[_map.index_of(cell)]
 
 
-# Every death leaves a body except a bloater's and a blast kill's.
+# Every death leaves a body except a bloater's and a blast kill's; a brute's is 2 levels.
 func queue_bodies(deaths: Deaths) -> void:
 	for k in deaths.size():
 		if deaths.leaves_body(k):
 			_queued.append(deaths.bodies[k])
+			_queued_levels.append(deaths.body_levels(k))
 
 
+# Each queued body lands on its cell, or the nearest valid one, adding its levels up to a wall:
+# levels past the wall are lost.
 func land() -> void:
-	for pos in _queued:
-		var cell := _landing_cell(pos)
+	for k in _queued.size():
+		var cell := _landing_cell(_queued[k])
 		if not _map.in_bounds(cell) or not is_valid_landing(cell):
 			continue
 		var index := _map.index_of(cell)
-		levels[index] += 1
+		levels[index] = mini(levels[index] + _queued_levels[k], WALL_LEVEL)
 		if levels[index] == WALL_LEVEL:
 			wall_hps[index] = _settings.wall_hp
 			_count_wall(cell, 1)
 		_mark_changed(cell)
 		_field_changes.append(cell)
 	_queued.clear()
+	_queued_levels.clear()
 
 
 func damage_wall(cell: Vector2i, amount: float) -> void:

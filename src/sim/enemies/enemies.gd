@@ -1,7 +1,7 @@
 class_name Enemies
 extends RefCounted
 
-enum Kind { NORMAL, BLOATER }
+enum Kind { NORMAL, BLOATER, BRUTE }
 ## What an enemy is doing. [constant TUMBLING], [constant JUMPING] and [constant PERCHED] are
 ## lifted: the enemy doesn't walk, collide, separate, roll or track progress, and others don't
 ## separate from it or push it. A [constant CROUCHING] jumper holds its ground like an attacker.
@@ -54,6 +54,9 @@ var states := PackedByteArray()
 var lifted := PackedByteArray()
 # Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
 var fuses := PackedInt32Array()
+## Each enemy's mass among enemies, filled from its kind at the start of each [method move], so a
+## changed setting applies at once. The neighbour scans weight separation by it.
+var masses := PackedFloat32Array()
 ## True while [method move] runs the neighbour scan in the C++ GDExtension's NeighbourScan
 ## (ADR 0001), false for the GDScript scan. On whenever the extension is loaded; tests turn it
 ## off to compare the two.
@@ -128,7 +131,7 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	structure_targets[count] = NONE
 	soldier_targets[count] = NONE
-	routes[count] = Routing.Route.SENSIBLE
+	routes[count] = home_route(kind)
 	last_rolled_cells[count] = NONE
 	pace_rolls[count] = _swarm_rng.randf_range(-1.0, 1.0)
 	wander_phases[count] = _swarm_rng.randf_range(0.0, TAU)
@@ -147,6 +150,18 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 # The enemy's speed multiplier: its roll at spawn scaled by the current speed variety.
 func pace(index: int) -> float:
 	return 1.0 + pace_rolls[index] * _settings.speed_variety
+
+
+## The route an enemy of [param kind] walks when it spawns and when it lands: the direct route,
+## locked, for a brute, else the sensible route.
+static func home_route(kind: Kind) -> Routing.Route:
+	return Routing.Route.DIRECT if is_locked_to_direct(kind) else Routing.Route.SENSIBLE
+
+
+## Whether an enemy of [param kind] stays on the direct route: it never rolls, is never sent back
+## to the sensible route past an obstacle, and the wave-tail push-through skips it.
+static func is_locked_to_direct(kind: Kind) -> bool:
+	return kind == Kind.BRUTE
 
 
 func index_of(id: int) -> int:
@@ -276,8 +291,9 @@ func count_in_cell(cell_index: int) -> int:
 
 
 ## Puts the enemy at [param index] in [param state]. Going up into a lifted state it stops
-## attacking and counts towards no crush. Coming down to walking it walks the sensible field
-## again, its route-roll, jam and progress reset. A bloater lights its fuse as it perches.
+## attacking and counts towards no crush. Coming down to walking it walks its home route again
+## (see [method home_route]), its route-roll, jam and progress reset. A bloater lights its fuse as
+## it perches.
 func set_state(index: int, state: State) -> void:
 	var was_lifted := lifted[index] == 1
 	states[index] = state
@@ -290,7 +306,7 @@ func set_state(index: int, state: State) -> void:
 		progress[index] = 1.0
 		_last_values[index] = INF
 	elif was_lifted and state == State.WALKING:
-		routes[index] = Routing.Route.SENSIBLE
+		routes[index] = home_route(kinds[index] as Kind)
 		last_rolled_cells[index] = NONE
 		_best_values[index] = INF
 		_stuck_ticks[index] = 0
@@ -367,6 +383,12 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
 			fuses[i] = fuse_ticks
 		_attacking[i] = 1 if structure_targets[i] != NONE or soldier_targets[i] != NONE else 0
+	masses.resize(count)
+	var kind_masses := PackedFloat32Array()
+	for kind: Kind in Kind.values():
+		kind_masses.append(_settings.enemy_mass_of(kind))
+	for i in count:
+		masses[i] = kind_masses[kinds[i]]
 	_moved.resize(count)
 	var separations := PackedVector2Array()
 	var space_pushes := PackedVector2Array()
@@ -380,6 +402,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 			hp,
 			lifted,
 			_attacking,
+			masses,
 			ids,
 			_bucket_starts,
 			_bucket_enemies,
@@ -428,24 +451,30 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		positions[i] = pos
 		if routes[i] == Routing.Route.SENSIBLE:
 			_roll_route(i, _cell_index(pos), sensible_parents, direct_parents)
-		elif _is_past_obstacle(i, pos):
+		elif not is_locked_to_direct(kinds[i] as Kind) and _is_past_obstacle(i, pos):
 			routes[i] = Routing.Route.SENSIBLE
 		_track_progress(
 			i, pos, band_mask, steps[kinds[i] * _PILE_LEVELS] * (1.0 + pace_rolls[i] * variety)
 		)
-	var damage_per_tick := _settings.structure_damage_per_tick
+	var damage_per_tick := PackedFloat64Array()
+	for kind: Kind in Kind.values():
+		damage_per_tick.append(_settings.structure_damage_per_tick_of(kind))
 	for i in count:
 		if structure_targets[i] != NONE and kinds[i] != Kind.BLOATER:
-			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick)
+			_structures.damage(_map.cell_of(structure_targets[i]), damage_per_tick[kinds[i]])
 
 
 ## At [constant Simulation.Step.MOVE_UNITS], the contact pass for a soldier's body at
 ## [param pos], from the hash built at [constant Simulation.Step.REBUILD_SPATIAL_HASH]: every
 ## living enemy that isn't lifted in the 3×3 buckets around it whose centre is closer than two body
 ## radii is pushed apart from it along the line between them, closing [param push] of the overlap.
-## The enemy takes [param enemy_share] of that push and is held off walls and solids. Returns where
-## the soldier ends up, having taken the rest.
-func push_away_from(pos: Vector2, push: float, enemy_share: float) -> Vector2:
+## The push splits by mass: the enemy takes [code]soldier_mass / (soldier_mass + its mass)[/code]
+## of it and is held off walls and solids. Returns where the soldier ends up, having taken the
+## rest.
+func push_away_from(pos: Vector2, push: float, soldier_mass: float) -> Vector2:
+	var shares := PackedFloat64Array()
+	for kind: Kind in Kind.values():
+		shares.append(soldier_mass / (soldier_mass + _settings.enemy_mass_of(kind)))
 	var radius := _settings.separation_radius
 	var spacing := 2.0 * radius
 	var spacing_squared := spacing * spacing
@@ -464,6 +493,7 @@ func push_away_from(pos: Vector2, push: float, enemy_share: float) -> Vector2:
 				var distance := sqrt(distance_squared)
 				var direction := away / distance if distance > 1e-6 else Vector2.RIGHT
 				var shove := direction * (spacing - distance) * push
+				var enemy_share := shares[kinds[i]]
 				positions[i] = _held_off_solids(positions[i] + shove * enemy_share, radius)
 				pos -= shove * (1.0 - enemy_share)
 	return pos
@@ -632,6 +662,9 @@ func _distance_to_cell(pos: Vector2, index: int) -> float:
 # attacker in full, so the crowd cannot squeeze attackers off their targets. Separation reads
 # the 3×3 buckets, up to the neighbour cap.
 #
+# Each separation push is weighted by the two masses, 2 × m_other / (m_self + m_other): equal
+# masses push as if unweighted, and a heavy enemy takes less of a light one's push and gives more.
+#
 # Personal space is a soft push that keeps neighbours a personal-space radius apart, wider than
 # the collision spacing, so a column fans out across a corridor rather than single-filing. It
 # reads every neighbour within ceil(space_radius) buckets, past the cap and the 3×3, but not
@@ -654,6 +687,7 @@ func _neighbour_pushes(
 	var reach := ceili(space_radius) if spaces else 1
 	var width := _map.width
 	var pos := positions[i]
+	var mass := masses[i]
 	var cell := Vector2i(pos.floor())
 	var attacking := _attacking[i] == 1
 	var separating := true
@@ -694,7 +728,8 @@ func _neighbour_pushes(
 				var distance := away.length()
 				var direction := away / distance if distance > 1e-6 else _tie_break(i, j)
 				if separates:
-					var shove := direction * (spacing - distance) * push
+					var weight := 2.0 * masses[j] / (mass + masses[j])
+					var shove := direction * (spacing - distance) * push * weight
 					if other_attacking and not attacking:
 						from_attackers += shove * 2.0
 					else:

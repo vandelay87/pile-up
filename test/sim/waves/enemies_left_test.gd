@@ -17,7 +17,9 @@ func before_test() -> void:
 	_sim = Simulation.new(settings, TestMaps.from_rows(rows, Rect2i(3, 3, 2, 2), edges), 1)
 	_enemies_left = []
 	_kills = []
-	_sim.enemies_left_changed.connect(func(left: int) -> void: _enemies_left.append(left))
+	_sim.enemies_left_changed.connect(
+		func(left: int, _specials: Dictionary) -> void: _enemies_left.append(left)
+	)
 	_sim.kills_changed.connect(func(kills: int) -> void: _kills.append(kills))
 
 

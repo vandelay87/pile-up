@@ -43,6 +43,20 @@ func test_an_enemy_jammed_against_a_soldier_attacks_it_at_2_hp_a_second() -> voi
 	assert_float(before - _hp_of(id)).is_equal_approx(2.0, 1e-3)
 
 
+func test_a_brute_jammed_against_a_soldier_attacks_it_at_2_hp_a_second_too() -> void:
+	_sim = _sim_from(LANE)
+	var id := _sim.soldiers.add(Vector2i(7, 1))
+	var brute := _sim.enemies.spawn(Vector2(9.5, 1.5), TOUGH, Enemies.Kind.BRUTE)
+	_run_until_attacking(brute, 240)
+	var before := _hp_of(id)
+
+	for tick in 60:
+		_sim.tick()
+
+	assert_int(_soldier_target(brute)).is_equal(id)
+	assert_float(before - _hp_of(id)).is_equal_approx(2.0, 1e-3)
+
+
 func test_an_enemy_passing_a_soldier_never_attacks_it() -> void:
 	_sim = _sim_from(CORRIDOR)
 	var id := _sim.soldiers.add(Vector2i(7, 1))

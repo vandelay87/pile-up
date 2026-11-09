@@ -18,13 +18,15 @@ Vector2 separation_total(const Vector2 &p_from_peers, int p_peers, const Vector2
 } // namespace
 
 void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
-		const PackedFloat32Array &p_hp, const PackedByteArray &p_tumbling,
-		const PackedByteArray &p_attacking, const PackedInt32Array &p_ids,
+		const PackedFloat32Array &p_hp, const PackedByteArray &p_lifted,
+		const PackedByteArray &p_attacking, const PackedFloat32Array &p_masses,
+		const PackedInt32Array &p_ids,
 		const PackedInt32Array &p_bucket_starts, const PackedInt32Array &p_bucket_enemies,
 		int p_width, int p_height, double p_radius, double p_push, int p_cap, bool p_spreads,
 		double p_space_radius, double p_space_push) {
 	ERR_FAIL_COND(p_count < 0 || p_positions.size() < p_count || p_hp.size() < p_count ||
-			p_tumbling.size() < p_count || p_attacking.size() < p_count || p_ids.size() < p_count ||
+			p_lifted.size() < p_count || p_attacking.size() < p_count ||
+			p_masses.size() < p_count || p_ids.size() < p_count ||
 			p_bucket_enemies.size() < p_count || p_bucket_starts.size() != p_width * p_height + 1);
 	separations.resize(p_count);
 	space_pushes.resize(p_count);
@@ -32,8 +34,9 @@ void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
 	Vector2 *out_space = space_pushes.ptrw();
 	const Vector2 *positions = p_positions.ptr();
 	const float *hp = p_hp.ptr();
-	const uint8_t *tumbling = p_tumbling.ptr();
+	const uint8_t *lifted = p_lifted.ptr();
 	const uint8_t *attacking_flags = p_attacking.ptr();
+	const float *masses = p_masses.ptr();
 	const int32_t *ids = p_ids.ptr();
 	const int32_t *bucket_starts = p_bucket_starts.ptr();
 	const int32_t *bucket_enemies = p_bucket_enemies.ptr();
@@ -45,13 +48,14 @@ void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
 	for (int i = 0; i < p_count; i++) {
 		out_separations[i] = Vector2();
 		out_space[i] = Vector2();
-		if (hp[i] <= 0.0f || tumbling[i] == 1) {
+		if (hp[i] <= 0.0f || lifted[i] == 1) {
 			continue;
 		}
 		const bool attacking = attacking_flags[i] == 1;
 		const bool spaces = p_spreads && !attacking;
 		const int reach = spaces ? int(std::ceil(p_space_radius)) : 1;
 		const Vector2 pos = positions[i];
+		const double mass = masses[i];
 		const Vector2i cell = Vector2i(pos.floor());
 		bool separating = true;
 		bool capped_out = false;
@@ -69,7 +73,7 @@ void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
 				const int bucket = y * p_width + x;
 				for (int slot = bucket_starts[bucket]; slot < bucket_starts[bucket + 1]; slot++) {
 					const int j = bucket_enemies[slot];
-					if (j == i || tumbling[j] == 1) {
+					if (j == i || lifted[j] == 1) {
 						continue;
 					}
 					const Vector2 away = pos - positions[j];
@@ -102,7 +106,9 @@ void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
 						direction = ids[i] > ids[j] ? Vector2(1, 0) : Vector2(-1, 0);
 					}
 					if (separates) {
-						const Vector2 shove = direction * real_t(spacing - distance) * real_t(p_push);
+						const double weight = 2.0 * double(masses[j]) / (mass + double(masses[j]));
+						const Vector2 shove = direction * real_t(spacing - distance) * real_t(p_push) *
+								real_t(weight);
 						if (other_attacking && !attacking) {
 							from_attackers += shove * real_t(2.0);
 						} else {
@@ -124,8 +130,8 @@ void NeighbourScan::scan(int p_count, const PackedVector2Array &p_positions,
 }
 
 void NeighbourScan::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("scan", "count", "positions", "hp", "tumbling", "attacking", "ids",
-								 "bucket_starts", "bucket_enemies", "width", "height", "radius",
+	ClassDB::bind_method(D_METHOD("scan", "count", "positions", "hp", "lifted", "attacking",
+								 "masses", "ids", "bucket_starts", "bucket_enemies", "width", "height", "radius",
 								 "push", "cap", "spreads", "space_radius", "space_push"),
 			&NeighbourScan::scan);
 	ClassDB::bind_method(D_METHOD("get_separations"), &NeighbourScan::get_separations);

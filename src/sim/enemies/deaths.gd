@@ -44,6 +44,11 @@ func leaves_body(k: int) -> bool:
 	return kinds[k] != Enemies.Kind.BLOATER and blasts[k] == 0
 
 
+## How many pile levels death [param k]'s body adds: 2 for a brute, else 1.
+func body_levels(k: int) -> int:
+	return 2 if kinds[k] == Enemies.Kind.BRUTE else 1
+
+
 ## Whether death [param k] pays its kind's bounty: all but a bloater that blew itself up.
 func pays_bounty(k: int) -> bool:
 	return popped[k] == 0

@@ -388,6 +388,31 @@ class KillEnemies:
 		sim.kill_enemies(_count)
 
 
+## Debug: [code]count[/code] enemies of a kind sent at once as one burst, counting towards
+## nothing in the wave (see [method Waves.send]).
+class SpawnEnemies:
+	extends Commands.Play
+
+	const LABEL := "send enemies"
+
+	var _kind: Enemies.Kind
+	var _count: int
+
+	func _init(kind: Enemies.Kind, count: int) -> void:
+		_kind = kind
+		_count = count
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Waves: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		if _count < 1:
+			sim.reject_command("%s: the count must be at least 1" % LABEL)
+		elif not sim.waves.send(_kind, _count):
+			sim.reject_command("%s: the map has no spawn edges" % LABEL)
+
+
 ## Debug: soldiers beside the base for free, placed one by one by the new-soldier rule.
 class AddSoldiers:
 	extends Commands.Play

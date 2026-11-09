@@ -20,13 +20,17 @@ var _settings: Settings
 var _map: MapData
 var _enemies: Enemies
 var _rng: RandomNumberGenerator
-# Seeds each wave's bloater roll with the wave number, so a wave's count is the same however
-# often, and whenever, it is asked for.
+# Seed each wave's bloater and brute rolls with the wave number, so a wave's counts are the same
+# however often, and whenever, they are asked for. The two are seeded apart, so they never move
+# together.
 var _bloater_seed := 0
-var _hp := 0.0
-var _bloater_hp := 0.0
-# 1 for each spawn slot of this wave that is a bloater.
-var _bloater_slots := PackedByteArray()
+var _run_seed := 0
+# Each kind's HP this wave, by Enemies.Kind.
+var _hp_by_kind := PackedFloat64Array()
+# The Enemies.Kind of each spawn slot of this wave.
+var _slot_kinds := PackedByteArray()
+# The ids of enemies sent by SpawnEnemies that are still alive: they count towards nothing.
+var _sent := {}
 var _spawned := 0
 var _size := 0
 var _spawn_budget := 0.0
@@ -43,13 +47,15 @@ func _init(
 	run_map: MapData,
 	run_enemies: Enemies,
 	rng: RandomNumberGenerator,
-	bloater_seed: int
+	bloater_seed: int,
+	run_seed := 0,
 ) -> void:
 	_settings = run_settings
 	_map = run_map
 	_enemies = run_enemies
 	_rng = rng
 	_bloater_seed = bloater_seed
+	_run_seed = run_seed
 
 
 func size(wave: int) -> int:
@@ -60,16 +66,40 @@ func size(wave: int) -> int:
 # 1, and one more every waves_per_step waves, whatever the wave's size. Each wave rolls once for
 # one fewer (miss_chance) or one more (extra_chance).
 func bloater_count(wave: int) -> int:
-	var first := _settings.first_bloater_wave
+	return _stepped_count(wave, "bloaters", hash([_bloater_seed, wave]))
+
+
+# How many of wave [param wave]'s spawns are brutes, by the bloater's model with the brutes'
+# own settings and a roll seeded apart from the bloater's.
+func brute_count(wave: int) -> int:
+	return _stepped_count(wave, "brutes", hash([_run_seed, "brutes", wave]))
+
+
+## Wave [param wave]'s special enemies, exactly as it spawns them: bloaters, then jumpers, then
+## brutes, each kind given fewer if they would outnumber the wave.
+func special_counts(wave: int) -> Dictionary:
+	var room := size(wave)
+	var bloaters := mini(bloater_count(wave), room)
+	var brutes := mini(brute_count(wave), room - bloaters)
+	return {"bloaters": bloaters, "jumpers": 0, "brutes": brutes}
+
+
+# None before the group's first wave, then 1, and one more every waves_per_step waves. Each wave
+# rolls once, on [param roll_seed], for one fewer (miss_chance) or one more (extra_chance).
+func _stepped_count(wave: int, group: String, roll_seed: int) -> int:
+	var first: int = _settings.value(group, "first_wave")
 	if wave < first:
 		return 0
-	var count := 1 + (wave - first) / _settings.bloater_waves_per_step
+	var per_step: int = _settings.value(group, "waves_per_step")
+	var count := 1 + (wave - first) / per_step
 	var roll_rng := RandomNumberGenerator.new()
-	roll_rng.seed = hash([_bloater_seed, wave])
+	roll_rng.seed = roll_seed
 	var roll := roll_rng.randf()
-	if roll < _settings.bloater_miss_chance:
+	var miss_percent: int = _settings.value(group, "miss_chance")
+	var extra_percent: int = _settings.value(group, "extra_chance")
+	if roll < miss_percent / 100.0:
 		return count - 1
-	if roll >= 1.0 - _settings.bloater_extra_chance:
+	if roll >= 1.0 - extra_percent / 100.0:
 		return count + 1
 	return count
 
@@ -107,9 +137,14 @@ func start(wave: int) -> void:
 	_kills = 0
 	edges = _pick_edges()
 	_size = size(wave)
-	_hp = enemy_hp(wave)
-	_bloater_hp = enemy_hp(wave, Enemies.Kind.BLOATER)
-	_pick_bloater_slots(bloater_count(wave))
+	_hp_by_kind = _hps(wave)
+	var counts := special_counts(wave)
+	var bloaters: int = counts["bloaters"]
+	var brutes: int = counts["brutes"]
+	_slot_kinds.resize(_size)
+	_slot_kinds.fill(Enemies.Kind.NORMAL)
+	_pick_slots(Enemies.Kind.BLOATER, bloaters)
+	_pick_slots(Enemies.Kind.BRUTE, brutes)
 	_spawned = 0
 	_plan = spawn_plan(wave)
 	_next_entry = 0
@@ -166,7 +201,30 @@ func in_wave_tail() -> bool:
 	return phase == Phase.WAVE and enemies_left <= tail
 
 
-func record_kills(kills: int) -> void:
+## Debug: sends [param count] enemies of [param kind] at once as one burst, from the wave's first
+## edge or, between waves, a random spawn edge, at the HP of the wave last started (wave 1's
+## before any). They count towards nothing in the wave. False when the map has no spawn edges.
+func send(kind: Enemies.Kind, count: int) -> bool:
+	if _map.spawn_edges.is_empty():
+		return false
+	var edge := (
+		edges[0]
+		if phase == Phase.WAVE
+		else _map.spawn_edges[_rng.randi_range(0, _map.spawn_edges.size() - 1)]
+	)
+	var hp := enemy_hp(maxi(_wave, 1), kind)
+	var stretch := _stretch(edge, count)
+	for _k in count:
+		_sent[_enemies.spawn(_jittered(_random_cell(stretch)), hp, kind)] = true
+	return true
+
+
+## Counts this tick's deaths towards the wave, all but the enemies [method send] sent.
+func record_kills(deaths: Deaths) -> void:
+	var kills := 0
+	for id in deaths.ids:
+		if not _sent.erase(id):
+			kills += 1
 	if phase == Phase.WAVE:
 		_kills += kills
 
@@ -178,15 +236,22 @@ func check_end() -> bool:
 	return true
 
 
-# Picks [param count] of the wave's spawn slots, without replacement, to be bloaters.
-func _pick_bloater_slots(count: int) -> void:
-	_bloater_slots.resize(_size)
-	_bloater_slots.fill(0)
+# Each kind's HP in wave [param wave], by Enemies.Kind.
+func _hps(wave: int) -> PackedFloat64Array:
+	var hps := PackedFloat64Array()
+	for kind: Enemies.Kind in Enemies.Kind.values():
+		hps.append(enemy_hp(wave, kind))
+	return hps
+
+
+# Picks [param count] of the wave's normal spawn slots, without replacement, to be [param kind].
+# special_counts leaves room for every pick.
+func _pick_slots(kind: Enemies.Kind, count: int) -> void:
 	var picked := 0
-	while picked < mini(count, _size):
+	while picked < count:
 		var slot := _rng.randi_range(0, _size - 1)
-		if _bloater_slots[slot] == 0:
-			_bloater_slots[slot] = 1
+		if _slot_kinds[slot] == Enemies.Kind.NORMAL:
+			_slot_kinds[slot] = kind
 			picked += 1
 
 
@@ -214,15 +279,16 @@ func _random_cell(cells: Array[Vector2i]) -> Vector2i:
 
 
 func _spawn_on(cell: Vector2i) -> void:
+	var kind := _slot_kinds[_spawned] as Enemies.Kind
+	_enemies.spawn(_jittered(cell), _hp_by_kind[kind], kind)
+	_spawned += 1
+
+
+func _jittered(cell: Vector2i) -> Vector2:
 	var jitter := Vector2(
 		_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER), _rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
 	)
-	var pos := MapData.centre_of(cell) + jitter
-	if _bloater_slots[_spawned] == 1:
-		_enemies.spawn(pos, _bloater_hp, Enemies.Kind.BLOATER)
-	else:
-		_enemies.spawn(pos, _hp)
-	_spawned += 1
+	return MapData.centre_of(cell) + jitter
 
 
 func _pick_edges() -> PackedStringArray:
