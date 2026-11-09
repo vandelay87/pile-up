@@ -229,6 +229,21 @@ func _add_cheats() -> void:
 	for control: Control in [victims, kill]:
 		kill_row.add_child(control)
 	_box.add_child(kill_row)
+	var kinds := OptionButton.new()
+	for kind: String in Enemies.Kind.keys():
+		kinds.add_item(kind.capitalize())
+	var sent_count := _number_field(1, 1000, 1, 10)
+	var send := Button.new()
+	send.text = "Send enemies"
+	send.pressed.connect(
+		func() -> void:
+			var kind := Enemies.Kind.values()[kinds.selected] as Enemies.Kind
+			_send(Commands.SpawnEnemies.new(kind, roundi(sent_count.value)))
+	)
+	var send_row := HBoxContainer.new()
+	for control: Control in [kinds, sent_count, send]:
+		send_row.add_child(control)
+	_box.add_child(send_row)
 	var soldier_count := _number_field(1, 100, 1, 10)
 	var add_soldiers := Button.new()
 	add_soldiers.text = "Add soldiers"

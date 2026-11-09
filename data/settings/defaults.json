@@ -32,6 +32,18 @@
 		"blast_radius": 2,
 		"blast_damage": 30
 	},
+	"brutes": {
+		"hp": 40,
+		"speed": 1.4,
+		"bounty": 4,
+		"mass": 3,
+		"structure_damage_factor": 5,
+		"size": 1.8,
+		"first_wave": 12,
+		"waves_per_step": 6,
+		"miss_chance": 25,
+		"extra_chance": 10
+	},
 	"piles": {
 		"slow_level_1": 15,
 		"slow_level_2": 30,

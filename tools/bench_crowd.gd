@@ -1,7 +1,9 @@
 # Keeps a dense crowd of enemies in a ring around the base, with a ring of towers firing into it,
-# for the benchmarks. It can field an army among them: soldiers in and around the ring, some on
-# walls it raises, ORDER_GROUP of them sent across the ring through the crowd every ORDER_INTERVAL
-# ticks, and those that die in it replaced.
+# for the benchmarks. Brutes are mixed into the crowd at their count in a wave-20 wave, on the
+# direct route, each spawning near the ring's inner edge so it shoulders through the crowd to the
+# base, or a wall raised in its way, and breaks at it. It can field an army among them: soldiers
+# in and around the ring, some on walls it raises, ORDER_GROUP of them sent across the ring
+# through the crowd every ORDER_INTERVAL ticks, and those that die in it replaced.
 class_name BenchCrowd
 extends RefCounted
 
@@ -16,6 +18,10 @@ const ARMY_INNER_RADIUS := INNER_RADIUS - 2.0
 const ARMY_OUTER_RADIUS := OUTER_RADIUS + 2.0
 const ORDER_GROUP := 10
 const ORDER_INTERVAL := 120
+# The wave whose brute count (without its roll) the crowd keeps, and how far out from the ring's
+# inner edge they spawn.
+const BRUTE_WAVE := 20
+const BRUTE_BAND := 2.0
 # Spots tried for each soldier before field_army gives up on a full army.
 const _TRIES_PER_SOLDIER := 100
 
@@ -70,8 +76,23 @@ static func digest(sim: Simulation) -> int:
 
 
 func top_up(target: int) -> void:
-	while _sim.enemies.count < target:
-		_sim.enemies.spawn(_free_spot(), _sim.settings.enemy_hp)
+	var enemies := _sim.enemies
+	var brutes := enemies.kinds.slice(0, enemies.count).count(Enemies.Kind.BRUTE)
+	var wanted := brute_count()
+	while enemies.count < target:
+		if brutes < wanted:
+			var spot := _spot_in(_rng, INNER_RADIUS, INNER_RADIUS + BRUTE_BAND)
+			enemies.spawn(spot, _sim.settings.enemy_hp_of(Enemies.Kind.BRUTE), Enemies.Kind.BRUTE)
+			brutes += 1
+		else:
+			enemies.spawn(_free_spot(), _sim.settings.enemy_hp)
+
+
+## The brutes the crowd keeps: a wave-[constant BRUTE_WAVE] wave's count before its roll.
+func brute_count() -> int:
+	var first: int = _sim.settings.value("brutes", "first_wave")
+	var per_step: int = _sim.settings.value("brutes", "waves_per_step")
+	return 0 if BRUTE_WAVE < first else 1 + (BRUTE_WAVE - first) / per_step
 
 
 func drop_body() -> void:

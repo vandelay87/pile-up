@@ -123,7 +123,7 @@ func setup(
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_base_hp(run_state.base_hp)
-	_show_enemies_left(_simulation.enemies_left)
+	_show_enemies_left(_simulation.enemies_left, _simulation.next_wave_specials)
 	_show_kills(run_state.kills)
 	_show_phase(_simulation.waves.phase)
 	_game_over.visible = false
@@ -398,15 +398,17 @@ func _show_build_buttons() -> void:
 	button.tooltip_text = _sentence(Buildings.BARRACKS_LIMIT) if button.disabled else ""
 
 
-# In the build phase, the next wave's size and its bloaters, like "120 enemies · 3 bloaters".
-func _show_enemies_left(left: int) -> void:
+# In the build phase, the next wave's size and each special type it brings, like
+# "120 enemies · 3 bloaters · 1 brute".
+func _show_enemies_left(left: int, specials: Dictionary) -> void:
 	if _simulation.waves.phase == Waves.Phase.WAVE:
 		_enemies_left.text = str(left)
 		return
 	_enemies_left.text = "%d enemies" % left
-	var bloaters := _simulation.next_wave_bloaters
-	if bloaters > 0:
-		_enemies_left.text += " · %d bloater%s" % [bloaters, "" if bloaters == 1 else "s"]
+	for kind: String in ["bloaters", "jumpers", "brutes"]:
+		var count: int = specials.get(kind, 0)
+		if count > 0:
+			_enemies_left.text += " · %d %s" % [count, kind if count > 1 else kind.trim_suffix("s")]
 
 
 func _show_kills(kills: int) -> void:
@@ -564,7 +566,7 @@ func _show_combo_ring() -> void:
 
 func _show_phase(_phase: Waves.Phase) -> void:
 	_wave.text = str(_simulation.run_state.wave)
-	_show_enemies_left(_simulation.enemies_left)
+	_show_enemies_left(_simulation.enemies_left, _simulation.next_wave_specials)
 
 
 func _show_game_over() -> void:

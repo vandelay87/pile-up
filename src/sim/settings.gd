@@ -229,6 +229,26 @@ var bloater_extra_chance: float:
 var bloater_size: float:
 	get:
 		return value("bloaters", "size")
+var brute_hp: float:
+	get:
+		return value("brutes", "hp")
+var brute_speed: float:
+	get:
+		return value("brutes", "speed")
+var brute_bounty: int:
+	get:
+		return value("brutes", "bounty")
+## A brute's mass against a normal enemy's 1.
+var brute_mass: float:
+	get:
+		return value("brutes", "mass")
+## How many times a normal enemy's structure damage a brute deals.
+var brute_damage_factor: float:
+	get:
+		return value("brutes", "structure_damage_factor")
+var brute_size: float:
+	get:
+		return value("brutes", "size")
 var fuse_ticks: int:
 	get:
 		var seconds: float = value("bloaters", "fuse")
@@ -460,16 +480,53 @@ func pile_slow(level: int) -> float:
 
 # Kind-specific enemy numbers.
 func enemy_hp_of(kind: Enemies.Kind) -> float:
-	return bloater_hp if kind == Enemies.Kind.BLOATER else enemy_hp
+	match kind:
+		Enemies.Kind.BLOATER:
+			return bloater_hp
+		Enemies.Kind.BRUTE:
+			return brute_hp
+	return enemy_hp
 
 
 func enemy_bounty_of(kind: Enemies.Kind) -> int:
-	return bloater_bounty if kind == Enemies.Kind.BLOATER else enemy_bounty
+	match kind:
+		Enemies.Kind.BLOATER:
+			return bloater_bounty
+		Enemies.Kind.BRUTE:
+			return brute_bounty
+	return enemy_bounty
 
 
 func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:
-	var speed := bloater_speed if kind == Enemies.Kind.BLOATER else enemy_speed
+	var speed := enemy_speed
+	match kind:
+		Enemies.Kind.BLOATER:
+			speed = bloater_speed
+		Enemies.Kind.BRUTE:
+			speed = brute_speed
 	return speed / Simulation.TICKS_PER_SECOND
+
+
+## An enemy's mass among enemies and against soldiers: a brute's setting, else 1.
+func enemy_mass_of(kind: Enemies.Kind) -> float:
+	return brute_mass if kind == Enemies.Kind.BRUTE else 1.0
+
+
+## HP a tick an attacker of [param kind] deals to a structure: a brute's by its factor.
+func structure_damage_per_tick_of(kind: Enemies.Kind) -> float:
+	if kind == Enemies.Kind.BRUTE:
+		return structure_damage_per_tick * brute_damage_factor
+	return structure_damage_per_tick
+
+
+## An enemy's drawn size, as a multiple of a normal enemy's.
+func enemy_size_of(kind: Enemies.Kind) -> float:
+	match kind:
+		Enemies.Kind.BLOATER:
+			return bloater_size
+		Enemies.Kind.BRUTE:
+			return brute_size
+	return 1.0
 
 
 func value(group: String, key: String) -> Variant:

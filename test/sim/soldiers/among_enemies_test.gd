@@ -35,6 +35,22 @@ func test_an_enemy_overlapping_a_soldier_is_pushed_five_times_as_far_as_the_sold
 	assert_float(enemy_pushed).is_equal_approx(5.0 * soldier_pushed, 1e-4)
 
 
+func test_a_brute_pushes_a_soldier_further_than_a_normal_enemy_does() -> void:
+	var pushed: Array[float] = []
+	for kind: Enemies.Kind in [Enemies.Kind.NORMAL, Enemies.Kind.BRUTE]:
+		_sim = _sim_from(OPEN)
+		# At a normal enemy's speed, so only the mass differs.
+		_sim.settings.change("brutes", "speed", _sim.settings.enemy_speed)
+		var id := _sim.soldiers.add(Vector2i(7, 1))
+		_sim.enemies.spawn(Vector2(7.8, 1.5), 10.0, kind)
+
+		_sim.tick()
+
+		pushed.append(_position_of(id).distance_to(Vector2(7.5, 1.5)))
+	# The soldier takes 1/6 of the push from a normal enemy and 3/8 from a brute.
+	assert_float(pushed[1]).is_equal_approx(pushed[0] * (3.0 / 8.0) / (1.0 / 6.0), 1e-4)
+
+
 func test_a_soldier_and_an_enemy_push_apart_softly_as_enemies_do() -> void:
 	_sim = _sim_from(OPEN)
 	var id := _sim.soldiers.add(Vector2i(7, 1))

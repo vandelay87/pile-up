@@ -16,10 +16,12 @@ class NeighbourScan : public RefCounted {
 
 public:
 	// Fills the separations and space pushes for enemies [0, count) that are alive and not
-	// tumbling; the rest get zero. spreads is false when personal space is off this tick.
+	// lifted; the rest get zero. Each separation push is weighted by the two enemies' masses.
+	// spreads is false when personal space is off this tick.
 	void scan(int p_count, const PackedVector2Array &p_positions, const PackedFloat32Array &p_hp,
-			const PackedByteArray &p_tumbling, const PackedByteArray &p_attacking,
-			const PackedInt32Array &p_ids, const PackedInt32Array &p_bucket_starts,
+			const PackedByteArray &p_lifted, const PackedByteArray &p_attacking,
+			const PackedFloat32Array &p_masses, const PackedInt32Array &p_ids,
+			const PackedInt32Array &p_bucket_starts,
 			const PackedInt32Array &p_bucket_enemies, int p_width, int p_height,
 			double p_radius, double p_push, int p_cap, bool p_spreads, double p_space_radius,
 			double p_space_push);

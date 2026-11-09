@@ -7,7 +7,9 @@ signal fields_changed
 signal gold_changed(gold: int)
 signal base_hp_changed(hp: float)
 signal kills_changed(kills: int)
-signal enemies_left_changed(left: int)
+## Enemies left, and in the build phase the next wave's special enemies as
+## [method Waves.special_counts] gives them; [param specials] is empty during a wave.
+signal enemies_left_changed(left: int, specials: Dictionary)
 signal combo_events(events: Array[Combos.Event])
 signal payout(amount: int, tier: int)
 signal building_placed(id: int)
@@ -85,10 +87,13 @@ var soldier_deaths := SoldierDeaths.new()
 var enemies_left: int:
 	get:
 		return waves.enemies_left
-## How many bloaters the next wave brings.
-var next_wave_bloaters: int:
+## The next wave's special enemies in the build phase, as [method Waves.special_counts] gives
+## them; empty during a wave.
+var next_wave_specials: Dictionary:
 	get:
-		return waves.bloater_count(run_state.wave + 1)
+		if waves.phase == Waves.Phase.WAVE:
+			return {}
+		return waves.special_counts(run_state.wave + 1)
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
@@ -141,7 +146,9 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 			_system_rng("swarm"),
 		)
 	)
-	waves = Waves.new(settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"))
+	waves = Waves.new(
+		settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"), _run_seed
+	)
 	perches = Perches.new(settings, map, occupancy, structures, buildings, enemies)
 	overflow = Overflow.new(
 		settings, map, structures, buildings, enemies, routing, perches, _system_rng("overflow")
@@ -397,10 +404,10 @@ func _emit_enemies_left() -> void:
 		_wave_ended = false
 		if _reported_enemies_left != 0:
 			_reported_enemies_left = 0
-			enemies_left_changed.emit(0)
+			enemies_left_changed.emit(0, {})
 	if waves.enemies_left != _reported_enemies_left:
 		_reported_enemies_left = waves.enemies_left
-		enemies_left_changed.emit(_reported_enemies_left)
+		enemies_left_changed.emit(_reported_enemies_left, next_wave_specials)
 
 
 func _drain_commands() -> void:
@@ -517,7 +524,7 @@ func _remove_dead() -> void:
 	combos.expire(tick_count)
 	run_state.pay(deaths, combos, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
-	waves.record_kills(deaths.size())
+	waves.record_kills(deaths)
 
 
 func _check_wave_end() -> void:
