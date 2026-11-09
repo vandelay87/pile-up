@@ -5,7 +5,7 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 ## Project
 
 - Goal: a local prototype to test whether the core loop is fun. A Steam release is considered only if it is.
-- Platforms: desktop, macOS and Windows.
+- Platforms: desktop, Windows first, then macOS. Developed mostly on a MacBook for convenience.
 - Engine: Godot 4 (standard build), GDScript.
 - Built in a series of prototypes, each adding one system:
   - **v1**: corpse loop
@@ -390,6 +390,10 @@ Not built in the prototypes, but decisions should leave room for it.
   - Open to more.
 - **Destructible rock:** blasts break rock, opening new routes for the enemies.
 - **Fog of war:** perhaps hide the map outside what the player's buildings and units can see.
+
+### Platform
+
+- **Optimise for Windows:** Windows is the main platform, but the prototypes are benchmarked on the M5 MacBook. The first Windows run (`tools/bench_release.sh`, #254) missed the 1,000-dense target with the army: frame p99 19.6 ms and tick p99 15.7 ms on an i7-12700K with an RTX 3080, against 11.9 ms and 10.2 ms on the M5. The tick alone is over its 12 ms budget, so the gap is in the simulation, not the drawing. This deserves its own wayfinding session after the prototype.
 
 ### Runs
 
