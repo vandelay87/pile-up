@@ -1,7 +1,7 @@
 class_name Enemies
 extends RefCounted
 
-enum Kind { NORMAL, BLOATER, BRUTE }
+enum Kind { NORMAL, BLOATER, BRUTE, JUMPER }
 ## What an enemy is doing. [constant TUMBLING], [constant JUMPING] and [constant PERCHED] are
 ## lifted: the enemy doesn't walk, collide, separate, roll or track progress, and others don't
 ## separate from it or push it. A [constant CROUCHING] jumper holds its ground like an attacker.
@@ -61,6 +61,9 @@ var masses := PackedFloat32Array()
 ## (ADR 0001), false for the GDScript scan. On whenever the extension is loaded; tests turn it
 ## off to compare the two.
 var native_scan := ClassDB.class_exists(&"NeighbourScan")
+## The jumps a ready jumper asks to start where it would attack a structure; without it, jumpers
+## attack as any enemy does.
+var jumps: Jumps
 
 var _settings: Settings
 var _map: MapData
@@ -153,7 +156,7 @@ func pace(index: int) -> float:
 
 
 ## The route an enemy of [param kind] walks when it spawns and when it lands: the direct route,
-## locked, for a brute, else the sensible route.
+## locked, for a brute or a jumper, else the sensible route.
 static func home_route(kind: Kind) -> Routing.Route:
 	return Routing.Route.DIRECT if is_locked_to_direct(kind) else Routing.Route.SENSIBLE
 
@@ -161,7 +164,7 @@ static func home_route(kind: Kind) -> Routing.Route:
 ## Whether an enemy of [param kind] stays on the direct route: it never rolls, is never sent back
 ## to the sensible route past an obstacle, and the wave-tail push-through skips it.
 static func is_locked_to_direct(kind: Kind) -> bool:
-	return kind == Kind.BRUTE
+	return kind == Kind.BRUTE or kind == Kind.JUMPER
 
 
 func index_of(id: int) -> int:
@@ -375,14 +378,22 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	var fuse_ticks := _settings.fuse_ticks
 	# An enemy attacking a soldier looks for no structure until that attack ends.
 	_attacking.resize(count)
+	# A crouching jumper holds its ground like an attacker, dealing no damage. A ready jumper that
+	# would take a structure target asks to jump instead, before it deals any damage.
 	for i in count:
 		if fuses[i] > 0 and hp[i] > 0.0:
 			_burn_fuse(i)
-		var idle := hp[i] <= 0.0 or lifted[i] == 1 or soldier_targets[i] != NONE
+		var crouching := states[i] == State.CROUCHING
+		var idle := hp[i] <= 0.0 or lifted[i] == 1 or soldier_targets[i] != NONE or crouching
 		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
-		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
-			fuses[i] = fuse_ticks
-		_attacking[i] = 1 if structure_targets[i] != NONE or soldier_targets[i] != NONE else 0
+		if structure_targets[i] != NONE:
+			if kinds[i] == Kind.BLOATER and fuses[i] == 0:
+				fuses[i] = fuse_ticks
+			elif kinds[i] == Kind.JUMPER and jumps != null and jumps.try_start(i):
+				structure_targets[i] = NONE
+				crouching = true
+		var holds := structure_targets[i] != NONE or soldier_targets[i] != NONE or crouching
+		_attacking[i] = 1 if holds else 0
 	masses.resize(count)
 	var kind_masses := PackedFloat32Array()
 	for kind: Kind in Kind.values():

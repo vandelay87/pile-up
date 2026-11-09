@@ -13,7 +13,8 @@
 # it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
 # around the ring, firing into the crowd and fought by it, a group of them is sent across it
 # through the crowd every BenchCrowd.ORDER_INTERVAL ticks, and those that die are replaced.
-# BenchCrowd mixes brutes into the crowd, breaking through the towers and walls.
+# BenchCrowd mixes brutes into the crowd, breaking through the towers and walls, and jumpers,
+# jumping them.
 # Exits non-zero when any check fails.
 # Run with: godot --headless --script res://tools/bench_sim.gd
 extends SceneTree
@@ -74,6 +75,8 @@ class RunResult:
 	var soldier_deaths := 0
 	## Brute-ticks spent attacking a structure, summed over the brutes.
 	var brute_attack_ticks := 0
+	## Jumps that left the ground.
+	var jumps := 0
 	var tick_msec := PackedFloat64Array()
 
 
@@ -117,8 +120,12 @@ func _init() -> void:
 	)
 
 	print("Brutes spent %d brute-ticks attacking structures" % first.brute_attack_ticks)
+	print("Jumpers jumped %d times" % first.jumps)
 
 	var failed := false
+	if first.jumps == 0:
+		printerr("No jumper jumped")
+		failed = true
 	if first.brute_attack_ticks == 0:
 		printerr("No brute damaged a structure")
 		failed = true
@@ -234,8 +241,8 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	return result
 
 
-# Counts a surge tick, each enemy that started tumbling and each one perched; [param tumbling]
-# holds the ids tumbling at the last count.
+# Counts a surge tick, each enemy that started tumbling, each jump that left the ground and each
+# enemy perched; [param tumbling] holds the ids tumbling at the last count.
 func _count_overflow(sim: Simulation, result: RunResult, tumbling: Dictionary[int, bool]) -> void:
 	for crush in sim.overflow.crushes():
 		if crush.tier == Overflow.Tier.SURGE:
@@ -252,6 +259,9 @@ func _count_overflow(sim: Simulation, result: RunResult, tumbling: Dictionary[in
 			now[sim.enemies.ids[i]] = true
 			if not tumbling.has(sim.enemies.ids[i]):
 				result.tumbles += 1
+		var jump := sim.jumps.jump(sim.enemies.ids[i])
+		if jump != null and jump.flown == 1:
+			result.jumps += 1
 	tumbling.clear()
 	tumbling.merge(now)
 

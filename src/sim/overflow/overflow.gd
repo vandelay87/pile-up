@@ -11,18 +11,6 @@ enum Tier { NONE, TRICKLE, STREAM, SURGE }
 
 const NONE := -1
 const _UNREACHED := 255
-# How many cells the direct field's chain may run before it reaches the barrier it crosses.
-const _MAX_LEAD_IN := 2
-const _NEIGHBOURS: Array[Vector2i] = [
-	Vector2i(-1, -1),
-	Vector2i(0, -1),
-	Vector2i(1, -1),
-	Vector2i(-1, 0),
-	Vector2i(1, 0),
-	Vector2i(-1, 1),
-	Vector2i(0, 1),
-	Vector2i(1, 1),
-]
 
 ## 1 on each cell in a band, 0 elsewhere: where Enemies tracks progress.
 var band_mask := PackedByteArray()
@@ -34,6 +22,7 @@ var _buildings: Buildings
 var _enemies: Enemies
 var _routing: Routing
 var _perches: Perches
+var _flights: Flights
 var _rng: RandomNumberGenerator
 # Barrier label per cell, or NONE.
 var _labels := PackedInt32Array()
@@ -152,6 +141,7 @@ func _init(
 	_enemies = run_enemies
 	_routing = run_routing
 	_perches = run_perches
+	_flights = Flights.new(_settings, _map, _structures, _enemies, _routing, _perches)
 	_rng = rng
 	var size := _map.width * _map.height
 	_labels.resize(size)
@@ -370,9 +360,7 @@ func _launch(crush: Crush, dt: float) -> void:
 
 # Starts the enemy at [param i] tumbling, unless its tumble can't be planned.
 func _start_tumble(i: int) -> bool:
-	var planned := _plan_straight(i)
-	if planned == null:
-		planned = _plan_along_direct(i)
+	var planned := _flights.plan_tumble(i)
 	if planned == null:
 		return false
 	planned.last_cell = Vector2i(_enemies.positions[i].floor())
@@ -380,131 +368,6 @@ func _start_tumble(i: int) -> bool:
 	_enemies.start_tumble(i)
 	_tumbles[_enemies.ids[i]] = planned
 	return true
-
-
-# Straight over the wall or building cell the enemy touches that faces most nearly towards the
-# base by the direct field, in one of 8 directions, to the first cell it can land on along that
-# line: a building with room or the base perches it. Null when nothing it touches faces
-# forwards, or the line hits rock or the map's edge.
-func _plan_straight(i: int) -> Tumble:
-	var pos := _enemies.positions[i]
-	var cell := Vector2i(pos.floor())
-	var heading := _routing.sample_direction(Routing.Route.DIRECT, pos)
-	var reach := _settings.separation_radius + _settings.wall_reach
-	var best := Vector2i.ZERO
-	var best_facing := 0.0
-	for offset in _NEIGHBOURS:
-		var touched := cell + offset
-		if not _map.in_bounds(touched) or not _structures.is_breakable(_map.index_of(touched)):
-			continue
-		if _distance_to_square(pos, touched) > reach:
-			continue
-		var facing := Vector2(offset).normalized().dot(heading)
-		if facing > best_facing:
-			best_facing = facing
-			best = offset
-	if best == Vector2i.ZERO:
-		return null
-	var planned := Tumble.new()
-	var at := cell + best
-	while _map.in_bounds(at):
-		var index := _map.index_of(at)
-		if _map.rock[index] == 1:
-			return null
-		if _structures.is_base(index):
-			return _end_at_base(planned, at, i)
-		planned.add(at)
-		if _perches.claim(at):
-			return _perching(planned, i)
-		if _can_land(index):
-			return planned
-		at += best
-	return null
-
-
-# Down the direct field's chain from the enemy, over the barrier it meets within a couple of
-# cells, to the first cell it can land on: a building with room or the base perches it. Null
-# when the chain crosses no barrier.
-func _plan_along_direct(i: int) -> Tumble:
-	var parents := _routing.parents(Routing.Route.DIRECT)
-	var cell := _map.index_of(Vector2i(_enemies.positions[i].floor()))
-	var planned := Tumble.new()
-	var crossed := false
-	for _step in parents.size():
-		var next := parents[cell]
-		if next < 0:
-			return null
-		var at := _map.cell_of(next)
-		if _structures.is_base(next):
-			return _end_at_base(planned, at, i) if crossed else null
-		planned.add(at)
-		if _perches.claim(at):
-			return _perching(planned, i)
-		if _structures.is_breakable(next):
-			crossed = true
-		elif crossed:
-			if _can_land(next):
-				return planned
-		elif planned.cells.size() > _MAX_LEAD_IN:
-			return null
-		cell = next
-	return null
-
-
-# Ends [param planned] perched on the base cell [param reached] if the base has room, else
-# beside it.
-func _end_at_base(planned: Tumble, reached: Vector2i, i: int) -> Tumble:
-	if not _perches.claim(reached):
-		return _end_beside_base(planned, reached)
-	planned.add(reached)
-	return _perching(planned, i)
-
-
-# Marks [param planned], whose last cell's room the enemy at [param i] has claimed, as perching,
-# and sets its drop-off cell.
-func _perching(planned: Tumble, i: int) -> Tumble:
-	planned.perching = true
-	planned.target = _perches.target_at(planned.landing())
-	planned.drop_cell = Vector2i(_enemies.positions[i].floor())
-	for k in range(planned.cells.size() - 2, -1, -1):
-		var cell := planned.cells[k]
-		if not _structures.is_structure(_map.index_of(cell)):
-			planned.drop_cell = cell
-			break
-	return planned
-
-
-# Clear or a pile, and not crowded; the caller has ruled out rock and the base.
-func _can_land(index: int) -> bool:
-	return (
-		not _structures.is_breakable(index)
-		and _enemies.count_in_cell(index) < _settings.landing_crowd
-	)
-
-
-# Ends [param planned] on the free cell beside the base nearest [param reached], the base cell
-# it got to, ties to the lower row then column. Null when the base has no free cell beside it.
-# A free cell is clear or a pile, and not crowded.
-func _end_beside_base(planned: Tumble, reached: Vector2i) -> Tumble:
-	var ring := _map.base.grow(1)
-	var best := Vector2i(-1, -1)
-	var best_distance := INF
-	for y in range(ring.position.y, ring.end.y):
-		for x in range(ring.position.x, ring.end.x):
-			var beside := Vector2i(x, y)
-			if not _map.in_bounds(beside):
-				continue
-			var index := _map.index_of(beside)
-			if _map.rock[index] == 1 or _structures.is_base(index) or not _can_land(index):
-				continue
-			var distance := Vector2(reached).distance_squared_to(Vector2(beside))
-			if distance < best_distance:
-				best_distance = distance
-				best = beside
-	if best_distance == INF:
-		return null
-	planned.add(best)
-	return planned
 
 
 # Moves each tumbling enemy along its path at the tumble speed, ignoring slow, collision and
@@ -549,27 +412,17 @@ func _move_tumblers() -> void:
 			continue
 		if tumbling.next == tumbling.path.size():
 			_tumbles.erase(id)
-			if tumbling.perching and _perch(i, tumbling):
+			if tumbling.perching and _flights.perch(i, tumbling):
 				continue
 			_enemies.set_state(i, Enemies.State.WALKING)
 			_landed_from[id] = tumbling.from
 			_landed_ticks[id] = _settings.fall_back_window_ticks
 
 
-# Perches the enemy at [param i] at its tumble's end. False when what it claimed room on is gone
-# or has been replaced, so it lands there instead.
-func _perch(i: int, tumbling: Tumble) -> bool:
-	var landing := tumbling.landing()
-	if _perches.target_at(landing) != tumbling.target:
-		return false
-	var entered_from := tumbling.from if tumbling.path.size() < 2 else tumbling.path[-2]
-	return _perches.perch(i, landing, tumbling.drop_cell, entered_from)
-
-
 # Counts each band's stalled enemies, and sorts those within an attacker's reach of the band's
-# barrier into its front rank. Lifted enemies count towards nothing, nor do those held up
-# attacking a soldier. A brute counts as stalled but is never put in a front rank, so it never
-# tumbles.
+# barrier into its front rank. Lifted enemies count towards nothing, nor do crouching jumpers or
+# those held up attacking a soldier. A brute counts as stalled but is never put in a front rank,
+# so it never tumbles.
 func _gather() -> void:
 	for crush: Crush in _crushes.values():
 		crush.clear_stalled()
@@ -582,10 +435,13 @@ func _gather() -> void:
 	var soldier_targets := _enemies.soldier_targets
 	var fuses := _enemies.fuses
 	var kinds := _enemies.kinds
+	var states := _enemies.states
 	for i in _enemies.count:
 		if not _enemies.is_alive(i) or progress[i] >= stall or lifted[i] == 1:
 			continue
 		if soldier_targets[i] != Enemies.NONE:
+			continue
+		if states[i] == Enemies.State.CROUCHING:
 			continue
 		var pos := positions[i]
 		var label := _band_labels[int(pos.y) * _map.width + int(pos.x)]

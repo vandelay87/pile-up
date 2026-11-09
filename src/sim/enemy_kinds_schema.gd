@@ -106,6 +106,81 @@ const BLOATERS := {
 	},
 }
 
+const JUMPERS := {
+	"speed":
+	{
+		"type": TYPE_FLOAT,
+		"min": 0.1,
+		"max": 10.0,
+		"step": 0.1,
+		"unit": "cells/s",
+		"apply": Settings.Apply.LIVE,
+	},
+	"reach":
+	{
+		"type": TYPE_INT,
+		"min": 1,
+		"max": 10,
+		"step": 1,
+		"unit": "wall and building cells",
+		"apply": Settings.Apply.LIVE,
+	},
+	"cooldown":
+	{
+		"type": TYPE_FLOAT,
+		"min": 0.0,
+		"max": 30.0,
+		"step": 0.5,
+		"unit": "s",
+		"apply": Settings.Apply.LIVE,
+	},
+	"crouch":
+	{
+		"type": TYPE_FLOAT,
+		"min": 0.0,
+		"max": 2.0,
+		"step": 0.05,
+		"unit": "s",
+		"apply": Settings.Apply.LIVE,
+	},
+	"air_time":
+	{
+		"type": TYPE_FLOAT,
+		"min": 0.1,
+		"max": 3.0,
+		"step": 0.05,
+		"unit": "s",
+		"apply": Settings.Apply.LIVE,
+	},
+	"first_wave":
+	{
+		"type": TYPE_INT,
+		"min": 1,
+		"max": 100,
+		"step": 1,
+		"unit": "wave",
+		"apply": Settings.Apply.LIVE,
+	},
+	"share":
+	{
+		"type": TYPE_INT,
+		"min": 0,
+		"max": 100,
+		"step": 1,
+		"unit": "percent of the wave",
+		"apply": Settings.Apply.LIVE,
+	},
+	"cap":
+	{
+		"type": TYPE_INT,
+		"min": 0,
+		"max": 1000,
+		"step": 1,
+		"unit": "jumpers a wave (0 is off)",
+		"apply": Settings.Apply.LIVE,
+	},
+}
+
 const BRUTES := {
 	"hp":
 	{

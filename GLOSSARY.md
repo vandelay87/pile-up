@@ -186,7 +186,7 @@ The level of the cell a soldier stands on: 0 on the ground, up to 5 on a wall. T
 _Avoid_: High ground (every level counts, not only the top), height
 
 **Knock-off**:
-A soldier standing on a wall being thrown off it when a tumble passes over its cell, onto the ground on the side the tumble lands, among the enemies that came over. It keeps its spot and makes its way back if it survives.
+A soldier standing on a wall being thrown off it when a tumble or a jump passes over its cell, onto the ground on the side the tumble or jump lands, among the enemies that came over. It keeps its spot and makes its way back if it survives.
 _Avoid_: Knock-back, fall, dismount
 
 **Recover**:

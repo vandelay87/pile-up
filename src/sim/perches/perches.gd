@@ -149,6 +149,8 @@ func step(destroyed: Array[int]) -> void:
 ## stand. Those already dead keep their drop-off cells for [method drop_cells].
 func release_destroyed(building_ids: Array[int]) -> void:
 	for building_id in building_ids:
+		# Claims of tumbles and jumps still on their way go too.
+		_claims.erase(building_id)
 		if not _perched.has(building_id):
 			continue
 		for id in _perched[building_id]:
@@ -158,7 +160,6 @@ func release_destroyed(building_ids: Array[int]) -> void:
 			_forget(id)
 			_enemies.set_state(index, Enemies.State.WALKING)
 		_perched.erase(building_id)
-		_claims.erase(building_id)
 
 
 ## At [constant Simulation.Step.REMOVE_DEAD], each perched enemy in [param deaths] gets down for

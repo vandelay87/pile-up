@@ -75,13 +75,26 @@ func brute_count(wave: int) -> int:
 	return _stepped_count(wave, "brutes", hash([_run_seed, "brutes", wave]))
 
 
+## How many of wave [param wave]'s spawns are jumpers: none before the first jumper wave, then
+## the jumper share of the wave, rounded, and no more than the cap when it is above 0.
+func jumper_count(wave: int) -> int:
+	var first: int = _settings.value("jumpers", "first_wave")
+	if wave < first:
+		return 0
+	var share: int = _settings.value("jumpers", "share")
+	var count := roundi(size(wave) * share / 100.0)
+	var cap: int = _settings.value("jumpers", "cap")
+	return mini(count, cap) if cap > 0 else count
+
+
 ## Wave [param wave]'s special enemies, exactly as it spawns them: bloaters, then jumpers, then
 ## brutes, each kind given fewer if they would outnumber the wave.
 func special_counts(wave: int) -> Dictionary:
 	var room := size(wave)
 	var bloaters := mini(bloater_count(wave), room)
-	var brutes := mini(brute_count(wave), room - bloaters)
-	return {"bloaters": bloaters, "jumpers": 0, "brutes": brutes}
+	var jumpers := mini(jumper_count(wave), room - bloaters)
+	var brutes := mini(brute_count(wave), room - bloaters - jumpers)
+	return {"bloaters": bloaters, "jumpers": jumpers, "brutes": brutes}
 
 
 # None before the group's first wave, then 1, and one more every waves_per_step waves. Each wave
@@ -140,10 +153,12 @@ func start(wave: int) -> void:
 	_hp_by_kind = _hps(wave)
 	var counts := special_counts(wave)
 	var bloaters: int = counts["bloaters"]
+	var jumpers: int = counts["jumpers"]
 	var brutes: int = counts["brutes"]
 	_slot_kinds.resize(_size)
 	_slot_kinds.fill(Enemies.Kind.NORMAL)
 	_pick_slots(Enemies.Kind.BLOATER, bloaters)
+	_pick_slots(Enemies.Kind.JUMPER, jumpers)
 	_pick_slots(Enemies.Kind.BRUTE, brutes)
 	_spawned = 0
 	_plan = spawn_plan(wave)

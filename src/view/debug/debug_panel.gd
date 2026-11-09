@@ -237,7 +237,8 @@ func _add_cheats() -> void:
 	send.text = "Send enemies"
 	send.pressed.connect(
 		func() -> void:
-			var kind := Enemies.Kind.values()[kinds.selected] as Enemies.Kind
+			# Kinds are listed in their enum order, so the index is the kind.
+			var kind := kinds.selected as Enemies.Kind
 			_send(Commands.SpawnEnemies.new(kind, roundi(sent_count.value)))
 	)
 	var send_row := HBoxContainer.new()
