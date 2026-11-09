@@ -305,6 +305,12 @@ Each prototype is played to answer a question, and what the playtest finds shape
 - **Found:** soldiers and buildings work well together. The performance pass met 1,000 dense enemies at 60 fps on the M5 release build, with a full army of 50. The starting numbers were kept as they were after tuning.
 - **Verdict:** yes.
 
+### v5: over and through
+
+- **Question:** do enemies that beat walls in new ways (the jumper over them and onto buildings, the brute through them, and a crush tumbling onto the buildings behind them) give the player's soldiers and buildings new problems to answer, while piles and walls stay the heart of the game? Spawning also gets denser every wave, in bursts early and one flood late.
+- **Found:** the playtest found the jumper, brute, perching and spawning numbers fine as they were, so the starting numbers were kept, with the jumper cap left off. The performance re-measure met every target on the M5 release build with brutes, jumpers, perching and the army in the crowd, including a real wave 20 whose worst tick was 12.1 ms.
+- **Verdict:** yes.
+
 ## Finished game direction
 
 Not built in the prototypes, but decisions should leave room for it.
