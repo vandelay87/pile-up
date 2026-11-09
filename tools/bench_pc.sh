@@ -9,8 +9,8 @@
 # are for information only.
 #
 # Exits 0 when it posted the tables and swapped the label to bench-pc-done (or the PR isn't
-# flagged any more), 75 when the PC is busy (a game running, or the CPU or GPU loaded) and nothing
-# was touched, and 1 when it failed: it then posts the error and swaps the label to
+# flagged any more), 75 when the PC is busy (a game running, or the CPU or GPU loaded) or GitHub
+# can't be read, and nothing was touched, and 1 when it failed: it then posts the error and swaps the label to
 # bench-pc-failed.
 #
 # Usage: tools/bench_pc.sh <pr-number>
@@ -95,21 +95,30 @@ main() {
 	comment="$work/comment.md"
 	sha=""
 
-	if ! gh pr view "$pr" --json labels --jq '.labels[].name' | grep -qx bench-pc; then
+	local labels reason
+	if ! labels=$(gh pr view "$pr" --json labels --jq '.labels[].name' 2>&1); then
+		echo "bench_pc: couldn't read #$pr, try later: $(echo "$labels" | tail -1)"
+		exit 75
+	fi
+	if ! echo "$labels" | grep -qx bench-pc; then
 		echo "bench_pc: #$pr isn't flagged bench-pc, nothing to do"
 		exit 0
 	fi
-	local reason
 	reason=$(busy_reason)
 	if [ -n "$reason" ]; then
 		echo "bench_pc: busy, $reason; #$pr is left flagged for later"
 		exit 75
 	fi
 
-	sha=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
-	gh pr view "$pr" --json body --jq .body | cases >"$work/cases"
+	if ! gh pr view "$pr" --json body --jq .body >"$work/body" 2>&1; then
+		echo "bench_pc: couldn't read #$pr, try later: $(tail -1 "$work/body")"
+		exit 75
+	fi
+	cases <"$work/body" >"$work/cases"
 	# The submodule is for scons, when CI has no dll for the sha; it is cloned once per tree.
+	# The sha is the fetched head's, so a push since the PR was read is benched whole.
 	if ! { git -C "$root" fetch -q origin "pull/$pr/head" &&
+		sha=$(git -C "$root" rev-parse FETCH_HEAD) &&
 		if [ -e "$tree" ]; then
 			git -C "$tree" checkout -q -f --detach "$sha" && git -C "$tree" clean -q -fd
 		else
@@ -128,7 +137,8 @@ main() {
 	while read -r args; do
 		# Word splitting turns the case line into the script's arguments.
 		# shellcheck disable=SC2086
-		tools/bench_release.sh $args >"$work/out" 2>"$work/err"
+		# The bench's powershell.exe reads stdin, which would eat the rest of the cases.
+		tools/bench_release.sh $args >"$work/out" 2>"$work/err" </dev/null
 		code=$?
 		# A missed target exits 1 with a whole table, ending in a FAIL verdict.
 		if [ "$code" -ne 0 ] && ! grep -q '(FAIL)\.$' "$work/out"; then

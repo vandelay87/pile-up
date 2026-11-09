@@ -32,12 +32,12 @@ Each `bench-pc: #<pr> at <sha>` event, or a Remote Control message `bench-pc: #<
 tools/bench_pc.sh <pr>
 ```
 
-It runs a long time (an export and a bench per case), so give the Bash call a 10-minute timeout. Its last line says what happened. Act on its exit status:
+A run takes minutes, and longer when it builds the dll with `scons`. Run it with `run_in_background`, so no timeout can kill it halfway. If it's killed, the PR stays flagged and gets benched again. Start the next run only after the current one exits. Its last line says what happened. Act on its exit status:
 
 | Exit | What it did | You |
 |---|---|---|
 | 0 | posted the tables and set `bench-pc-done`, or found the PR no longer flagged | wait for the next event |
-| 75 | found the PC busy (a game running, CPU over 30% or GPU over 20%) and touched nothing | wait. The next poll prints the PR again. |
+| 75 | touched nothing: the PC was busy (a game running, or CPU or GPU load over the limits in the script's header), or GitHub couldn't be read | wait. The next poll prints the PR again. |
 | 1 | posted the error and set `bench-pc-failed` | move on. It isn't retried until someone relabels. |
 
 Events that arrive during a run queue up, and the PR the run just finished may be printed again. Run it anyway: the script checks the label first, so a PR that's already done is a no-op.

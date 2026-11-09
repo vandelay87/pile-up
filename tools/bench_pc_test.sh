@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Checks tools/bench_pc.sh against a scratch clone whose origin holds a PR head, with fake gh,
-# uname, nvidia-smi and powershell.exe on PATH. The PR head carries a fake tools/bench_release.sh
+# nvidia-smi and powershell.exe on PATH. The PR head carries a fake tools/bench_release.sh
 # that prints the sha it ran on and its arguments, so a table shows which commit was benched.
 set -u
 
@@ -14,10 +14,10 @@ mkdir -p "$fakes"
 cat >"$fakes/gh" <<'FAKE'
 #!/usr/bin/env bash
 echo "gh $*" >>"$FAKE_CALLS"
+[ -n "${FAKE_GH_DOWN:-}" ] && echo "error connecting to api.github.com" >&2 && exit 1
 case "$1 $2" in
 "pr view")
 	case $5 in
-	headRefOid) cat "$FAKE_SHA" ;;
 	body) printf '%s\n' "${FAKE_BODY:-}" ;;
 	labels) printf '%s\n' "${FAKE_LABELS-bench-pc}" ;;
 	esac
@@ -52,6 +52,8 @@ fake_bench() {
 	cat <<'FAKE'
 #!/usr/bin/env bash
 echo "bench $*" >>"$FAKE_CALLS"
+# powershell.exe reads stdin, so the bench must not get the case list.
+cat >/dev/null
 case "${FAKE_BENCH:-pass}" in
 export-fails)
 	echo "bench_release: the Windows Desktop export failed" >&2
@@ -105,7 +107,7 @@ project() {
 run() {
 	(
 		cd "$scratch/project" &&
-			PATH="$fakes:$PATH" BENCH_PC_TREE="$scratch/tree" FAKE_CALLS="$scratch/calls" FAKE_SHA="$scratch/sha" \
+			PATH="$fakes:$PATH" BENCH_PC_TREE="$scratch/tree" FAKE_CALLS="$scratch/calls" \
 				FAKE_COMMENT="$scratch/comment" tools/bench_pc.sh "$@" >"$scratch/out" 2>"$scratch/err"
 	)
 }
@@ -195,6 +197,12 @@ echo "exit 9" >>"$scratch/tree/tools/bench_release.sh"
 touch "$scratch/tree/stray"
 run 7 || fail "a dirty bench tree exited non-zero: $(cat "$scratch/err")"
 [ -z "$(git -C "$scratch/tree" status --porcelain)" ] || fail "the dirty bench tree wasn't cleaned"
+
+project
+FAKE_GH_DOWN=1 run 7
+[ $? -eq 75 ] || fail "gh being down didn't exit 75"
+has "gh being down says so" "$scratch/out" "error connecting"
+[ ! -e "$scratch/tree" ] || fail "gh being down checked something out"
 
 project
 run && fail "no PR number exited zero"

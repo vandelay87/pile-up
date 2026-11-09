@@ -9,14 +9,16 @@ set -u
 
 poll=${BENCH_PC_POLL:-300}
 failing=""
+err=$(mktemp)
+trap 'rm -f "$err"' EXIT
 while true; do
 	if prs=$(gh pr list --label bench-pc --state open --json number,headRefOid \
-		--jq '.[] | "bench-pc: #\(.number) at \(.headRefOid)"' 2>&1); then
+		--jq '.[] | "bench-pc: #\(.number) at \(.headRefOid)"' 2>"$err"); then
 		failing=""
 		[ -n "$prs" ] && echo "$prs"
 	elif [ -z "$failing" ]; then
 		failing=1
-		echo "bench-pc watch: gh pr list failed: $(echo "$prs" | head -1)"
+		echo "bench-pc watch: gh pr list failed: $(head -1 "$err")"
 	fi
 	sleep "$poll"
 done

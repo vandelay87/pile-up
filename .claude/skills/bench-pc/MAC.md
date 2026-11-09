@@ -1,6 +1,6 @@
 # bench-pc: the Mac side
 
-For a PR whose Performance section the spec asks for (in v5, §5 *Order*).
+For a PR whose Performance section the version's spec asks for.
 
 ## 1. Bench on the M5 and flag the PR
 
@@ -25,8 +25,8 @@ When the user asks for them, or when a background wait you set up ends, check th
 - `bench-pc-done`: take the PC's newest comment that starts with `## PC (3080)`:
 
   ```bash
-  gh api "repos/{owner}/{repo}/issues/<pr>/comments" \
-    --jq '[.[] | select(.body | startswith("## PC (3080)"))] | last | .body'
+  gh pr view <pr> --json comments \
+    --jq '[.comments[] | select(.body | startswith("## PC (3080)\n"))] | last | .body'
   ```
 
   Add it as the last subsection of `## Performance`, one heading level down. `## PC (3080)` becomes `### PC (3080)`, and each `### bench_...` becomes `#### bench_...`. With `####` headings, a re-bench runs only the M5's `###` cases. Put it next to the M5 tables and keep those as they are. Write the body with `gh pr edit <pr> --body-file`.
