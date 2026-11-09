@@ -54,7 +54,7 @@ func _crowd(cap: int, personal_space: float) -> Enemies:
 		if i % 13 == 0:
 			enemies.soldier_targets[i] = 0
 		elif i % 17 == 0:
-			enemies.tumbling[i] = 1
+			enemies.set_state(i, Enemies.State.TUMBLING)
 		elif i % 19 == 0:
 			enemies.hp[i] = 0.0
 	return enemies

@@ -6,14 +6,16 @@ const BLOATER_TINT := Color(0.55, 0.85, 0.25)
 const DIRECT_TINT := Color(0.95, 0.8, 0.2)
 const FLASH_TINT := Color.WHITE
 const FLASH_MSEC := 100
-# Tumbling enemies are drawn raised above a wall's top, and tinted.
+# A tumble is drawn as a low fall, rising just over the top of the tallest thing it crosses,
+# by this much, then dropping beyond; tinted while it lasts.
 const TUMBLE_TINT := Color(1.0, 0.55, 0.15)
-const TUMBLE_LIFT_LEVELS := 6.0
+const TUMBLE_CLEARANCE := 4.0
 # A burning bloater pulses towards this, from this many times a second to the last.
 const FUSE_TINT := Color(1.0, 0.95, 0.6)
 const FUSE_PULSE_FROM := 2.0
 const FUSE_PULSE_TO := 12.0
 
+var _simulation: Simulation
 var _enemies: Enemies
 var _settings: Settings
 var _piles: Piles
@@ -22,7 +24,9 @@ var _parent: RID
 var _texture: Texture2D
 var _items: Array[RID] = []
 var _sprites: Array[RID] = []
-var _lifts := PackedFloat32Array()
+# Each item's sprite offset from the item: up by its lift, and back from where it sorts to its
+# feet for a perched enemy.
+var _offsets := PackedVector2Array()
 # The drawn scale of each item's sprite: the bloater size for a bloater, else 1.
 var _scales := PackedFloat32Array()
 var _shown := 0
@@ -34,6 +38,7 @@ var _state_tinted := PackedInt32Array()
 
 
 func setup(simulation: Simulation, parent: CanvasItem) -> void:
+	_simulation = simulation
 	_enemies = simulation.enemies
 	_settings = simulation.settings
 	_piles = simulation.piles
@@ -69,28 +74,91 @@ func _process(_delta: float) -> void:
 	_shown = count
 
 	var positions := _enemies.positions
-	var tumbling := _enemies.tumbling
+	var states := _enemies.states
 	var kinds := _enemies.kinds
-	var tumble_lift := TUMBLE_LIFT_LEVELS * Atlas.PILE_SLAB_HEIGHT
 	var bloater_size := _settings.bloater_size
 	for i in count:
 		var foot := GridTransform.grid_to_world(positions[i])
-		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, foot))
-		var lift := _lift_at(positions[i])
-		if tumbling[i] == 1:
-			lift = maxf(lift, tumble_lift)
+		var sorted_at := foot
+		var lift: float
+		match states[i]:
+			Enemies.State.TUMBLING:
+				lift = _tumble_lift(i)
+			Enemies.State.PERCHED:
+				# Sorted at the front corner of what it stands on, so its roof never hides it.
+				var target := _simulation.perches.perched_on(_enemies.ids[i])
+				lift = Heights.of_target(_simulation, target)
+				sorted_at = _front_of(target, foot)
+			_:
+				lift = _lift_at(positions[i])
+		RenderingServer.canvas_item_set_transform(_items[i], Transform2D(0.0, sorted_at))
+		var offset := foot - sorted_at + Vector2(0, -lift)
 		var scale := bloater_size if kinds[i] == Enemies.Kind.BLOATER else 1.0
 		if scale != _scales[i]:
 			# Removal moves enemies between items, so a new kind here needs its own look.
 			_scales[i] = scale
-			_lifts[i] = NAN
+			_offsets[i] = Vector2(NAN, NAN)
 			RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
-		if lift != _lifts[i]:
-			_lifts[i] = lift
+		if offset != _offsets[i]:
+			_offsets[i] = offset
 			RenderingServer.canvas_item_set_transform(
-				_sprites[i], Transform2D(0.0, Vector2(scale, scale), 0.0, Vector2(0, -lift))
+				_sprites[i], Transform2D(0.0, Vector2(scale, scale), 0.0, offset)
 			)
 	_draw_tints(count)
+
+
+# The world point of the front corner of [param target], a building id or the base, or
+# [param foot] when it is gone.
+func _front_of(target: int, foot: Vector2) -> Vector2:
+	var area := _simulation.map.base
+	if target != Perches.BASE:
+		var built := _simulation.buildings.building(target)
+		if built == null:
+			return foot
+		area = Rect2i(built.origin, Buildings.footprint_size(built.kind))
+	return GridTransform.grid_to_world(Vector2(area.end))
+
+
+# The low fall: from the ground where the tumble started up to just over the tallest thing it
+# crosses, peaking over that cell, then down to where it lands, a roof when it perches.
+func _tumble_lift(i: int) -> float:
+	var pos := _enemies.positions[i]
+	var tumble := _simulation.overflow.tumble(_enemies.ids[i])
+	if tumble == null:
+		return _lift_at(pos)
+	var path := tumble.path
+	var last := path.size() - 1
+	var end := _lift_at(path[last])
+	if tumble.perching:
+		end = Heights.of_target(_simulation, tumble.target)
+	var top := end
+	var top_at := last
+	for k in last:
+		var height := Heights.of_cell(_simulation, tumble.cells[k]) + TUMBLE_CLEARANCE
+		if height > top:
+			top = height
+			top_at = k
+	# How far along the way it is, and where its peak is, as distances from where it started.
+	var total := 0.0
+	var to_top := 0.0
+	var travelled := 0.0
+	var previous := tumble.from
+	for k in path.size():
+		var length := previous.distance_to(path[k])
+		if k < tumble.next:
+			travelled += length
+		elif k == tumble.next:
+			travelled += length - pos.distance_to(path[k])
+		total += length
+		if k == top_at:
+			to_top = total
+		previous = path[k]
+	var start := _lift_at(tumble.from)
+	if travelled <= to_top:
+		var rise := travelled / to_top if to_top > 0.0 else 1.0
+		return lerpf(start, top, sin(rise * PI / 2.0))
+	var fall := (travelled - to_top) / maxf(total - to_top, 1e-6)
+	return lerpf(top, end, 1.0 - cos(clampf(fall, 0.0, 1.0) * PI / 2.0))
 
 
 func _lift_at(pos: Vector2) -> float:
@@ -142,10 +210,10 @@ func _draw_tints(count: int) -> void:
 			if i < count:
 				RenderingServer.canvas_item_set_modulate(_items[i], _tint(i))
 	_flashed_items.clear()
-	var tumbling := _enemies.tumbling
+	var states := _enemies.states
 	var fuses := _enemies.fuses
 	for i in count:
-		if tumbling[i] == 1:
+		if states[i] == Enemies.State.TUMBLING:
 			RenderingServer.canvas_item_set_modulate(_items[i], TUMBLE_TINT)
 			_state_tinted.append(i)
 		elif fuses[i] > 0:
@@ -173,7 +241,7 @@ func _create_item() -> void:
 	RenderingServer.canvas_item_add_texture_rect_region(sprite, rect, _texture.get_rid(), region)
 	_items.append(item)
 	_sprites.append(sprite)
-	_lifts.append(0.0)
+	_offsets.append(Vector2.ZERO)
 	_scales.append(1.0)
 
 

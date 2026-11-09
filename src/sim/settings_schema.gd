@@ -513,6 +513,24 @@ const SCHEMA := {
 			"unit": "s after landing that a body still falls back",
 			"apply": Settings.Apply.LIVE,
 		},
+		"perch_room":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 4,
+			"step": 1,
+			"unit": "enemies perched per building footprint cell",
+			"apply": Settings.Apply.LIVE,
+		},
+		"base_perch_room":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 4,
+			"step": 1,
+			"unit": "enemies perched per base cell",
+			"apply": Settings.Apply.LIVE,
+		},
 	},
 	"routing":
 	{

@@ -6,7 +6,8 @@
 # recomputed. A wave runs throughout, so two repair yards beside the base send their drones to the
 # crowd's ring of towers, which the crowd attacks; every REBUILD_INTERVAL ticks any broken tower or
 # yard is built again where it can be. The crowd stalls against the towers until their crushes
-# overflow at a surge, so enemies tumble over the ring. Grinders stand in the ring between the
+# overflow at a surge, so enemies tumble over the ring, perching on its towers and the base when
+# they have room. Grinders stand in the ring between the
 # towers, under the crush, grinding the crowd pressed on them and the tumblers crossing them.
 # Every CHAIN_INTERVAL ticks a wall is raised in the crowd and a chain of bloaters set off beside
 # it, blowing through the crowd and erasing the wall. BenchCrowd's army of soldiers stands in and
@@ -54,6 +55,9 @@ class RunResult:
 	## Ticks with a crush at a surge, and the enemies that started tumbling.
 	var surge_ticks := 0
 	var tumbles := 0
+	## Enemy-ticks spent perched on a building, and on the base, summed over the enemies.
+	var perched_ticks := 0
+	var base_perched_ticks := 0
 	## Grinder-ticks spent grinding at least one enemy, summed over the grinders.
 	var grinding_ticks := 0
 	## Bloaters blown up, and walls the chains erased.
@@ -92,6 +96,12 @@ func _init() -> void:
 
 	print("Drones spent %d drone-ticks repairing" % first.repair_ticks)
 	print("A crush surged for %d ticks; %d enemies tumbled" % [first.surge_ticks, first.tumbles])
+	print(
+		(
+			"Enemies spent %d enemy-ticks perched on buildings and %d on the base"
+			% [first.perched_ticks, first.base_perched_ticks]
+		)
+	)
 	print("Grinders spent %d grinder-ticks grinding" % first.grinding_ticks)
 	print("%d bloaters blew up; chains erased %d walls" % [first.blasts, first.walls_erased])
 	print("%d of an army of %d soldiers fielded" % [first.soldiers, BenchCrowd.ARMY])
@@ -109,6 +119,12 @@ func _init() -> void:
 		failed = true
 	if first.surge_ticks == 0 or first.tumbles == 0:
 		printerr("No crush overflowed at a surge")
+		failed = true
+	if first.perched_ticks == 0:
+		printerr("No enemy perched on a building")
+		failed = true
+	if first.base_perched_ticks == 0:
+		printerr("No enemy perched on the base")
 		failed = true
 	if first.grinding_ticks == 0:
 		printerr("No grinder ground anything")
@@ -201,14 +217,14 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 			BenchCrowd.digest(sim),
 			sim.power_grid.cells,
 			_buildings_digest(sim),
-			sim.enemies.tumbling.slice(0, sim.enemies.count),
+			sim.enemies.states.slice(0, sim.enemies.count),
 		]
 	)
 	return result
 
 
-# Counts a surge tick and each enemy that started tumbling; [param tumbling] holds the ids
-# tumbling at the last count.
+# Counts a surge tick, each enemy that started tumbling and each one perched; [param tumbling]
+# holds the ids tumbling at the last count.
 func _count_overflow(sim: Simulation, result: RunResult, tumbling: Dictionary[int, bool]) -> void:
 	for crush in sim.overflow.crushes():
 		if crush.tier == Overflow.Tier.SURGE:
@@ -216,7 +232,12 @@ func _count_overflow(sim: Simulation, result: RunResult, tumbling: Dictionary[in
 			break
 	var now: Dictionary[int, bool] = {}
 	for i in sim.enemies.count:
-		if sim.enemies.tumbling[i] == 1:
+		if sim.enemies.states[i] == Enemies.State.PERCHED:
+			if sim.perches.perched_on(sim.enemies.ids[i]) == Perches.BASE:
+				result.base_perched_ticks += 1
+			else:
+				result.perched_ticks += 1
+		if sim.enemies.states[i] == Enemies.State.TUMBLING:
 			now[sim.enemies.ids[i]] = true
 			if not tumbling.has(sim.enemies.ids[i]):
 				result.tumbles += 1

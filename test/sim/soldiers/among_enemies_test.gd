@@ -190,7 +190,7 @@ func _spawn_crowd(area: Rect2, wanted: int) -> void:
 func _assert_enemies_clear_of(cells: Array[Vector2i]) -> void:
 	var radius := _sim.settings.separation_radius
 	for i in _sim.enemies.count:
-		if _sim.enemies.tumbling[i] == 1:
+		if _sim.enemies.lifted[i] == 1:
 			continue
 		var pos := _sim.enemies.positions[i]
 		for cell in cells:
