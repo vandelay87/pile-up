@@ -262,4 +262,21 @@ project
 run && fail "no PR number exited zero"
 lacks "no PR number calls gh" "$scratch/calls" "gh "
 
+# Stopping a Monitor kills the watcher's parent shell, which on Git Bash leaves the watcher itself
+# polling forever, so it must exit by itself once its parent is gone.
+# shellcheck disable=SC2016
+bash -c 'PATH="$1:$PATH" BENCH_PC_POLL=1 FAKE_CALLS="$2" tools/bench_pc_watch.sh >/dev/null &
+	echo $! >"$3"
+	sleep 60' _ "$fakes" "$scratch/calls" "$scratch/watch.pid" &
+parent=$!
+sleep 2
+kill -9 "$parent"
+wait "$parent" 2>/dev/null
+sleep 3
+watcher=$(cat "$scratch/watch.pid")
+if kill -0 "$watcher" 2>/dev/null; then
+	fail "the watcher outlived its parent"
+	kill "$watcher"
+fi
+
 exit $status
