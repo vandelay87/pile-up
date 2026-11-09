@@ -1,6 +1,16 @@
 # bench-pc: the PC side
 
-This session only benches. Its only writes are the ones `tools/bench_pc.sh` makes: a detached checkout in its own bench worktree, one PR comment and a label swap. Code changes, commits and pushes belong to the Mac session. If the user asks for one here, point them there.
+While the watch runs, this session only benches. Its only writes are the ones `tools/bench_pc.sh` makes: a detached checkout in its own bench worktree, one PR comment and a label swap. Nobody is watching it then, and the PR heads it checks out belong to other sessions.
+
+**Fixing a PC-side bug** is a separate dev step, done with the user present. This covers a Windows-only failure in the bench scripts, in this skill or in the export, which only this machine can reproduce:
+
+1. Stop the watcher Monitor.
+2. In the clone, branch `feat/*` off the integration branch. The bench worktree stays out of it.
+3. Fix it, run `tools/bench_pc_test.sh` and `shellcheck tools/*.sh`, and check the fix on this machine.
+4. Commit, push, and open a PR into the integration branch, so the work goes through the same review as the Mac's.
+5. Check out the integration branch again, then re-arm the watcher.
+
+Each branch has one writer. Push only to the branch you made, never to the PR branch of a run you benched.
 
 ## One-time setup
 
