@@ -5,7 +5,7 @@ description: Benchmarks pile-up PRs on the Windows PC (RTX 3080) as well as the 
 
 # bench-pc
 
-Two Claude sessions share the release bench (`tools/bench_release.sh`). The **Mac** session builds and flags PRs. The **PC** session watches and benches what the Mac flags, and posts the numbers back on the PR. It fixes PC-side bugs only as a separate dev step with the user (see PC.md). That gives every Performance section the M5 and the PC (RTX 3080).
+Two Claude sessions share the release bench (`tools/bench_release.sh`). The **Mac** session builds and flags PRs. The **PC** session watches and benches what the Mac flags, and posts the numbers back on the PR. That gives every Performance section the M5 and the PC (RTX 3080). The PC fixes PC-side bugs only as a separate dev step with the user (see PC.md).
 
 The PR is the channel, and its labels are the state:
 
