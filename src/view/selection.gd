@@ -196,6 +196,7 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 	var lines: Array[String] = [
 		String(building.kind).capitalize(),
 		_hp_line(building.hp, _simulation.buildings.max_hp(building.kind)),
+		_perched_line(building.id),
 		_status(building),
 	]
 	match building.kind:
@@ -298,9 +299,16 @@ func _base_stats() -> Array[String]:
 	var lines: Array[String] = [
 		"Base",
 		_hp_line(_simulation.run_state.base_hp, _simulation.settings.base_hp),
+		_perched_line(Perches.BASE),
 		"Power area %d" % _simulation.settings.base_power_area,
 	]
 	return lines
+
+
+# Perched: n / max, for a building id or [constant Perches.BASE].
+func _perched_line(target: int) -> String:
+	var perches := _simulation.perches
+	return "Perched: %d / %d" % [perches.count(target), perches.room(target)]
 
 
 func _hp_line(hp: float, max_hp: float) -> String:

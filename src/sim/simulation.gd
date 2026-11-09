@@ -18,6 +18,8 @@ signal soldiers_added(ids: PackedInt32Array)
 signal soldiers_died(deaths: SoldierDeaths)
 signal training_changed(barracks_id: int)
 signal blasts(went_off: Array[Blasts.Blast])
+## Each perched enemy that died this tick and leaves a body, for its short fall to the ground.
+signal perched_bodies(drops: Array[Perches.Drop])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
 signal game_over
@@ -65,6 +67,7 @@ var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
+var perches: Perches
 var unit_paths: UnitPaths
 var soldiers: Soldiers
 var soldier_attacks: SoldierAttacks
@@ -96,6 +99,7 @@ var _rebuild_swap_tick := 0
 var _placed: Array[int] = []
 var _shots: Array[Buildings.Shot] = []
 var _blasts: Array[Blasts.Blast] = []
+var _perched_drops: Array[Perches.Drop] = []
 var _run_seed: int
 var _pending_steps := 0
 var _wave_started := false
@@ -138,8 +142,9 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 		)
 	)
 	waves = Waves.new(settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"))
+	perches = Perches.new(settings, map, occupancy, structures, buildings, enemies)
 	overflow = Overflow.new(
-		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
+		settings, map, structures, buildings, enemies, routing, perches, _system_rng("overflow")
 	)
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	unit_paths = UnitPaths.new(settings, map, occupancy, piles, structures)
@@ -361,6 +366,10 @@ func _emit_signals() -> void:
 		var went_off := _blasts
 		_blasts = []
 		blasts.emit(went_off)
+	if not _perched_drops.is_empty():
+		var drops := _perched_drops
+		_perched_drops = []
+		perched_bodies.emit(drops)
 	if waves.phase != _reported_phase:
 		_reported_phase = waves.phase
 		phase_changed.emit(_reported_phase)
@@ -455,6 +464,8 @@ func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
 	enemies.move(waves.in_wave_tail(), overflow.band_mask)
 	overflow.step()
+	# Buildings.pending_destroyed is the live list, so it holds what perched attacks destroy too.
+	perches.step(buildings.pending_destroyed())
 
 
 func _move_units() -> void:
@@ -469,7 +480,7 @@ func _buildings_act() -> void:
 	_observe(Step.BUILDINGS_ACT)
 	# Enemies hold still through steps 6 and 7, so their field values are shared by every pick.
 	enemies.begin_targeting()
-	_shots = buildings.act(enemies)
+	_shots = buildings.act(enemies, perches)
 
 
 func _units_fire() -> void:
@@ -488,6 +499,9 @@ func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	deaths = enemies.remove_dead()
 	_blasts.append_array(bloater_blasts.resolve(deaths, soldiers))
+	perches.release_destroyed(buildings.pending_destroyed())
+	# A perched enemy's body drops off its building; a tumbler's falls back.
+	_perched_drops.append_array(perches.drop_cells(deaths))
 	overflow.fall_back(deaths)
 	piles.queue_bodies(deaths)
 	soldier_deaths = soldiers.remove_dead(deaths)

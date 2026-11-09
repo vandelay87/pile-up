@@ -4,10 +4,11 @@ extends RefCounted
 ## Enemies attacking soldiers, at [constant Simulation.Step.MOVE_UNITS] once soldiers have moved.
 ## An enemy pressed against a soldier (centres within two body radii plus the wall reach) and
 ## jammed there, by the structure rule (no progress along its route for
-## [member Settings.jam_ticks]), takes that soldier as its soldier target, unless it is tumbling or
-## attacking a structure already, or the soldier stands on a wall. A bloater lights its fuse there
-## instead of attacking. Each attack deals the structure damage a tick, and ends when the soldier
-## dies, leaves reach or climbs onto a wall. Enemies never leave their route for a soldier.
+## [member Settings.jam_ticks]), takes that soldier as its soldier target, unless it is
+## lifted or attacking a structure already, or the soldier stands on a wall. A bloater lights
+## its fuse there instead of attacking. Each attack deals the structure damage a tick, and ends
+## when the soldier dies, leaves reach or climbs onto a wall. Enemies never leave their route
+## for a soldier.
 
 var _settings: Settings
 var _routing: Routing
@@ -80,7 +81,7 @@ func _press(reach: float) -> void:
 			continue
 		for e in _enemies.living_within(_soldiers.positions[i], reach):
 			if (
-				_enemies.tumbling[e] == 1
+				_enemies.lifted[e] == 1
 				or _enemies.structure_targets[e] != Enemies.NONE
 				or _enemies.soldier_targets[e] != Enemies.NONE
 			):

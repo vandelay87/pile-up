@@ -195,6 +195,14 @@ var fall_back_window_ticks: int:
 	get:
 		var seconds: float = value("overflow", "fall_back_window")
 		return roundi(seconds * Simulation.TICKS_PER_SECOND)
+## How many enemies may perch on each footprint cell of a building.
+var perch_room: int:
+	get:
+		return value("overflow", "perch_room")
+## How many enemies may perch on each cell of the base.
+var base_perch_room: int:
+	get:
+		return value("overflow", "base_perch_room")
 var bloater_hp: float:
 	get:
 		return value("bloaters", "hp")

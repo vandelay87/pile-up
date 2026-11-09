@@ -2,6 +2,10 @@ class_name Enemies
 extends RefCounted
 
 enum Kind { NORMAL, BLOATER }
+## What an enemy is doing. [constant TUMBLING], [constant JUMPING] and [constant PERCHED] are
+## lifted: the enemy doesn't walk, collide, separate, roll or track progress, and others don't
+## separate from it or push it. A [constant CROUCHING] jumper holds its ground like an attacker.
+enum State { WALKING, CROUCHING, TUMBLING, JUMPING, PERCHED }
 
 ## A tower's targeting modes, for [method target_in_range].
 const BLOATERS_FIRST := &"bloaters_first"
@@ -43,9 +47,11 @@ var wander_phases := PackedFloat32Array()
 # Each enemy's progress inside a crush band: the smoothed share of a full step at its pace
 # that its route field's value dropped by each tick. 1 outside a band.
 var progress := PackedFloat32Array()
-# 1 while the enemy tumbles over a barrier: Overflow moves it, and it doesn't walk, collide,
-# separate, attack or roll, and others don't separate from it.
-var tumbling := PackedByteArray()
+## Each enemy's [enum State].
+var states := PackedByteArray()
+## 1 while the enemy's state is lifted (tumbling, jumping or perched), else 0: kept in step with
+## [member states] by [method set_state], for the loops and the neighbour scan that skip them.
+var lifted := PackedByteArray()
 # Each bloater's fuse: the ticks left until it pops, 0 while unlit, or _FUSE_RAN_OUT.
 var fuses := PackedInt32Array()
 ## True while [method move] runs the neighbour scan in the C++ GDExtension's NeighbourScan
@@ -130,7 +136,8 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	_stuck_ticks[count] = 0
 	progress[count] = 1.0
 	_last_values[count] = INF
-	tumbling[count] = 0
+	states[count] = State.WALKING
+	lifted[count] = 0
 	fuses[count] = 0
 	_index_by_id[id] = count
 	count += 1
@@ -174,7 +181,7 @@ func is_alive(index: int) -> bool:
 
 ## The id of the living enemy within [param reach] of [param pos] closest to the base (lowest
 ## sensible-field value, ties to the lowest id), or [constant NONE]. With [param mode]
-## [constant BLOATERS_FIRST], a bloater in reach wins over any normal enemy; tumbling ones count.
+## [constant BLOATERS_FIRST], a bloater in reach wins over any normal enemy. Every state counts.
 func target_in_range(pos: Vector2, reach: float, mode: StringName) -> int:
 	var bloaters_first := mode == BLOATERS_FIRST
 	var low := Vector2i((pos - Vector2(reach, reach)).floor()) - Vector2i.ONE * _HASH_MARGIN
@@ -225,8 +232,9 @@ func end_targeting() -> void:
 	_target_values.clear()
 
 
-## The indices of the living, walking enemies within [param reach] of one of the squares in
-## [param area], from this tick's spatial hash: those touching a building with that footprint.
+## The indices of the living enemies that aren't lifted within [param reach] of one of the
+## squares in [param area], from this tick's spatial hash: those touching a building with that
+## footprint.
 func touching(area: Rect2i, reach: float) -> PackedInt32Array:
 	var found := PackedInt32Array()
 	var margin := ceili(reach) + _HASH_MARGIN
@@ -238,7 +246,7 @@ func touching(area: Rect2i, reach: float) -> PackedInt32Array:
 		for x in range(maxi(low.x, 0), mini(high.x, _map.width)):
 			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
 				var i := _bucket_enemies[slot]
-				if hp[i] <= 0.0 or tumbling[i] == 1:
+				if hp[i] <= 0.0 or lifted[i] == 1:
 					continue
 				var pos := positions[i]
 				if pos.distance_to(pos.clamp(square.position, square.end)) <= reach:
@@ -267,25 +275,37 @@ func count_in_cell(cell_index: int) -> int:
 	return _bucket_starts[cell_index + 1] - _bucket_starts[cell_index]
 
 
-## The enemy at [param index] starts a tumble: it stops attacking and counts towards no crush.
-## A bloater's fuse goes out.
+## Puts the enemy at [param index] in [param state]. Going up into a lifted state it stops
+## attacking and counts towards no crush. Coming down to walking it walks the sensible field
+## again, its route-roll, jam and progress reset. A bloater lights its fuse as it perches.
+func set_state(index: int, state: State) -> void:
+	var was_lifted := lifted[index] == 1
+	states[index] = state
+	lifted[index] = 1 if _is_lifted(state) else 0
+	if state == State.PERCHED and kinds[index] == Kind.BLOATER and fuses[index] == 0:
+		fuses[index] = _settings.fuse_ticks
+	if lifted[index] == 1:
+		structure_targets[index] = NONE
+		soldier_targets[index] = NONE
+		progress[index] = 1.0
+		_last_values[index] = INF
+	elif was_lifted and state == State.WALKING:
+		routes[index] = Routing.Route.SENSIBLE
+		last_rolled_cells[index] = NONE
+		_best_values[index] = INF
+		_stuck_ticks[index] = 0
+		progress[index] = 1.0
+		_last_values[index] = INF
+
+
+static func _is_lifted(state: State) -> bool:
+	return state == State.TUMBLING or state == State.JUMPING or state == State.PERCHED
+
+
+## The enemy at [param index] starts a tumble. A bloater's fuse goes out.
 func start_tumble(index: int) -> void:
-	tumbling[index] = 1
+	set_state(index, State.TUMBLING)
 	fuses[index] = 0
-	structure_targets[index] = NONE
-	soldier_targets[index] = NONE
-	progress[index] = 1.0
-	_last_values[index] = INF
-
-
-## The enemy at [param index] has landed: it walks the sensible field again, its route-roll and
-## jam state reset.
-func land(index: int) -> void:
-	tumbling[index] = 0
-	routes[index] = Routing.Route.SENSIBLE
-	last_rolled_cells[index] = NONE
-	_best_values[index] = INF
-	_stuck_ticks[index] = 0
 
 
 func rebuild_spatial_hash() -> void:
@@ -335,14 +355,14 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	if in_wave_tail and sensible_before != null:
 		_push_through_turned_back(sensible_before, direct_parents)
 	# Only a debug kill as commands drain leaves an enemy dead before REMOVE_DEAD; it stands
-	# still and attacks nothing, as if it had died before moving. Tumblers are Overflow's to move.
+	# still and attacks nothing, as if it had died before moving. Lifted enemies are moved by others.
 	var fuse_ticks := _settings.fuse_ticks
 	# An enemy attacking a soldier looks for no structure until that attack ends.
 	_attacking.resize(count)
 	for i in count:
 		if fuses[i] > 0 and hp[i] > 0.0:
 			_burn_fuse(i)
-		var idle := hp[i] <= 0.0 or tumbling[i] == 1 or soldier_targets[i] != NONE
+		var idle := hp[i] <= 0.0 or lifted[i] == 1 or soldier_targets[i] != NONE
 		structure_targets[i] = NONE if idle else _structure_target(i, reach, jam_ticks)
 		if structure_targets[i] != NONE and kinds[i] == Kind.BLOATER and fuses[i] == 0:
 			fuses[i] = fuse_ticks
@@ -358,7 +378,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 			count,
 			positions,
 			hp,
-			tumbling,
+			lifted,
 			_attacking,
 			ids,
 			_bucket_starts,
@@ -376,7 +396,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		space_pushes = _scan.call(&"get_space_pushes")
 	for i in count:
 		var pos := positions[i]
-		if hp[i] <= 0.0 or tumbling[i] == 1:
+		if hp[i] <= 0.0 or lifted[i] == 1:
 			_moved[i] = pos
 			continue
 		var attacking := _attacking[i] == 1
@@ -402,7 +422,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 		var pace_step := steps[kind_level] * (1.0 + pace_rolls[i] * variety)
 		_moved[i] = pos + heading * pace_step + separation
 	for i in count:
-		if hp[i] <= 0.0 or tumbling[i] == 1:
+		if hp[i] <= 0.0 or lifted[i] == 1:
 			continue
 		var pos := _held_off_solids(_moved[i], radius)
 		positions[i] = pos
@@ -421,7 +441,7 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 
 ## At [constant Simulation.Step.MOVE_UNITS], the contact pass for a soldier's body at
 ## [param pos], from the hash built at [constant Simulation.Step.REBUILD_SPATIAL_HASH]: every
-## living, non-tumbling enemy in the 3×3 buckets around it whose centre is closer than two body
+## living enemy that isn't lifted in the 3×3 buckets around it whose centre is closer than two body
 ## radii is pushed apart from it along the line between them, closing [param push] of the overlap.
 ## The enemy takes [param enemy_share] of that push and is held off walls and solids. Returns where
 ## the soldier ends up, having taken the rest.
@@ -435,7 +455,7 @@ func push_away_from(pos: Vector2, push: float, enemy_share: float) -> Vector2:
 		for x in range(maxi(cell.x - 1, 0), mini(cell.x + 2, _map.width)):
 			for slot in range(_bucket_starts[row + x], _bucket_starts[row + x + 1]):
 				var i := _bucket_enemies[slot]
-				if hp[i] <= 0.0 or tumbling[i] == 1:
+				if hp[i] <= 0.0 or lifted[i] == 1:
 					continue
 				var away := positions[i] - pos
 				var distance_squared := away.length_squared()
@@ -505,7 +525,7 @@ func _push_through_turned_back(
 	var turn_back := _settings.turn_back_radians
 	var whole_chain := _map.width * _map.height
 	for i in count:
-		if routes[i] != Routing.Route.SENSIBLE or tumbling[i] == 1:
+		if routes[i] != Routing.Route.SENSIBLE or lifted[i] == 1:
 			continue
 		var pos := positions[i]
 		var before := _routing.sample_field_direction(sensible_before, pos)
@@ -649,7 +669,7 @@ func _neighbour_pushes(
 			var bucket := y * width + x
 			for slot in range(_bucket_starts[bucket], _bucket_starts[bucket + 1]):
 				var j := _bucket_enemies[slot]
-				if j == i or tumbling[j] == 1:
+				if j == i or lifted[j] == 1:
 					continue
 				var away := pos - positions[j]
 				var distance_squared := away.length_squared()
@@ -733,7 +753,8 @@ func _swap_remove(index: int) -> void:
 	_stuck_ticks[index] = _stuck_ticks[count]
 	progress[index] = progress[count]
 	_last_values[index] = _last_values[count]
-	tumbling[index] = tumbling[count]
+	states[index] = states[count]
+	lifted[index] = lifted[count]
 	fuses[index] = fuses[count]
 	_index_by_id[ids[index]] = index
 
@@ -756,5 +777,6 @@ func _grow() -> void:
 	_stuck_ticks.resize(capacity)
 	progress.resize(capacity)
 	_last_values.resize(capacity)
-	tumbling.resize(capacity)
+	states.resize(capacity)
+	lifted.resize(capacity)
 	fuses.resize(capacity)

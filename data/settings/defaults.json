@@ -60,7 +60,9 @@
 		"tumble_speed": 180,
 		"landing_crowd": 6,
 		"bodies_fall_back": 1,
-		"fall_back_window": 1
+		"fall_back_window": 1,
+		"perch_room": 2,
+		"base_perch_room": 2
 	},
 	"routing": {
 		"sensible_pile_weight": 1,

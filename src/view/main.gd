@@ -30,6 +30,7 @@ var _last_saved_json := ""
 @onready var _tracers: Tracers = $Tracers
 @onready var _blast_rings: BlastRings = $BlastRings
 @onready var _soldier_deaths: SoldierDeathsView = $SoldierDeaths
+@onready var _perched_falls: PerchedFallsView = $PerchedFalls
 @onready var _drone_view: DroneView = $DroneView
 @onready var _placement: Placement = $Placement
 @onready var _range_overlay: RangeOverlay = $RangeOverlay
@@ -115,6 +116,7 @@ func _start_run(simulation: Simulation) -> void:
 	_tracers.setup(_simulation, _enemy_renderer)
 	_blast_rings.setup(_simulation)
 	_soldier_deaths.setup(_simulation)
+	_perched_falls.setup(_simulation)
 	_drone_view.setup(_simulation)
 	_placement.setup(_simulation)
 	_range_overlay.setup(_simulation)
