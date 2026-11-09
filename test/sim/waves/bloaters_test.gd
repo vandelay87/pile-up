@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 # Bloaters: from the first bloater wave, a stepped count of each wave's spawns, rolled per wave,
-# are bloaters, picked at random among its clump bursts.
+# are bloaters, picked at random among its spawn slots.
 
 const WAVE_TICKS := 4000
 
@@ -82,10 +82,28 @@ func test_a_flooded_wave_spawns_only_bloaters_with_their_wave_hp() -> void:
 	_sim.queue_command(Commands.JumpToWave.new(20))
 	_sim.tick()
 
-	assert_int(_sim.enemies.count).is_equal(16)
+	# 20 enemies, 2 of them scattered: the first burst is the other 18.
+	assert_int(_sim.enemies.count).is_equal(18)
 	for i in _sim.enemies.count:
 		assert_int(_sim.enemies.kinds[i]).is_equal(Enemies.Kind.BLOATER)
 		assert_float(_sim.enemies.hp[i]).is_equal_approx(30.0 * pow(1.05, 19), 1e-3)
+
+
+func test_bloaters_take_scattered_slots_too() -> void:
+	_set_chances(0, 0)
+	_sim.settings.change("bloaters", "first_wave", 1)
+	_sim.settings.change("bloaters", "waves_per_step", 1)
+	_sim.settings.change("waves", "growth", 1.0)
+	TestSettings.set_scatter_share(_sim.settings, 100)
+	_sim.queue_command(Commands.JumpToWave.new(20))
+
+	for tick in 30:
+		_sim.tick()
+
+	# 20 enemies, all scattered, and 20 bloaters: every one of them is a bloater.
+	assert_int(_sim.enemies.count).is_equal(20)
+	for i in _sim.enemies.count:
+		assert_int(_sim.enemies.kinds[i]).is_equal(Enemies.Kind.BLOATER)
 
 
 func test_the_build_phase_counts_the_bloaters_the_next_wave_spawns() -> void:
@@ -97,7 +115,7 @@ func test_the_build_phase_counts_the_bloaters_the_next_wave_spawns() -> void:
 		_kill_the_wave(sim)
 		assert_int(sim.waves.phase).is_equal(Waves.Phase.BUILD)
 		assert_int(sim.enemies_left).is_equal(76)
-		var preview := sim.next_wave_bloaters
+		var preview: int = sim.next_wave_specials["bloaters"]
 		previews.append(preview)
 		while sim.is_decay_rebuild_in_flight():
 			sim.tick()

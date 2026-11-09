@@ -110,7 +110,7 @@ func test_a_tumble_crosses_a_3_thick_block_to_the_first_free_cell_at_180_percent
 
 	index = _sim.enemies.index_of(id)
 	assert_object(_sim.enemies.positions[index]).is_equal(tumble.path[-1])
-	assert_int(_sim.enemies.tumbling[index]).is_equal(0)
+	assert_int(_sim.enemies.states[index]).is_equal(Enemies.State.WALKING)
 	assert_int(_sim.enemies.routes[index]).is_equal(Routing.Route.SENSIBLE)
 	# It walks on from where it landed.
 	_run(Simulation.TICKS_PER_SECOND)
@@ -143,8 +143,9 @@ func test_a_tumble_skips_a_cell_holding_6_enemies() -> void:
 
 
 func test_a_tumble_reaching_the_base_ends_beside_it_and_the_enemy_attacks() -> void:
-	# The wall line stands against the base's west side.
+	# The wall line stands against the base's west side. The base has no room to perch on.
 	_settings.change("overflow", "fill_per_stalled", 10.0)
+	_settings.change("overflow", "base_perch_room", 0)
 	_walls(_column(17, 0, HEIGHT - 1))
 	_crowd(80, Rect2(8, 1, 8, HEIGHT - 2))
 	var base_cells := {}
@@ -279,8 +280,10 @@ func test_a_grinder_that_kills_a_tumbler_gets_the_kill_and_its_combo() -> void:
 
 
 func test_nothing_crossed_loses_hp_or_a_level() -> void:
-	# A pylon sits in the middle of a 3-thick block. Attackers reach only its west column.
+	# A pylon sits in the middle of a 3-thick block. Attackers reach only its west column. With
+	# no room to perch, every tumble crosses it.
 	_settings.change("overflow", "fill_per_stalled", 10.0)
+	_settings.change("overflow", "perch_room", 0)
 	var pylon := Vector2i(10, 8)
 	_sim.queue_command(Commands.Build.new(Buildings.PYLON, pylon))
 	var middle := _column(10, 0, HEIGHT - 1)

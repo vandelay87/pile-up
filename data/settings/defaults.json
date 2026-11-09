@@ -32,6 +32,28 @@
 		"blast_radius": 2,
 		"blast_damage": 30
 	},
+	"jumpers": {
+		"speed": 2.4,
+		"reach": 3,
+		"cooldown": 4,
+		"crouch": 0.25,
+		"air_time": 0.8,
+		"first_wave": 8,
+		"share": 5,
+		"cap": 0
+	},
+	"brutes": {
+		"hp": 40,
+		"speed": 1.4,
+		"bounty": 4,
+		"mass": 3,
+		"structure_damage_factor": 5,
+		"size": 1.8,
+		"first_wave": 12,
+		"waves_per_step": 6,
+		"miss_chance": 25,
+		"extra_chance": 10
+	},
 	"piles": {
 		"slow_level_1": 15,
 		"slow_level_2": 30,
@@ -60,7 +82,9 @@
 		"tumble_speed": 180,
 		"landing_crowd": 6,
 		"bodies_fall_back": 1,
-		"fall_back_window": 1
+		"fall_back_window": 1,
+		"perch_room": 2,
+		"base_perch_room": 2
 	},
 	"routing": {
 		"sensible_pile_weight": 1,
@@ -75,7 +99,13 @@
 		"hp_growth": 1.05,
 		"spawn_rate": 10,
 		"second_edge_chance": 50,
-		"clump_size": 16,
+		"spawn_rate_growth": 1.1,
+		"burst_size": 16,
+		"burst_growth": 1.05,
+		"burst_width": 6,
+		"scatter_share_start": 90,
+		"scatter_share_end": 10,
+		"scatter_share_end_wave": 12,
 		"wave_tail": 10,
 		"wave_tail_per_wave": 2
 	},
@@ -139,6 +169,7 @@
 		"map_path": "res://data/maps/v3-flared.json"
 	},
 	"view": {
-		"tracer_speed": 60
+		"tracer_speed": 60,
+		"jump_clearance": 24
 	}
 }

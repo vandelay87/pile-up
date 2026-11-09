@@ -41,6 +41,37 @@ func test_top_up_fills_the_crowd_to_the_target() -> void:
 	assert_int(sim.enemies.count).is_equal(150)
 
 
+func test_top_up_mixes_in_a_wave_20_count_of_brutes_on_the_direct_route() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+
+	crowd.top_up(150)
+
+	# Wave 20 brings 1 + (20 - 12) / 6 = 2 brutes before its roll.
+	assert_int(crowd.brute_count()).is_equal(2)
+	var brutes := 0
+	for i in sim.enemies.count:
+		if sim.enemies.kinds[i] == Enemies.Kind.BRUTE:
+			brutes += 1
+			assert_int(sim.enemies.routes[i]).is_equal(Routing.Route.DIRECT)
+	assert_int(brutes).is_equal(2)
+
+
+func test_top_up_mixes_in_jumpers_at_their_share_on_the_direct_route() -> void:
+	var sim := Simulation.new(_settings, _map(), 1)
+	var crowd := BenchCrowd.new(sim, 1)
+
+	crowd.top_up(200)
+
+	var jumpers := 0
+	for i in sim.enemies.count:
+		if sim.enemies.kinds[i] == Enemies.Kind.JUMPER:
+			jumpers += 1
+			assert_int(sim.enemies.routes[i]).is_equal(Routing.Route.DIRECT)
+	# 5% of 200.
+	assert_int(jumpers).is_equal(10)
+
+
 func test_the_crowd_arrives_without_attacking_the_towers() -> void:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, 1)

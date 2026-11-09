@@ -76,9 +76,29 @@ var turn_back_radians: float:
 	get:
 		var degrees: float = value("enemies", "turn_back_angle")
 		return deg_to_rad(degrees)
-var clump_size: int:
+var spawn_rate_growth: float:
 	get:
-		return value("waves", "clump_size")
+		return value("waves", "spawn_rate_growth")
+var burst_size: int:
+	get:
+		return value("waves", "burst_size")
+var burst_growth: float:
+	get:
+		return value("waves", "burst_growth")
+var burst_width: float:
+	get:
+		return value("waves", "burst_width")
+var scatter_share_start: float:
+	get:
+		var percent: int = value("waves", "scatter_share_start")
+		return percent / 100.0
+var scatter_share_end: float:
+	get:
+		var percent: int = value("waves", "scatter_share_end")
+		return percent / 100.0
+var scatter_share_end_wave: int:
+	get:
+		return value("waves", "scatter_share_end_wave")
 var wave_tail: int:
 	get:
 		return value("waves", "wave_tail")
@@ -175,6 +195,14 @@ var fall_back_window_ticks: int:
 	get:
 		var seconds: float = value("overflow", "fall_back_window")
 		return roundi(seconds * Simulation.TICKS_PER_SECOND)
+## How many enemies may perch on each footprint cell of a building.
+var perch_room: int:
+	get:
+		return value("overflow", "perch_room")
+## How many enemies may perch on each cell of the base.
+var base_perch_room: int:
+	get:
+		return value("overflow", "base_perch_room")
 var bloater_hp: float:
 	get:
 		return value("bloaters", "hp")
@@ -201,6 +229,45 @@ var bloater_extra_chance: float:
 var bloater_size: float:
 	get:
 		return value("bloaters", "size")
+var jumper_speed: float:
+	get:
+		return value("jumpers", "speed")
+## How many wall and building cells a jump may cross before its landing.
+var jumper_reach: int:
+	get:
+		return value("jumpers", "reach")
+var jumper_cooldown_ticks: int:
+	get:
+		var seconds: float = value("jumpers", "cooldown")
+		return ticks_from_seconds(seconds)
+var jumper_crouch_ticks: int:
+	get:
+		var seconds: float = value("jumpers", "crouch")
+		return ticks_from_seconds(seconds)
+var jumper_air_ticks: int:
+	get:
+		var seconds: float = value("jumpers", "air_time")
+		return maxi(1, ticks_from_seconds(seconds))
+var brute_hp: float:
+	get:
+		return value("brutes", "hp")
+var brute_speed: float:
+	get:
+		return value("brutes", "speed")
+var brute_bounty: int:
+	get:
+		return value("brutes", "bounty")
+## A brute's mass against a normal enemy's 1.
+var brute_mass: float:
+	get:
+		return value("brutes", "mass")
+## How many times a normal enemy's structure damage a brute deals.
+var brute_damage_factor: float:
+	get:
+		return value("brutes", "structure_damage_factor")
+var brute_size: float:
+	get:
+		return value("brutes", "size")
 var fuse_ticks: int:
 	get:
 		var seconds: float = value("bloaters", "fuse")
@@ -336,6 +403,10 @@ var base_power_area: int:
 var tracer_speed: float:
 	get:
 		return value("view", "tracer_speed")
+## How far above the tallest thing on its path a jump's arc peaks, in world pixels.
+var jump_clearance: float:
+	get:
+		return value("view", "jump_clearance")
 var base_hp: int:
 	get:
 		return value("run", "base_hp")
@@ -432,16 +503,55 @@ func pile_slow(level: int) -> float:
 
 # Kind-specific enemy numbers.
 func enemy_hp_of(kind: Enemies.Kind) -> float:
-	return bloater_hp if kind == Enemies.Kind.BLOATER else enemy_hp
+	match kind:
+		Enemies.Kind.BLOATER:
+			return bloater_hp
+		Enemies.Kind.BRUTE:
+			return brute_hp
+	return enemy_hp
 
 
 func enemy_bounty_of(kind: Enemies.Kind) -> int:
-	return bloater_bounty if kind == Enemies.Kind.BLOATER else enemy_bounty
+	match kind:
+		Enemies.Kind.BLOATER:
+			return bloater_bounty
+		Enemies.Kind.BRUTE:
+			return brute_bounty
+	return enemy_bounty
 
 
 func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:
-	var speed := bloater_speed if kind == Enemies.Kind.BLOATER else enemy_speed
+	var speed := enemy_speed
+	match kind:
+		Enemies.Kind.BLOATER:
+			speed = bloater_speed
+		Enemies.Kind.JUMPER:
+			speed = jumper_speed
+		Enemies.Kind.BRUTE:
+			speed = brute_speed
 	return speed / Simulation.TICKS_PER_SECOND
+
+
+## An enemy's mass among enemies and against soldiers: a brute's setting, else 1.
+func enemy_mass_of(kind: Enemies.Kind) -> float:
+	return brute_mass if kind == Enemies.Kind.BRUTE else 1.0
+
+
+## HP a tick an attacker of [param kind] deals to a structure: a brute's by its factor.
+func structure_damage_per_tick_of(kind: Enemies.Kind) -> float:
+	if kind == Enemies.Kind.BRUTE:
+		return structure_damage_per_tick * brute_damage_factor
+	return structure_damage_per_tick
+
+
+## An enemy's drawn size, as a multiple of a normal enemy's.
+func enemy_size_of(kind: Enemies.Kind) -> float:
+	match kind:
+		Enemies.Kind.BLOATER:
+			return bloater_size
+		Enemies.Kind.BRUTE:
+			return brute_size
+	return 1.0
 
 
 func value(group: String, key: String) -> Variant:

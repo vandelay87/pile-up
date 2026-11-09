@@ -47,6 +47,23 @@ func test_enemies_held_against_a_wall_fill_its_gauge_by_half_a_point_each_less_t
 	assert_float(crush.gauge).is_greater(_settings.crush_start)
 
 
+func test_stalled_brutes_fill_a_gauge_but_are_never_launched() -> void:
+	_walls(_column(10, 0, HEIGHT - 1))
+	for id in _crowd(20, Rect2(3, 5, 5, 7)):
+		var i := _sim.enemies.index_of(id)
+		_sim.enemies.kinds[i] = Enemies.Kind.BRUTE
+		_sim.enemies.routes[i] = Routing.Route.DIRECT
+
+	for tick in 30 * Simulation.TICKS_PER_SECOND:
+		_sim.tick()
+		for i in _sim.enemies.count:
+			assert_int(_sim.enemies.states[i]).is_equal(Enemies.State.WALKING)
+
+	var crush := _only_crush()
+	assert_int(crush.stalled).is_greater(0)
+	assert_int(crush.tier).is_equal(Overflow.Tier.SURGE)
+
+
 func test_a_clump_walking_past_a_wall_fills_no_gauge() -> void:
 	_walls(_row(2, 3, 11))
 	_crowd(16, Rect2(0.5, 3, 3, 4))

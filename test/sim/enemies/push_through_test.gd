@@ -37,7 +37,8 @@ func before_test() -> void:
 	_settings.change("enemies", "pile_roll_chance", 0)
 	_settings.change("piles", "slow_level_4", 75)
 	_settings.change("routing", "sensible_pile_weight", 5.0)
-	_settings.change("waves", "clump_size", 50)
+	_settings.change("waves", "burst_size", 50)
+	TestSettings.set_scatter_share(_settings, 10)
 
 
 func test_outside_the_wave_tail_an_enemy_turned_back_takes_the_long_way() -> void:
@@ -154,7 +155,7 @@ func _ring_sim() -> Simulation:
 # the slowest spawn rate keeps the next one off the field for 120 ticks.
 func _sim_in_wave(rows: Array[String], base: Rect2i, enemies_left: int) -> Simulation:
 	_settings.change("waves", "wave_1_size", enemies_left + 1)
-	_settings.change("waves", "clump_size", 1)
+	_settings.change("waves", "burst_size", 1)
 	_settings.change("waves", "spawn_rate", 0.5)
 	var edges: Array[String] = ["W"]
 	var sim := Simulation.new(_settings.for_next_run(), TestMaps.from_rows(rows, base, edges), 1)

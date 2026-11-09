@@ -274,14 +274,15 @@ func take_destroyed() -> Array[int]:
 
 
 ## At [constant Simulation.Step.BUILDINGS_ACT], each working building acts, in build order.
-## Towers fire, returning their shots; grinders hurt every enemy touching them.
-func act(enemies: Enemies) -> Array[Shot]:
+## Towers fire, returning their shots; grinders hurt every walking enemy touching them and every
+## enemy perched on them.
+func act(enemies: Enemies, perches: Perches) -> Array[Shot]:
 	var shots: Array[Shot] = []
 	for acting in built:
 		if acting.kind == TOWER:
 			_fire(acting, enemies, shots)
 		elif acting.kind == GRINDER:
-			_grind(acting, enemies)
+			_grind(acting, enemies, perches)
 	return shots
 
 
@@ -311,7 +312,7 @@ func _fire(tower: Building, enemies: Enemies, shots: Array[Shot]) -> void:
 	shots.append(Shot.new(tower.id, tower.centre, target, enemies.positions[index]))
 
 
-func _grind(grinder: Building, enemies: Enemies) -> void:
+func _grind(grinder: Building, enemies: Enemies, perches: Perches) -> void:
 	grinder.touching = 0
 	if not is_working(grinder.id):
 		return
@@ -319,6 +320,7 @@ func _grind(grinder: Building, enemies: Enemies) -> void:
 	var reach := _settings.separation_radius + _settings.wall_reach
 	var area := Rect2i(grinder.origin, footprint_size(GRINDER))
 	var found := enemies.touching(area, reach)
+	found.append_array(perches.enemies_on(grinder.id))
 	grinder.touching = found.size()
 	for i in found:
 		_hurt(grinder, enemies, i, per_tick)

@@ -170,108 +170,9 @@ const SCHEMA := {
 			"apply": Settings.Apply.LIVE,
 		},
 	},
-	"bloaters":
-	{
-		"hp":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 1000.0,
-			"step": 0.5,
-			"unit": "HP",
-			"apply": Settings.Apply.LIVE,
-		},
-		"speed":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.1,
-			"max": 10.0,
-			"step": 0.1,
-			"unit": "cells/s",
-			"apply": Settings.Apply.LIVE,
-		},
-		"bounty":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 1,
-			"unit": "gold",
-			"apply": Settings.Apply.LIVE,
-		},
-		"first_wave":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 100,
-			"step": 1,
-			"unit": "wave",
-			"apply": Settings.Apply.LIVE,
-		},
-		"waves_per_step":
-		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 50,
-			"step": 1,
-			"unit": "waves per extra bloater",
-			"apply": Settings.Apply.LIVE,
-		},
-		"miss_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 5,
-			"unit": "percent chance a wave has one fewer",
-			"apply": Settings.Apply.LIVE,
-		},
-		"extra_chance":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 5,
-			"unit": "percent chance a wave has one more",
-			"apply": Settings.Apply.LIVE,
-		},
-		"size":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 3.0,
-			"step": 0.1,
-			"unit": "× drawn size",
-			"apply": Settings.Apply.LIVE,
-		},
-		"fuse":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.1,
-			"max": 10.0,
-			"step": 0.1,
-			"unit": "s",
-			"apply": Settings.Apply.LIVE,
-		},
-		"blast_radius":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 6.0,
-			"step": 0.5,
-			"unit": "cells",
-			"apply": Settings.Apply.LIVE,
-		},
-		"blast_damage":
-		{
-			"type": TYPE_FLOAT,
-			"min": 0.0,
-			"max": 1000.0,
-			"step": 5.0,
-			"unit": "HP to each building and the base",
-			"apply": Settings.Apply.LIVE,
-		},
-	},
+	"bloaters": EnemyKindsSchema.BLOATERS,
+	"jumpers": EnemyKindsSchema.JUMPERS,
+	"brutes": EnemyKindsSchema.BRUTES,
 	"piles":
 	{
 		"slow_level_1":
@@ -513,6 +414,24 @@ const SCHEMA := {
 			"unit": "s after landing that a body still falls back",
 			"apply": Settings.Apply.LIVE,
 		},
+		"perch_room":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 4,
+			"step": 1,
+			"unit": "enemies perched per building footprint cell",
+			"apply": Settings.Apply.LIVE,
+		},
+		"base_perch_room":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 4,
+			"step": 1,
+			"unit": "enemies perched per base cell",
+			"apply": Settings.Apply.LIVE,
+		},
 	},
 	"routing":
 	{
@@ -609,13 +528,67 @@ const SCHEMA := {
 			"unit": "percent",
 			"apply": Settings.Apply.LIVE,
 		},
-		"clump_size":
+		"spawn_rate_growth":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 2.0,
+			"step": 0.01,
+			"unit": "× spawn rate per wave",
+			"apply": Settings.Apply.LIVE,
+		},
+		"burst_size":
 		{
 			"type": TYPE_INT,
 			"min": 1,
 			"max": 50,
 			"step": 1,
-			"unit": "enemies per spawn burst",
+			"unit": "enemies per burst at wave 1",
+			"apply": Settings.Apply.LIVE,
+		},
+		"burst_growth":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 2.0,
+			"step": 0.01,
+			"unit": "× burst size per wave",
+			"apply": Settings.Apply.LIVE,
+		},
+		"burst_width":
+		{
+			"type": TYPE_FLOAT,
+			"min": 1.0,
+			"max": 40.0,
+			"step": 0.5,
+			"unit": "cells along the edge for a wave-1 burst",
+			"apply": Settings.Apply.LIVE,
+		},
+		"scatter_share_start":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent of wave 1 spawned singly",
+			"apply": Settings.Apply.LIVE,
+		},
+		"scatter_share_end":
+		{
+			"type": TYPE_INT,
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"unit": "percent spawned singly from the end wave on",
+			"apply": Settings.Apply.LIVE,
+		},
+		"scatter_share_end_wave":
+		{
+			"type": TYPE_INT,
+			"min": 1,
+			"max": 50,
+			"step": 1,
+			"unit": "wave the scatter share reaches its end",
 			"apply": Settings.Apply.LIVE,
 		},
 		"wave_tail":
@@ -901,6 +874,15 @@ const SCHEMA := {
 			"max": 200.0,
 			"step": 5.0,
 			"unit": "cells/s",
+			"apply": Settings.Apply.LIVE,
+		},
+		"jump_clearance":
+		{
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 100.0,
+			"step": 1.0,
+			"unit": "px above the tallest thing on a jump's path",
 			"apply": Settings.Apply.LIVE,
 		},
 	},

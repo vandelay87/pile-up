@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+# Benches one PR flagged `bench-pc` on the Windows PC and reports back on the PR, for the bench-pc
+# skill (.claude/skills/bench-pc). Runs from a clone under Git Bash and leaves that clone alone:
+# it checks out the PR's head sha detached in a bench worktree, $BENCH_PC_TREE (default
+# pile-up-bench-pc beside the clone, made on the first run and forced clean on each), runs that commit's
+# tools/bench_release.sh for each case the PR's Performance section has a `### bench_...` heading
+# for (dense-1000 with and without the army when it has none), and posts one comment headed
+# "PC (3080)" with the fingerprinted tables. It also writes them into the PR body as the last
+# subsection of its Performance section, replacing an earlier run's. A missed target is still a
+# result: the PC's numbers are for information only.
+#
+# Exits 0 when it posted the tables and swapped the label to bench-pc-done (or the PR isn't
+# flagged any more), 75 when the PC is busy (a game running, or the CPU or GPU loaded) or GitHub
+# can't be read, and nothing was touched, and 1 when it failed: it then posts the error and swaps the label to
+# bench-pc-failed.
+#
+# Usage: tools/bench_pc.sh <pr-number>
+set -u
+
+# The busy check's limits: a game process from these folders, or load above these percentages.
+GAME_PATHS='steamapps\\common|Epic Games|XboxGames|GOG Games'
+MAX_CPU=${BENCH_PC_MAX_CPU:-30}
+MAX_GPU=${BENCH_PC_MAX_GPU:-20}
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+tree=${BENCH_PC_TREE:-$root/../pile-up-bench-pc}
+
+# Runs the PowerShell command $1, with Windows line endings stripped.
+powershell() {
+	powershell.exe -NoProfile -Command "$1" 2>/dev/null | tr -d '\r'
+}
+
+# Prints why the PC is busy, or nothing when it is free. A load it can't read counts as free.
+busy_reason() {
+	local game cpu gpu
+	# The $s in single quotes are PowerShell's.
+	# shellcheck disable=SC2016
+	game=$(powershell "Get-Process | Where-Object { \$_.Path -match '$GAME_PATHS' } | Select-Object -ExpandProperty ProcessName" | head -1)
+	if [ -n "$game" ]; then
+		echo "a game is running ($game)"
+		return
+	fi
+	cpu=$(powershell "(Get-CimInstance Win32_Processor | Measure-Object LoadPercentage -Average).Average" | cut -d. -f1)
+	if [ -n "$cpu" ] && [ "$cpu" -gt "$MAX_CPU" ] 2>/dev/null; then
+		echo "the CPU is at $cpu% (over $MAX_CPU%)"
+		return
+	fi
+	gpu=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | tr -d '\r ' | sort -n | tail -1)
+	if [ -n "$gpu" ] && [ "$gpu" -gt "$MAX_GPU" ] 2>/dev/null; then
+		echo "the GPU is at $gpu% (over $MAX_GPU%)"
+	fi
+}
+
+# Prints the bench_release.sh arguments to run, one case a line: the PR body's `### bench_...`
+# headings in order without repeats, or the per-ticket pair when there are none.
+cases() {
+	local found
+	found=$(tr -d '\r' | sed -nE 's/^### (bench_frame|bench_profile( (dense-1000|dense-1390|wave-20))?( --army)?)[[:space:]]*$/\1/p' | awk '!seen[$0]++')
+	if [ -n "$found" ]; then
+		echo "$found"
+	else
+		printf 'bench_profile dense-1000\nbench_profile dense-1000 --army\n'
+	fi
+}
+
+# Posts the comment in $comment and swaps the bench-pc label for $1, passing any further args to
+# that edit.
+report() {
+	local label=$1
+	shift
+	gh pr comment "$pr" --body-file "$comment" >/dev/null &&
+		gh pr edit "$pr" --remove-label bench-pc --add-label "$label" "$@" >/dev/null
+}
+
+# Prints the PR body on stdin with the comment's tables as the last subsection of its Performance
+# section, "### PC (3080)" with its cases a level down so a re-bench still reads only the M5's.
+# An earlier PC subsection is dropped; a body with no Performance section gets one at the end.
+# Either way the PR's "🤖 Generated with" footer stays last.
+with_pc_section() {
+	{
+		echo "### PC (3080)"
+		tail -n +2 "$comment" | sed 's/^### /#### /'
+	} >"$work/section"
+	tr -d '\r' | awk -v section="$work/section" '
+		function emit(line) {
+			while ((getline line < section) > 0) print line
+			close(section)
+			done = 1
+		}
+		{
+			# The PR footer stays last: the section goes in before it, in a Performance section
+			# made for it if the body has none.
+			if ($0 ~ /^🤖 Generated with / && !done && (in_perf || !seen_perf)) {
+				if (!in_perf) { print "## Performance"; print "" }
+				emit()
+				print ""
+				skipping = 0
+			} else if ($0 ~ /^🤖 Generated with /) {
+				skipping = 0
+			} else if ($0 ~ /^## /) {
+				if (in_perf && !done) { emit(); print "" }
+				in_perf = ($0 == "## Performance")
+				if (in_perf) seen_perf = 1
+				skipping = 0
+			} else if (in_perf && $0 == "### PC (3080)") {
+				skipping = 1
+			} else if (skipping && $0 ~ /^### /) {
+				skipping = 0
+			}
+			if (!skipping) print
+		}
+		END {
+			if (!done) {
+				if (!in_perf) { print ""; print "## Performance" }
+				print ""
+				emit()
+			}
+		}
+	'
+}
+
+# Posts a failure: $1 is what failed, $2 a file whose tail is the error. Exits 1.
+failed() {
+	{
+		echo "## PC (3080): bench failed"
+		echo
+		echo "Commit ${sha:-unknown}: $1. Not retried; relabel \`bench-pc\` to run it again."
+		echo
+		echo '```text'
+		tail -n 40 "$2"
+		echo '```'
+	} >"$comment"
+	report bench-pc-failed
+	echo "bench_pc: #$pr failed: $1" >&2
+	exit 1
+}
+
+main() {
+	pr=${1:-}
+	if ! [[ $pr =~ ^[0-9]+$ ]]; then
+		sed -n 's/^# Usage: /Usage: /p' "$0" >&2
+		exit 2
+	fi
+	work=$(mktemp -d)
+	trap 'rm -rf "$work"' EXIT
+	comment="$work/comment.md"
+	sha=""
+
+	local labels reason
+	if ! labels=$(gh pr view "$pr" --json labels --jq '.labels[].name' 2>&1); then
+		echo "bench_pc: couldn't read #$pr, try later: $(echo "$labels" | tail -1)"
+		exit 75
+	fi
+	if ! echo "$labels" | grep -qx bench-pc; then
+		echo "bench_pc: #$pr isn't flagged bench-pc, nothing to do"
+		exit 0
+	fi
+	reason=$(busy_reason)
+	if [ -n "$reason" ]; then
+		echo "bench_pc: busy, $reason; #$pr is left flagged for later"
+		exit 75
+	fi
+
+	if ! gh pr view "$pr" --json body --jq .body >"$work/body" 2>&1; then
+		echo "bench_pc: couldn't read #$pr, try later: $(tail -1 "$work/body")"
+		exit 75
+	fi
+	cases <"$work/body" >"$work/cases"
+	# The submodule is for scons, when CI has no dll for the sha; it is cloned once per tree.
+	# The sha is the fetched head's, so a push since the PR was read is benched whole.
+	if ! { git -C "$root" fetch -q origin "pull/$pr/head" &&
+		sha=$(git -C "$root" rev-parse FETCH_HEAD) &&
+		if [ -e "$tree" ]; then
+			git -C "$tree" checkout -q -f --detach "$sha" && git -C "$tree" clean -q -fd
+		else
+			git -C "$root" worktree add -q --detach "$tree" "$sha"
+		fi && git -C "$tree" submodule -q update --init; } >"$work/git.log" 2>&1; then
+		failed "checking out the PR head in $tree" "$work/git.log"
+	fi
+	cd "$tree" || exit 1
+
+	{
+		echo "## PC (3080)"
+		echo
+		echo "Commit $sha, \`tools/bench_release.sh\` on the PC. For information only: the targets are on the M5."
+	} >"$comment"
+	local args code
+	while read -r args; do
+		# Word splitting turns the case line into the script's arguments.
+		# shellcheck disable=SC2086
+		# The bench's powershell.exe reads stdin, which would eat the rest of the cases.
+		tools/bench_release.sh $args >"$work/out" 2>"$work/err" </dev/null
+		code=$?
+		# A missed target exits 1 with a whole table, ending in a FAIL verdict.
+		if [ "$code" -ne 0 ] && ! grep -q '(FAIL)\.$' "$work/out"; then
+			cat "$work/out" >>"$work/err"
+			failed "\`$args\` exited $code" "$work/err"
+		fi
+		{
+			echo
+			cat "$work/out"
+		} >>"$comment"
+	done <"$work/cases"
+
+	# The body is read again, as the Mac may have edited it during the bench. If it can't be read,
+	# it's left alone rather than overwritten: the tables are in the comment either way.
+	local body_args=()
+	if gh pr view "$pr" --json body --jq .body >"$work/body" 2>/dev/null; then
+		with_pc_section <"$work/body" >"$work/new-body"
+		body_args=(--body-file "$work/new-body")
+	fi
+	report bench-pc-done ${body_args[@]+"${body_args[@]}"} || exit 1
+	echo "bench_pc: #$pr benched at $sha and labelled bench-pc-done"
+}
+
+main "$@"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 status=0
 
 for fixture in test/fixtures/sim_boundary/bad/*.gd; do

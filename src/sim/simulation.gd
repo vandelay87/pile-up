@@ -7,7 +7,9 @@ signal fields_changed
 signal gold_changed(gold: int)
 signal base_hp_changed(hp: float)
 signal kills_changed(kills: int)
-signal enemies_left_changed(left: int)
+## Enemies left, and in the build phase the next wave's special enemies as
+## [method Waves.special_counts] gives them; [param specials] is empty during a wave.
+signal enemies_left_changed(left: int, specials: Dictionary)
 signal combo_events(events: Array[Combos.Event])
 signal payout(amount: int, tier: int)
 signal building_placed(id: int)
@@ -18,6 +20,8 @@ signal soldiers_added(ids: PackedInt32Array)
 signal soldiers_died(deaths: SoldierDeaths)
 signal training_changed(barracks_id: int)
 signal blasts(went_off: Array[Blasts.Blast])
+## Each perched enemy that died this tick and leaves a body, for its short fall to the ground.
+signal perched_bodies(drops: Array[Perches.Drop])
 signal phase_changed(phase: Waves.Phase)
 signal wave_started(edges: PackedStringArray)
 signal game_over
@@ -65,6 +69,8 @@ var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
 var overflow: Overflow
+var perches: Perches
+var jumps: Jumps
 var unit_paths: UnitPaths
 var soldiers: Soldiers
 var soldier_attacks: SoldierAttacks
@@ -82,10 +88,13 @@ var soldier_deaths := SoldierDeaths.new()
 var enemies_left: int:
 	get:
 		return waves.enemies_left
-## How many bloaters the next wave brings.
-var next_wave_bloaters: int:
+## The next wave's special enemies in the build phase, as [method Waves.special_counts] gives
+## them; empty during a wave.
+var next_wave_specials: Dictionary:
 	get:
-		return waves.bloater_count(run_state.wave + 1)
+		if waves.phase == Waves.Phase.WAVE:
+			return {}
+		return waves.special_counts(run_state.wave + 1)
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
@@ -96,6 +105,7 @@ var _rebuild_swap_tick := 0
 var _placed: Array[int] = []
 var _shots: Array[Buildings.Shot] = []
 var _blasts: Array[Blasts.Blast] = []
+var _perched_drops: Array[Perches.Drop] = []
 var _run_seed: int
 var _pending_steps := 0
 var _wave_started := false
@@ -137,10 +147,15 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 			_system_rng("swarm"),
 		)
 	)
-	waves = Waves.new(settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"))
-	overflow = Overflow.new(
-		settings, map, structures, buildings, enemies, routing, _system_rng("overflow")
+	waves = Waves.new(
+		settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"), _run_seed
 	)
+	perches = Perches.new(settings, map, occupancy, structures, buildings, enemies)
+	overflow = Overflow.new(
+		settings, map, structures, buildings, enemies, routing, perches, _system_rng("overflow")
+	)
+	jumps = Jumps.new(settings, map, structures, buildings, enemies, routing, perches)
+	enemies.jumps = jumps
 	bloater_blasts = Blasts.new(settings, map, enemies, buildings, piles, run_state)
 	unit_paths = UnitPaths.new(settings, map, occupancy, piles, structures)
 	soldiers = Soldiers.new(settings, map, occupancy, piles, structures, ids, unit_paths)
@@ -361,6 +376,10 @@ func _emit_signals() -> void:
 		var went_off := _blasts
 		_blasts = []
 		blasts.emit(went_off)
+	if not _perched_drops.is_empty():
+		var drops := _perched_drops
+		_perched_drops = []
+		perched_bodies.emit(drops)
 	if waves.phase != _reported_phase:
 		_reported_phase = waves.phase
 		phase_changed.emit(_reported_phase)
@@ -388,10 +407,10 @@ func _emit_enemies_left() -> void:
 		_wave_ended = false
 		if _reported_enemies_left != 0:
 			_reported_enemies_left = 0
-			enemies_left_changed.emit(0)
+			enemies_left_changed.emit(0, {})
 	if waves.enemies_left != _reported_enemies_left:
 		_reported_enemies_left = waves.enemies_left
-		enemies_left_changed.emit(_reported_enemies_left)
+		enemies_left_changed.emit(_reported_enemies_left, next_wave_specials)
 
 
 func _drain_commands() -> void:
@@ -455,13 +474,18 @@ func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
 	enemies.move(waves.in_wave_tail(), overflow.band_mask)
 	overflow.step()
+	jumps.step()
+	# Buildings.pending_destroyed is the live list, so it holds what perched attacks destroy too.
+	perches.step(buildings.pending_destroyed())
 
 
 func _move_units() -> void:
 	_observe(Step.MOVE_UNITS)
 	soldiers.need_restarted()
 	unit_paths.step()
-	soldiers.step(enemies, overflow.take_knock_offs())
+	var knock_offs := overflow.take_knock_offs()
+	knock_offs.append_array(jumps.take_knock_offs())
+	soldiers.step(enemies, knock_offs)
 	soldier_attacks.step()
 
 
@@ -469,7 +493,7 @@ func _buildings_act() -> void:
 	_observe(Step.BUILDINGS_ACT)
 	# Enemies hold still through steps 6 and 7, so their field values are shared by every pick.
 	enemies.begin_targeting()
-	_shots = buildings.act(enemies)
+	_shots = buildings.act(enemies, perches)
 
 
 func _units_fire() -> void:
@@ -488,7 +512,11 @@ func _remove_dead() -> void:
 	_observe(Step.REMOVE_DEAD)
 	deaths = enemies.remove_dead()
 	_blasts.append_array(bloater_blasts.resolve(deaths, soldiers))
+	perches.release_destroyed(buildings.pending_destroyed())
+	# A perched enemy's body drops off its building; a tumbler's or a jumper's falls back.
+	_perched_drops.append_array(perches.drop_cells(deaths))
 	overflow.fall_back(deaths)
+	jumps.fall_back(deaths)
 	piles.queue_bodies(deaths)
 	soldier_deaths = soldiers.remove_dead(deaths)
 	_soldiers_died = not soldier_deaths.is_empty()
@@ -503,7 +531,7 @@ func _remove_dead() -> void:
 	combos.expire(tick_count)
 	run_state.pay(deaths, combos, tick_count)
 	_payout_was_multiplied = run_state.payout_tier > 1
-	waves.record_kills(deaths.size())
+	waves.record_kills(deaths)
 
 
 func _check_wave_end() -> void:

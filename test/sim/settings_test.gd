@@ -35,7 +35,7 @@ const _SWARM_RANGES := [
 	["enemies", "wander_period", 0.5, 20.0, 0.5],
 	["enemies", "personal_space_radius", 0.0, 3.0, 0.05],
 	["enemies", "personal_space_push", 0.0, 1.0, 0.01],
-	["waves", "clump_size", 1, 50, 1],
+	["waves", "burst_size", 1, 50, 1],
 ]
 
 
@@ -121,7 +121,7 @@ func test_converts_the_enemy_and_swarm_spread_settings_to_sim_units() -> void:
 	assert_float(settings.wander_period_ticks).is_equal_approx(240.0, 1e-6)
 	assert_float(settings.personal_space_radius).is_equal_approx(0.7, 1e-6)
 	assert_float(settings.personal_space_push).is_equal_approx(0.06, 1e-6)
-	assert_int(settings.clump_size).is_equal(16)
+	assert_int(settings.burst_size).is_equal(16)
 
 
 func test_the_swarm_spread_settings_accept_their_range_on_the_step() -> void:
