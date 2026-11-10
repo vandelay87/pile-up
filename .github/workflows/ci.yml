@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   GODOT_VERSION: "4.7.2"
@@ -12,8 +13,42 @@ permissions:
   contents: read
 
 jobs:
+  # Classifies the run (tools/ci_changes.sh): a docs-only run skips every other job, and macOS,
+  # whose minutes count 10x, builds only where it's needed. A job skipped by its own `if:` passes
+  # as a required check, and so do the jobs that need it.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+      macos: ${{ steps.classify.outputs.macos }}
+      platforms: ${{ steps.classify.outputs.platforms }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # A PR's checkout is its merge commit, so its first parent is the base it merges into. A
+      # push diffs from the commit before it; a manual run, or a push whose before is missing,
+      # lists no paths, which builds everything.
+      - id: classify
+        shell: bash # with pipefail, so a failing classification fails the job
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          : >paths.txt
+          if [ "$EVENT" = pull_request ]; then
+            git diff --name-only HEAD^1 HEAD >paths.txt || : >paths.txt
+          elif [ "$EVENT" = push ] && [[ ! $BEFORE =~ ^0*$ ]] && git cat-file -e "$BEFORE^{commit}"; then
+            git diff --name-only "$BEFORE" HEAD >paths.txt || : >paths.txt
+          fi
+          tools/ci_changes.sh "$EVENT" "$BASE" <paths.txt | tee -a "$GITHUB_OUTPUT"
+
   lint:
     name: lint
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -25,23 +60,22 @@ jobs:
       - run: gdformat --check src test tools
       - run: tools/check_sim_boundary_test.sh
       - run: tools/sim_budget_test.sh
+      - run: tools/ci_changes_test.sh
       - run: shellcheck tools/*.sh
       - run: tools/bench_release_test.sh
       - run: tools/bench_pc_test.sh
 
-  # The GDExtension (native/, ADR 0001), one release build per platform, for the jobs below.
+  # The GDExtension (native/, ADR 0001), one release build per platform in the changes job's
+  # matrix, for the jobs below. Linux and Windows build on every code run (tools/bench_release.sh
+  # fetches native-windows for the PC); macOS only where changes says so.
   native:
     name: native (${{ matrix.platform }})
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        include:
-          - platform: linux
-            os: ubuntu-latest
-          - platform: macos
-            os: macos-latest
-          - platform: windows
-            os: windows-latest
+        include: ${{ fromJSON(needs.changes.outputs.platforms) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Compiling godot-cpp is most of the job, so the built library is cached on its sources:
@@ -120,7 +154,7 @@ jobs:
 
   export:
     name: export
-    needs: native
+    needs: [changes, native]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -137,16 +171,20 @@ jobs:
       - run: godot --headless --import
       - run: mkdir -p build/windows build/macos
       - run: godot --headless --export-release "Windows Desktop" build/windows/pile-up.exe
-      - run: godot --headless --export-release "macOS" build/macos/pile-up.zip
+      # Only where macOS was built (see changes): the Windows export doesn't need its library.
+      - if: needs.changes.outputs.macos == 'true'
+        run: godot --headless --export-release "macOS" build/macos/pile-up.zip
+      # A day is enough to grab a build, and keeps storage within the private-repo quota.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pile-up-windows
           path: build/windows/
-          retention-days: 7
+          retention-days: 1
           if-no-files-found: error
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - if: needs.changes.outputs.macos == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pile-up-macos
           path: build/macos/pile-up.zip
-          retention-days: 7
+          retention-days: 1
           if-no-files-found: error
