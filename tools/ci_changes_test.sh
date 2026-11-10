@@ -12,8 +12,9 @@ all_three='[{"platform":"linux","os":"ubuntu-latest"},{"platform":"windows","os"
 expect() {
 	local name=$1 docs_only=$2 platforms=$3 event=$4 base=$5
 	shift 5
-	local want got
-	want=$(printf 'docs_only=%s\nplatforms=%s' "$docs_only" "$platforms")
+	local want got macos=false
+	[ "$platforms" = "$all_three" ] && macos=true
+	want=$(printf 'docs_only=%s\nmacos=%s\nplatforms=%s' "$docs_only" "$macos" "$platforms")
 	got=$(printf '%s\n' "$@" | grep -v '^$' | tools/ci_changes.sh "$event" "$base")
 	if [ "$got" != "$want" ]; then
 		printf 'FAIL: %s\n  want: %s\n  got:  %s\n' "$name" "$want" "$got"

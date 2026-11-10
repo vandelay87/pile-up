@@ -9,8 +9,9 @@
 #
 # Prints GITHUB_OUTPUT lines:
 #   docs_only=true|false  every path is under docs/ or is a *.md
-#   platforms=<json>      the native build matrix: Linux and Windows always, macOS on a push to
-#                         main, a PR into main, a manual run, or a change under native/
+#   macos=true|false      macOS builds: on a push to main, a PR into main, a manual run, or a
+#                         change under native/ (never on a docs-only run)
+#   platforms=<json>      the native build matrix: Linux and Windows always, and macOS when it builds
 set -u
 
 event=$1
@@ -43,10 +44,13 @@ push | workflow_dispatch) macos=true ;;
 pull_request) [ "$base" = main ] && macos=true ;;
 esac
 
+[ "$docs_only" = true ] && macos=false
+
 platforms='{"platform":"linux","os":"ubuntu-latest"},{"platform":"windows","os":"windows-latest"}'
-if [ "$docs_only" = false ] && [ "$macos" = true ]; then
+if [ "$macos" = true ]; then
 	platforms+=',{"platform":"macos","os":"macos-latest"}'
 fi
 
 echo "docs_only=$docs_only"
+echo "macos=$macos"
 echo "platforms=[$platforms]"

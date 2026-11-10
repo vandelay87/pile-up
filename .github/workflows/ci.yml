@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
+      macos: ${{ steps.classify.outputs.macos }}
       platforms: ${{ steps.classify.outputs.platforms }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +31,7 @@ jobs:
       # push diffs from the commit before it; a manual run, or a push whose before is missing,
       # lists no paths, which builds everything.
       - id: classify
+        shell: bash # with pipefail, so a failing classification fails the job
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.base_ref }}
@@ -63,8 +65,9 @@ jobs:
       - run: tools/bench_release_test.sh
       - run: tools/bench_pc_test.sh
 
-  # The GDExtension (native/, ADR 0001), one release build per platform, for the jobs below.
-  # Windows builds on every code run: tools/bench_release.sh fetches native-windows for the PC.
+  # The GDExtension (native/, ADR 0001), one release build per platform in the changes job's
+  # matrix, for the jobs below. Linux and Windows build on every code run (tools/bench_release.sh
+  # fetches native-windows for the PC); macOS only where changes says so.
   native:
     name: native (${{ matrix.platform }})
     needs: changes
@@ -169,7 +172,7 @@ jobs:
       - run: mkdir -p build/windows build/macos
       - run: godot --headless --export-release "Windows Desktop" build/windows/pile-up.exe
       # Only where macOS was built (see changes): the Windows export doesn't need its library.
-      - if: contains(needs.changes.outputs.platforms, 'macos')
+      - if: needs.changes.outputs.macos == 'true'
         run: godot --headless --export-release "macOS" build/macos/pile-up.zip
       # A day is enough to grab a build, and keeps storage within the private-repo quota.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -178,7 +181,7 @@ jobs:
           path: build/windows/
           retention-days: 1
           if-no-files-found: error
-      - if: contains(needs.changes.outputs.platforms, 'macos')
+      - if: needs.changes.outputs.macos == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pile-up-macos
