@@ -416,6 +416,7 @@ A mode that may become the main game, in place of levels won by reaching a set w
 ### Platform
 
 - **Optimise for Windows:** Windows is the main platform, but the prototypes are benchmarked on the M5 MacBook. The first Windows run (`tools/bench_release.sh`, #254) missed the 1,000-dense target with the army: frame p99 19.6 ms and tick p99 15.7 ms on an i7-12700K with an RTX 3080, against 11.9 ms and 10.2 ms on the M5. The tick alone is over its 12 ms budget, so the gap is in the simulation, not the drawing. This deserves its own wayfinding session after the prototype. A suspicion to check then: the game may be using only one thread, where it should make the best use of the hardware it runs on, such as spreading work across cores.
+- **Settings for stronger machines:** once the Windows optimisation gives the PC headroom, stronger machines could run at higher specs: graphics quality presets, perhaps a larger crowd budget. The PC bench (the `bench-pc` skill) would show how much headroom there is, and a results history file could come with it. This waits on the Windows optimisation: today the RTX 3080 PC runs slower than the M5, so there is nothing to spend yet (#253).
 
 ### Runs
 
