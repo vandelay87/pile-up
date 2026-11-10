@@ -162,7 +162,7 @@ The one kind of unit in v4: it shoots enemies in range like a tower, and only mo
 _Avoid_: Fire squad (nothing groups soldiers except the player's selection), marine, trooper
 
 **Order**:
-An instruction the player gives to the selected units, such as move or stop. Units can be given orders during a wave, in the build phase and while paused.
+An instruction the player gives to the selected units, such as move or stop. Units can be given orders at any time, including while paused.
 _Avoid_: Command (reserved for the simulation's input)
 
 **Barracks**:
@@ -208,8 +208,12 @@ One launch of the game from the editor, across however many runs it spans. Its s
 _Avoid_: Playtest (a playtest is the human playing, not the file)
 
 **Wave**:
-One spawned group of enemies, from pressing "next wave" until the last of them dies.
-_Avoid_: Round, level
+One spawned group of enemies. From v6 the base's mining draws them, and a higher pace draws more; until v6 a wave ran from pressing "next wave" until the last of them died.
+_Avoid_: Round, level, surge (an overflow tier), raid, swarm
+
+**Pace**:
+How hard the base mines, set by the player in a few steps from Off to High. A higher pace mines more and draws more enemies.
+_Avoid_: Mining speed, intensity, drill setting
 
 **Burst**:
 A group of a wave's enemies spawned together on one stretch of the spawn edge. Late waves' bursts come so fast they run together into one flood.
