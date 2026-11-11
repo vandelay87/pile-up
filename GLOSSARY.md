@@ -215,12 +215,20 @@ _Avoid_: Round, level, surge (an overflow tier), raid, swarm
 How hard the base mines, set by the player in a few steps from Off to High. A higher pace mines more and draws more enemies.
 _Avoid_: Mining speed, intensity, drill setting
 
+**Threat**:
+From v6, how dangerous the waves have become, in place of the wave number. Time and minerals mined raise it, mining most; it never falls, so easing off slows it but never stops it.
+_Avoid_: Threat level (a level belongs to a pile), difficulty, wave number
+
+**Alert**:
+From v6, how stirred up the enemies are by the base's mining. It fills faster at a higher pace, a wave comes when it is full, and it stays empty until that wave is over.
+_Avoid_: Noise, attention, wave timer, countdown
+
 **Burst**:
 A group of a wave's enemies spawned together on one stretch of the spawn edge. Late waves' bursts come so fast they run together into one flood.
 _Avoid_: Clump (a clump suggests a crush), pack, spawn group
 
 **Scattered enemy**:
-One of a wave's enemies spawned alone, on its own cell anywhere along the spawn edge, between the bursts.
+An enemy spawned alone, on its own cell anywhere along a spawn edge: either one of a wave's enemies between its bursts or, from v6, one of the steady trickle that keeps coming whatever the pace, Off included.
 _Avoid_: Straggler (a straggler is left behind, not spawned apart)
 
 **Build phase**:
