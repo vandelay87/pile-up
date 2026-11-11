@@ -11,7 +11,7 @@ One square of the logical grid that everything in the game sits on.
 _Avoid_: Tile (reserved for the drawn isometric diamond)
 
 **Base**:
-The central structure being defended. Enemies attack it like any other structure, and the run ends when it is destroyed.
+The central structure being defended. Enemies attack it like any other structure, and the run is lost when it is destroyed.
 _Avoid_: Core, HQ
 
 **Rock**:
@@ -200,7 +200,7 @@ _Avoid_: Squad, team
 ### Flow of play
 
 **Run**:
-One game, from the first wave until the base is destroyed. A restart begins a new run.
+One game, from the first wave until the base extracts or is destroyed. A restart begins a new run.
 _Avoid_: Game, match, session
 
 **Tuning session**:
@@ -242,6 +242,22 @@ The enemies in the current wave not yet killed, including those not yet spawned.
 The end of a wave, once Enemies left falls to a set count, which grows with the wave number.
 _Avoid_: Endgame, stragglers
 
+**Quota**:
+From v6, how much Aether must be mined before the base can extract.
+_Avoid_: Goal, target
+
+**Extraction**:
+From v6, how a run is won: once the quota is met, the player chooses to leave, the drill stops, and the base must survive a countdown under siege. Once started it can't be called off.
+_Avoid_: Escape, evacuation, liftoff
+
+**Yield**:
+From v6, what a run banks when the base extracts: every mineral mined. A run that ends with the base destroyed banks nothing.
+_Avoid_: Score, haul
+
+**Debrief**:
+From v6, the screen at the end of a run, won or lost, showing the outcome, the yield and the run's stats.
+_Avoid_: Game-over screen, scorecard, summary
+
 ### Economy
 
 **Mineral**:
@@ -251,6 +267,10 @@ _Avoid_: Resource, ore
 **Gold**:
 The currency: the mineral the player spends on buildings and soldiers. From v6 it comes only from mining.
 _Avoid_: Money, credits, minerals (gold is one mineral)
+
+**Aether**:
+From v6, an alien mineral the player can't spend. Mining enough of it meets the quota.
+_Avoid_: Fuel, escape mineral
 
 **Deposit**:
 A finite store of minerals in the ground, with its own mix of them. A miner mines the deposit it sits on until it runs dry.
