@@ -244,9 +244,25 @@ _Avoid_: Endgame, stragglers
 
 ### Economy
 
+**Mineral**:
+Anything the drill mines. From v6, gold is the mineral the player spends; a deposit can hold others.
+_Avoid_: Resource, ore
+
+**Gold**:
+The currency: the mineral the player spends on buildings and soldiers. From v6 it comes only from mining.
+_Avoid_: Money, credits, minerals (gold is one mineral)
+
+**Deposit**:
+A finite store of minerals in the ground, with its own mix of them. A miner mines the deposit it sits on until it runs dry.
+_Avoid_: Vein, field, node
+
+**Miner**:
+Anything that mines a deposit: from v6 the base, and an outpost.
+_Avoid_: Drill (flavour only: the base is a drill), rig, extractor
+
 **Bounty**:
-The gold one kill pays before any combo.
+Until v6, the gold one kill pays before any combo. From v6 kills pay nothing.
 
 **Combo**:
-A building's or soldier's own multiplier on the bounty of its kills, set by how many kills it made in an unbroken run. It breaks back to nothing when it goes too long without a kill. Each building and each soldier has its own; there is no combo for the whole defence.
+A building's or soldier's own multiplier on the bounty of its kills, set by how many kills it made in an unbroken run. It breaks back to nothing when it goes too long without a kill. Each building and each soldier has its own; there is no combo for the whole defence. Dropped from v6 along with bounty.
 _Avoid_: Streak, chain, global combo
