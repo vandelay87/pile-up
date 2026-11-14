@@ -36,7 +36,7 @@ Anything the player builds: a tower, a pylon, a repair yard, a grinder, a barrac
 _Avoid_: Structure (which also covers walls and the base)
 
 **Repair yard**:
-A building that restores HP to the other buildings around it. It never repairs itself, walls or the base.
+A building that restores HP to the other buildings around it and, from v6, to soldiers. It never repairs itself, walls or the base.
 _Avoid_: Healer, medic
 
 **Grinder**:
@@ -44,14 +44,14 @@ A building that hurts every enemy touching it, including those tumbling over it.
 _Avoid_: Trap (enemies press against it, they don't step on it), spike wall (a wall is a pile)
 
 **Repair**:
-Restoring HP to a damaged building. Only buildings are repaired.
+Restoring HP to a damaged building or, from v6, a soldier. Until v6 only buildings were repaired.
 _Avoid_: Heal
 
 **Drone**:
-A repair yard's machine that flies out to one damaged building, repairs it to full and flies back.
+A repair yard's machine that flies out to one damaged building or (from v6) soldier, repairs it to full and flies back.
 
 **Assignment**:
-A building the player has chosen for a repair yard's drone to repair first whenever it is damaged. Without one, the drone picks for itself.
+A building or (from v6) soldier the player has chosen for a repair yard's drone to repair first whenever it is damaged. Without one, the drone picks for itself.
 _Avoid_: Target, priority
 
 **Repair threshold**:
@@ -190,8 +190,8 @@ A soldier standing on a wall being thrown off it when a tumble or a jump passes 
 _Avoid_: Knock-back, fall, dismount
 
 **Recover**:
-A soldier returning to full HP at the end of a wave. Nothing heals a soldier during one.
-_Avoid_: Heal, repair (only buildings are repaired)
+Until v6, a soldier returning to full HP at the end of a wave, when nothing else restored it. Retired from v6: a soldier is repaired by a drone instead.
+_Avoid_: Heal
 
 **Control group**:
 A selection of units the player has saved under a number key, to select again with one key.
@@ -232,14 +232,18 @@ An enemy spawned alone, on its own cell anywhere along a spawn edge: either one 
 _Avoid_: Straggler (a straggler is left behind, not spawned apart)
 
 **Build phase**:
-The time between waves.
+Until v6, the time between waves, which lasted until the player pressed "next wave". From v6 it is retired in favour of the quiet.
 _Avoid_: Intermission
 
+**Quiet**:
+From v6, the time between a wave's end and the next wave, while the alert refills. Scattered enemies keep coming through it, and at Off it lasts until the pace is raised.
+_Avoid_: Build phase, intermission, lull
+
 **Enemies left**:
-The enemies in the current wave not yet killed, including those not yet spawned. Between waves, the next wave's size and how many of them are each special type: bloaters, jumpers and brutes.
+The enemies in the current wave not yet killed, including those not yet spawned. Until v6, between waves it also gave the next wave's size and how many of them are each special type: bloaters, jumpers and brutes; from v6 it shows only during a wave.
 
 **Wave tail**:
-The end of a wave, once Enemies left falls to a set count, which grows with the wave number.
+The end of a wave, once Enemies left falls to a set count, which grows with the wave number (from v6, with threat).
 _Avoid_: Endgame, stragglers
 
 **Quota**:
