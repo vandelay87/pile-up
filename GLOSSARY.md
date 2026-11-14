@@ -32,7 +32,7 @@ Anything with HP that enemies attack when it is in their way: a wall, a building
 _Avoid_: Target, obstacle
 
 **Building**:
-Anything the player builds: a tower, a pylon, a repair yard, a grinder or a barracks.
+Anything the player builds: a tower, a pylon, a repair yard, a grinder, a barracks or (from v6) a rig.
 _Avoid_: Structure (which also covers walls and the base)
 
 **Repair yard**:
@@ -220,7 +220,7 @@ From v6, how dangerous the waves have become, in place of the wave number. Time 
 _Avoid_: Threat level (a level belongs to a pile), difficulty, wave number
 
 **Alert**:
-From v6, how stirred up the enemies are by the base's mining. It fills faster at a higher pace, a wave comes when it is full, and it stays empty until that wave is over.
+From v6, how stirred up the enemies are by the mining. It fills faster at a higher pace, a wave comes when it is full, and it stays empty until that wave is over.
 _Avoid_: Noise, attention, wave timer, countdown
 
 **Burst**:
@@ -277,8 +277,12 @@ A finite store of minerals in the ground, with its own mix of them. A miner mine
 _Avoid_: Vein, field, node
 
 **Miner**:
-Anything that mines a deposit: from v6 the base, and an outpost.
-_Avoid_: Drill (flavour only: the base is a drill), rig, extractor
+Anything that mines a deposit: from v6 the base, and a rig.
+_Avoid_: Drill (flavour only: the base is a drill), extractor
+
+**Rig**:
+From v6, a building that mines the deposit it is built on, one to a deposit. It powers an area around itself as large as the base's and has an on/off switch. While it is switched on and powered it is **running**: it mines, and enemies may head for it as they do for the base. It stays standing once its deposit is dry.
+_Avoid_: Outpost, drill, extractor, expansion
 
 **Bounty**:
 Until v6, the gold one kill pays before any combo. From v6 kills pay nothing.
