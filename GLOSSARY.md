@@ -21,6 +21,10 @@ _Avoid_: Obstacle, blocked cell, wall
 **Spawn edge**:
 A map edge that enemies enter from during the current wave.
 
+**Basin**:
+From v6, a side space off a route, entered through a single mouth, that holds a deposit.
+_Avoid_: Pocket (the overflow room beside a chokepoint), expansion
+
 **No-build cell**:
 Clear ground that enemies walk on but nothing can be built on. The map marks a margin of them along each spawn edge.
 _Avoid_: Buffer zone, safe zone

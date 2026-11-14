@@ -19,10 +19,11 @@ Working title. All numbers are starting values to be tuned during playtesting, a
 
 ## World and camera
 
-- Isometric view with pan and zoom. The map is roughly 1.5–2 screens wide at default zoom.
+- Isometric view with pan and zoom. The map is roughly 1.5–2 screens wide at default zoom. From v6 the map is moderately larger, about 136×96 cells (1.5× v5's 112×76 in area), so about 2–2.5 screens wide.
 - Central base with 200 HP. Enemies attack it at its edge, and the run is lost when it is destroyed. From v6 a run can also be won by extraction (see Ending a run).
 - Each wave spawns from 1–2 random map edges, announced at the start of the wave. From v6 the number of edges grows with threat and they are announced before the wave, under Waves.
 - From the pressure prototype, the map's routes **flare out** towards the spawn edges: wide mouths that funnel down towards the base, so a big wave arrives spread out and packs tighter as it nears the base. Small pockets beside the chokepoints give an overflow room to spill into.
+- **The v6 map:** a new, hand-made map with all four edges spawning, since from v6 a wave can come from all four. The base sits in a central bowl ringed by rock, and each edge's route keeps the flare: a wide mouth narrowing to a chokepoint into the bowl, with overflow pockets beside it. The shape may be tuned in the build if it plays better. v5's map stays as it was.
 - **No-build margin:** nothing can be built within 6 cells of a spawn edge. Enemies still walk there, but the power grid can never reach the spawn mouths. The margin is tinted while a building is being placed.
 - A fine logical grid sits underneath the isometric rendering. A tower occupies 2×2 cells and a pile occupies 1 cell. Enemies move smoothly, not tile to tile.
 - Art: plain coloured shapes. Pile height must read instantly, as stacked blocks that darken with each level.
@@ -140,7 +141,12 @@ From v3, a building that hurts enemies by touch, so the player can plan for a cr
 
 From v6, a building that mines a deposit away from the base, so pushing out for more is a choice against turtling.
 
-- **Rig**: a **miner** like the base. It is built on a deposit, one rig to a deposit, and mines that deposit's mix at the base's pace until it runs dry. The deposits are shown on the map from the start. It follows every building rule: it must be built on the power grid, so reaching a deposit means running pylons out to it, it blocks routes, enemies attack it, repair yards repair it, and a destroyed rig leaves nothing behind.
+- **Rig**: a **miner** like the base. It is built on a deposit, one rig to a deposit, and mines that deposit's mix at the base's pace until it runs dry. The deposits are shown on the map from the start, fixed in the map's data rather than rolled each run. It follows every building rule: it must be built on the power grid, so reaching a deposit means running pylons out to it, it blocks routes, enemies attack it, repair yards repair it, and a destroyed rig leaves nothing behind.
+- **Deposits on the v6 map:** three besides the base's, each in a **basin**: a side space opening off one route's flare through a single mouth, apart from the overflow pockets. A wave from that edge turns into the basin for a running rig, and walling the mouth pushes it on towards the base.
+  - **Near:** small and leaning to gold, just outside the W route's chokepoint, about 1–2 pylons from the base. Taking it means holding the line a step further out.
+  - **Far:** two, off the N and E routes, about 4–5 pylons each and clear of the no-build margin. They are about the same size, one a little larger, with different mixes: one rich in gold, one rich in Aether, so choosing one is spending power against reaching the quota sooner. The S route has none.
+  - **Reaching them:** a pylon chain can only follow the routes; the rock between routes and basins is too thick for a power area to cross, so a chain runs where waves walk and can be cut.
+  - **v6 starting numbers:** each deposit's size and mix, and the exact pylon distances, are left to the v6 spec.
 - **Foothold:** a rig powers an area as large as the base's, so a claimed deposit is room for towers around it.
 - **On and off:** each rig has a switch, not a pace of its own; the one pace on the base sets every miner. A rig is **running** while it is switched on and powered. A running rig mines and is a target (see Routing). Switched off or unpowered, it mines nothing and enemies don't head for it, so a cut pylon chain stops its income and takes it out of their sights. A dry rig stays standing; left running, it is still a target, a **decoy** that pulls the enemies nearest it away from the base. Switching is allowed at any time, mid-wave included, with no cooldown. **Playtest question:** whether flipping rigs to redirect a crowd is a skill or an exploit.
 - **The cost in enemies:** a rig doesn't speed up the alert. Each rig that is mining makes every wave bigger (see Wave size), for as long as it mines, and the minerals it mines raise threat like the base's.
