@@ -282,7 +282,11 @@ _Avoid_: Fuel, escape mineral
 
 **Deposit**:
 A finite store of minerals in the ground, with its own mix of them. A miner mines the deposit it sits on until it runs dry.
-_Avoid_: Vein, field, node
+_Avoid_: Vein (a rich vein is something else), field, node
+
+**Rich vein**:
+From v6, a windfall of gold a miner sometimes strikes while mining, on top of its deposit, far more often at a high pace.
+_Avoid_: Jackpot, bonus, strike
 
 **Miner**:
 Anything that mines a deposit: from v6 the base, and a rig.
