@@ -166,7 +166,7 @@
 		"base_hp": 200,
 		"starting_gold": 300,
 		"base_power_area": 10,
-		"map_path": "res://data/maps/v3-flared.json"
+		"map_path": "res://data/maps/v6.json"
 	},
 	"view": {
 		"tracer_speed": 60,

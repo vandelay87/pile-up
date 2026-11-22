@@ -26,11 +26,15 @@
 [ext_resource type="Script" path="res://src/view/soldier_ranges.gd" id="24"]
 [ext_resource type="Script" path="res://src/view/soldier_deaths_view.gd" id="25"]
 [ext_resource type="Script" path="res://src/view/perched_falls_view.gd" id="26"]
+[ext_resource type="Script" path="res://src/view/deposit_view.gd" id="27"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
 
 [node name="Terrain" type="TileMapLayer" parent="."]
+
+[node name="Deposits" type="Node2D" parent="."]
+script = ExtResource("27")
 
 [node name="FlowOverlay" type="Node2D" parent="."]
 script = ExtResource("4")

@@ -15,6 +15,7 @@ var _session_path := ""
 var _last_saved_json := ""
 
 @onready var _terrain: TileMapLayer = $Terrain
+@onready var _deposits: DepositView = $Deposits
 @onready var _base: TileMapLayer = $World/Base
 @onready var _pile_layer: PileLayer = $World/Piles
 @onready var _camera: MapCamera = $Camera
@@ -178,6 +179,7 @@ func _draw_map(map: MapData) -> void:
 			)
 	for cell in map.base_cells():
 		_base.set_cell(cell, Atlas.SOURCE_ID, Atlas.BASE)
+	_deposits.setup(map)
 
 
 func _fail(title: String, error: String) -> void:

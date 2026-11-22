@@ -95,9 +95,9 @@ func test_spawn_cells_leave_out_rock_pockets_cut_off_from_the_base() -> void:
 
 func test_rejects_an_unknown_version() -> void:
 	var data := _valid()
-	data["version"] = 2
+	data["version"] = 3
 
-	_assert_rejected(_load(data), "version: unknown version 2")
+	_assert_rejected(_load(data), "version: unknown version 3")
 
 
 func test_rejects_a_side_over_150_cells() -> void:
@@ -175,9 +175,8 @@ func test_the_committed_v1_map_loads() -> void:
 	assert_array(map.spawn_edges).contains_exactly_in_any_order(["N", "E", "S", "W"])
 
 
-func test_the_default_map_path_loads_the_flared_map() -> void:
-	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
-	var result := MapData.load_file(settings.map_path)
+func test_the_flared_v3_map_still_loads() -> void:
+	var result := MapData.load_file("res://data/maps/v3-flared.json")
 
 	assert_str(result.error).is_empty()
 	var map := result.map
