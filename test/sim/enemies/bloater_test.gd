@@ -36,7 +36,7 @@ func test_a_bloater_walks_at_its_own_speed() -> void:
 	assert_float(normal_walk).is_equal_approx(2.0, 0.05)
 
 
-func test_killing_a_bloater_pays_2_and_leaves_no_body() -> void:
+func test_killing_a_bloater_pays_nothing_and_leaves_no_body() -> void:
 	_sim.enemies.spawn(Vector2(6.5, 6.5), 30.0, Enemies.Kind.BLOATER)
 	_sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(2, 2)))
 	_sim.tick()
@@ -44,17 +44,17 @@ func test_killing_a_bloater_pays_2_and_leaves_no_body() -> void:
 
 	assert_int(_sim.deaths.size()).is_equal(1)
 	assert_int(_sim.deaths.kinds[0]).is_equal(Enemies.Kind.BLOATER)
-	assert_int(_sim.run_state.payout).is_equal(2)
+	assert_int(_sim.run_state.kills).is_equal(1)
 	_sim.tick()
 	assert_int(_sim.piles.level(Vector2i(6, 6))).is_equal(0)
 	assert_int(_sim.run_state.gold).is_equal(gold)
 
 
-func test_a_normal_enemy_killed_the_same_way_pays_1_and_leaves_a_body() -> void:
+func test_a_normal_enemy_killed_the_same_way_leaves_a_body() -> void:
 	_sim.enemies.spawn(Vector2(6.5, 6.5), 10.0)
 	_sim.queue_command(Commands.Build.new(Buildings.TOWER, Vector2i(2, 2)))
 	_sim.tick()
 
-	assert_int(_sim.run_state.payout).is_equal(1)
+	assert_int(_sim.run_state.kills).is_equal(1)
 	_sim.tick()
 	assert_int(_sim.piles.level(Vector2i(6, 6))).is_equal(1)

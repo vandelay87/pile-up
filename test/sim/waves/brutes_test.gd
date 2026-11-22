@@ -138,13 +138,13 @@ func test_enemies_sent_during_a_wave_count_towards_nothing_in_it() -> void:
 			sent.append(_sim.enemies.ids[i])
 			assert_float(_sim.enemies.hp[i]).is_equal_approx(40.0 * pow(1.05, 2), 1e-3)
 	assert_int(sent.size()).is_equal(2)
-	var gold := _sim.run_state.gold
+	var kills := _sim.run_state.kills
 	for id in sent:
 		_sim.enemies.kill(id)
 	_sim.tick()
 
 	assert_int(_sim.enemies_left).is_equal(left)
-	assert_int(_sim.run_state.gold - gold).is_equal(8)
+	assert_int(_sim.run_state.kills - kills).is_equal(2)
 
 
 func test_spawn_enemies_rejects_a_count_below_1() -> void:

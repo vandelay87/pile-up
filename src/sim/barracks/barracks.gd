@@ -187,7 +187,7 @@ func cancel(barracks_id: int, slot: int) -> String:
 	return ""
 
 
-## At [constant Simulation.Step.SPAWN_ENEMIES] during a wave, each barracks with a queue trains
+## At [constant Simulation.Step.MINE_AND_SPAWN] during a wave, each barracks with a queue trains
 ## its head one tick while it is working, in build order (unpowered or under repair, its
 ## timer holds); a head trained for [member Settings.training_ticks] appears beside it.
 func step(in_wave: bool) -> void:

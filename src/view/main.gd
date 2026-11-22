@@ -41,7 +41,6 @@ var _last_saved_json := ""
 @onready var _selection: Selection = $Selection
 @onready var _soldier_selection: SoldierSelection = $SoldierSelection
 @onready var _soldier_ranges: SoldierRanges = $SoldierRanges
-@onready var _combo_view: ComboView = $ComboView
 @onready var _overflow_view: OverflowView = $OverflowView
 
 
@@ -110,9 +109,8 @@ func _start_run(simulation: Simulation) -> void:
 	_edge_highlight.clear()
 	_debug_panel.setup(_simulation)
 	_stats_readout.setup(_simulation)
-	_combo_view.setup(_simulation)
 	_overflow_view.setup(_simulation)
-	_hud.setup(_simulation, _selection, _soldier_selection, _combo_view)
+	_hud.setup(_simulation, _selection, _soldier_selection)
 	_tower_view.setup(_simulation, _world)
 	_tracers.setup(_simulation, _enemy_renderer)
 	_blast_rings.setup(_simulation)

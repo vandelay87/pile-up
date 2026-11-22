@@ -16,15 +16,6 @@ const SCHEMA := {
 			"unit": "HP",
 			"apply": Settings.Apply.LIVE,
 		},
-		"bounty":
-		{
-			"type": TYPE_INT,
-			"min": 0,
-			"max": 100,
-			"step": 1,
-			"unit": "gold",
-			"apply": Settings.Apply.LIVE,
-		},
 		"separation_radius":
 		{
 			"type": TYPE_FLOAT,
@@ -795,42 +786,42 @@ const SCHEMA := {
 	},
 	"soldiers": UnitSettingsSchema.SOLDIERS,
 	"barracks": UnitSettingsSchema.BARRACKS,
-	"combo":
+	"mining":
 	{
-		"timer":
+		"base_rate":
 		{
 			"type": TYPE_FLOAT,
-			"min": 0.5,
-			"max": 10.0,
-			"step": 0.5,
-			"unit": "s from a kill until the combo breaks",
+			"min": 0.1,
+			"max": 50.0,
+			"step": 0.1,
+			"unit": "minerals/s at High",
 			"apply": Settings.Apply.LIVE,
 		},
-		"tier_2_kills":
+		"income_low":
 		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in a combo for x2",
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 2.0,
+			"step": 0.05,
+			"unit": "× the base rate at Low",
 			"apply": Settings.Apply.LIVE,
 		},
-		"tier_3_kills":
+		"income_medium":
 		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 500,
-			"step": 1,
-			"unit": "kills in a combo for x3",
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 2.0,
+			"step": 0.05,
+			"unit": "× the base rate at Medium",
 			"apply": Settings.Apply.LIVE,
 		},
-		"cap":
+		"income_high":
 		{
-			"type": TYPE_INT,
-			"min": 1,
-			"max": 3,
-			"step": 1,
-			"unit": "highest combo tier",
+			"type": TYPE_FLOAT,
+			"min": 0.0,
+			"max": 2.0,
+			"step": 0.05,
+			"unit": "× the base rate at High",
 			"apply": Settings.Apply.LIVE,
 		},
 	},

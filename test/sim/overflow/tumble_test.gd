@@ -261,7 +261,7 @@ func test_an_unpowered_grinder_hurts_no_tumbler() -> void:
 		assert_float(lost).is_equal(0.0)
 
 
-func test_a_grinder_that_kills_a_tumbler_gets_the_kill_and_its_combo() -> void:
+func test_a_grinder_that_kills_a_tumbler_gets_the_kill() -> void:
 	# 5 HP: the first grinder cell leaves 2, the second kills. No walker gets within reach of
 	# the grinder, so every kill it makes is a tumbler's.
 	_settings.change("enemies", "hp", 5.0)
@@ -276,7 +276,6 @@ func test_a_grinder_that_kills_a_tumbler_gets_the_kill_and_its_combo() -> void:
 
 	assert_int(credited).is_greater(0)
 	assert_int(grinder.kills).is_equal(credited)
-	assert_object(_sim.combos.combo(grinder.id)).is_not_null()
 
 
 func test_nothing_crossed_loses_hp_or_a_level() -> void:

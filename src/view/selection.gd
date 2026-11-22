@@ -205,12 +205,10 @@ func _building_stats(building: Buildings.Building) -> Array[String]:
 			lines.append("Shots/s %s" % _number(fire_rate))
 			lines.append("Range %s" % _number(settings.tower_range))
 			lines.append("Kills %d" % building.kills)
-			lines.append_array(_combo_stats(building))
 		Buildings.GRINDER:
 			lines.append("Damage %s HP/s" % _number(settings.grinder_damage))
 			lines.append("Touching %d" % building.touching)
 			lines.append("Kills %d" % building.kills)
-			lines.append_array(_combo_stats(building))
 		Buildings.PYLON:
 			lines.append("Power area %d" % _simulation.buildings.power_area(building.kind))
 		Buildings.REPAIR_YARD:
@@ -246,24 +244,6 @@ func _activity(building: Buildings.Building) -> String:
 			var queued := _simulation.barracks.queue_of(building.id).size()
 			return "Training" if queued > 0 else "Idle"
 	return "Powering"
-
-
-# Tier and count, the next tier's threshold, time left on the timer and the best this run.
-func _combo_stats(building: Buildings.Building) -> Array[String]:
-	var combos := _simulation.combos
-	var combo := combos.combo(building.id)
-	var count := 0 if combo == null else combo.count
-	var tier := 1 if combo == null else combo.tier
-	var next := combos.next_threshold(tier)
-	var ticks := combos.ticks_left(building.id, _simulation.tick_count)
-	var seconds := float(ticks) / Simulation.TICKS_PER_SECOND
-	var lines: Array[String] = [
-		"Combo x%d, %d kills" % [tier, count],
-		"Next x%d at %d" % [tier + 1, next] if next >= 0 else "Top tier",
-		"Timer %.1f s" % seconds,
-		"Best x%d" % (1 if combo == null else combo.best),
-	]
-	return lines
 
 
 func _yard_stats(yard: Buildings.Building) -> Array[String]:
@@ -302,7 +282,17 @@ func _base_stats() -> Array[String]:
 		_perched_line(Perches.BASE),
 		"Power area %d" % _simulation.settings.base_power_area,
 	]
+	lines.append_array(_deposit_lines(Miners.BASE))
 	return lines
+
+
+# What is left of each mineral in a miner's deposit, rounded down, or Dry.
+func _deposit_lines(miner: int) -> Array[String]:
+	var miners := _simulation.miners
+	if miners.is_dry(miner):
+		return ["Dry"]
+	var left := miners.remaining(miner)
+	return ["Gold left %d" % floori(left.gold), "Aether left %d" % floori(left.aether)]
 
 
 # Perched: n / max, for a building id or [constant Perches.BASE].

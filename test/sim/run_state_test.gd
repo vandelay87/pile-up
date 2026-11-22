@@ -16,13 +16,25 @@ func test_a_run_starts_with_200_base_hp_and_300_gold_at_wave_0() -> void:
 	assert_bool(_run.is_game_over).is_false()
 
 
-func test_a_kill_adds_the_bounty() -> void:
-	_settings.change("enemies", "bounty", 3)
+func test_credit_adds_the_minerals_mined_and_pays_each_whole_gold_as_it_is_passed() -> void:
+	_run.credit(Miners.Minerals.new(0.6, 0.2))
+	assert_int(_run.gold).is_equal(300)
 
-	var deaths := Deaths.bodies_at(PackedVector2Array([Vector2.ZERO, Vector2.ZERO]))
-	_run.pay(deaths, Combos.new(_settings), 0)
+	_run.credit(Miners.Minerals.new(0.6, 0.2))
+	assert_int(_run.gold).is_equal(301)
 
-	assert_int(_run.gold).is_equal(306)
+	_run.credit(Miners.Minerals.new(1.9, 0.0))
+	assert_int(_run.gold).is_equal(303)
+	assert_float(_run.gold_mined).is_equal_approx(3.1, 1e-9)
+	assert_float(_run.aether_mined).is_equal_approx(0.4, 1e-9)
+
+
+func test_spending_never_holds_back_mined_gold() -> void:
+	_run.credit(Miners.Minerals.new(0.5, 0.0))
+	_run.spend(300)
+	_run.credit(Miners.Minerals.new(0.5, 0.0))
+
+	assert_int(_run.gold).is_equal(1)
 
 
 func test_damage_lowers_base_hp() -> void:
@@ -48,18 +60,21 @@ func test_can_afford_compares_the_cost_with_gold() -> void:
 	assert_bool(_run.can_afford(301)).is_true()
 
 
-func test_a_kill_in_a_tick_adds_the_bounty_and_reports_the_gold() -> void:
+func test_a_kill_in_a_tick_counts_pays_nothing_and_reports_the_kills() -> void:
 	var sim := _sim(_settings)
-	var reported: Array[int] = []
-	sim.gold_changed.connect(func(gold: int) -> void: reported.append(gold))
+	var gold: Array[int] = []
+	var kills: Array[int] = []
+	sim.gold_changed.connect(func(amount: int) -> void: gold.append(amount))
+	sim.kills_changed.connect(func(count: int) -> void: kills.append(count))
 	sim.queue_command(Commands.NextWave.new())
 	sim.tick()
 
 	sim.enemies.damage(sim.enemies.ids[0], 100.0, Enemies.NONE)
 	sim.tick()
 
-	assert_int(sim.run_state.gold).is_equal(301)
-	assert_array(reported).contains_exactly([301])
+	assert_int(sim.run_state.gold).is_equal(300)
+	assert_array(gold).is_empty()
+	assert_array(kills).contains_exactly([1])
 
 
 func test_the_next_run_is_a_fresh_simulation_with_pending_restart_settings() -> void:

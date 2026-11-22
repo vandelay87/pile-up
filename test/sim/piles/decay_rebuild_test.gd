@@ -77,7 +77,7 @@ func test_the_rebuild_swaps_in_at_a_fixed_tick_however_soon_the_worker_finishes(
 	assert_bool(FieldChecks.matches_full_rebuild(_sim)).is_false()
 	var swapped: Array[bool] = []
 	_sim.step_observer = func(step: int) -> void:
-		if step == Simulation.Step.SPAWN_ENEMIES:
+		if step == Simulation.Step.MINE_AND_SPAWN:
 			swapped.append(FieldChecks.matches_full_rebuild(_sim))
 
 	_sim.tick()

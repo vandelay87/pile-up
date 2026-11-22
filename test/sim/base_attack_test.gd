@@ -64,11 +64,10 @@ func test_towers_kill_enemies_attacking_the_base() -> void:
 	sim.enemies.spawn(Vector2(6.5, 2.5), 30.0)
 	_run_until_attacked(sim)
 	assert_int(sim.buildings.built.size()).is_equal(1)
-	var gold_before := sim.run_state.gold
 
 	_run_until(sim, func() -> bool: return sim.enemies.count == 0)
 
-	assert_int(sim.run_state.gold).is_equal(gold_before + 2 * _settings.enemy_bounty)
+	assert_int(sim.run_state.kills).is_equal(2)
 	assert_float(sim.run_state.base_hp).is_greater(0.0)
 
 

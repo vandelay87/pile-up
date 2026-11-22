@@ -12,22 +12,29 @@ const BAR_HEIGHT := 150.0
 const MARGIN := 8.0
 const TOAST_HOLD_SECONDS := 1.5
 const TOAST_FADE_SECONDS := 0.5
-const GOLD_FLASH_SECONDS := 0.35
-const GOLD_FLASH_COLOUR := Color(1.0, 0.85, 0.2)
-## Gold is already drawn gold, so a payout flashes it brighter.
-const GOLD_FLASH_BRIGHTNESS := Color(1.8, 1.8, 1.8)
+const GOLD_COLOUR := Color(1.0, 0.85, 0.2)
+## Aether's cold blue-violet, as the deposits draw it, brightened to read as text.
+const AETHER_COLOUR := Color(0.62, 0.56, 1.0)
+const PACE_TOOLTIP := "Mining pace: more gold, and more enemies"
 const BASE_COLOUR := Color(1.0, 0.5, 0.45)
 const NAME_COLOUR := Color(0.7, 0.7, 0.72)
 const PANEL_BG := Color(0.08, 0.09, 0.11, 0.92)
 const PANEL_EDGE := Color(0.45, 0.4, 0.3)
 const PORTRAIT_COLOUR := Color(0.2, 0.22, 0.26)
 const UNAFFORDABLE_COLOUR := Color(1.0, 0.6, 0.6)
-const COMBO_RING_SIZE := 96.0
 const TILE_SIZE := Vector2(14, 14)
 const FULL_HP_COLOUR := Color(0.35, 0.85, 0.4)
 const NO_HP_COLOUR := Color(0.9, 0.25, 0.2)
 const COMMAND_SIZE := Vector2(72, 56)
 const COMMAND_COLUMNS := 3
+## The pace switch's buttons, in order, with each pace's name and the colour it lights in.
+const PACES := {
+	Miners.Pace.OFF: ["Off", Color(0.75, 0.75, 0.8)],
+	Miners.Pace.LOW: ["Low", Color(0.5, 0.9, 0.5)],
+	Miners.Pace.MEDIUM: ["Med", Color(1.0, 0.8, 0.35)],
+	Miners.Pace.HIGH: ["High", Color(1.0, 0.45, 0.4)],
+}
+const PACE_SIZE := Vector2(52, 30)
 ## The command card's build buttons in grid order, before Next wave.
 const COMMANDS: Array[StringName] = [
 	Buildings.TOWER, Buildings.GRINDER, Buildings.PYLON, Buildings.REPAIR_YARD, Buildings.BARRACKS
@@ -57,11 +64,10 @@ var _base_hp := Label.new()
 var _wave := Label.new()
 var _enemies_left := Label.new()
 var _kills := Label.new()
+var _mining := Label.new()
+var _aether := Label.new()
 var _capacity := Label.new()
 var _capacity_name := Label.new()
-var _gold_tween: Tween
-var _combo_view: ComboView
-var _combo_ring := ComboRing.new()
 var _details_title := Label.new()
 var _details_lines := VFlowContainer.new()
 var _yard_controls := HBoxContainer.new()
@@ -73,6 +79,7 @@ var _barracks_controls := HBoxContainer.new()
 var _train := Button.new()
 var _slot_buttons: Array[Button] = []
 var _next_wave := Button.new()
+var _pace_buttons: Dictionary[Miners.Pace, Button] = {}
 var _stop := Button.new()
 var _clear_rally := Button.new()
 var _soldier_targeting := Button.new()
@@ -89,27 +96,10 @@ var _reached := Label.new()
 var _run_kills := Label.new()
 
 
-## The selected building's combo ring, drawn large in the details.
-class ComboRing:
-	extends Control
-
-	var ring: ComboView.Ring
-
-	func _draw() -> void:
-		if ring != null:
-			ComboView.draw_ring(self, size / 2.0, ring, size.y / 36.0, true)
-
-
-func setup(
-	simulation: Simulation,
-	selection: Selection,
-	soldiers: SoldierSelection,
-	combo_view: ComboView,
-) -> void:
+func setup(simulation: Simulation, selection: Selection, soldiers: SoldierSelection) -> void:
 	_simulation = simulation
 	_selection = selection
 	_soldiers = soldiers
-	_combo_view = combo_view
 	_simulation.gold_changed.connect(_show_gold)
 	_simulation.base_hp_changed.connect(_show_base_hp)
 	_simulation.phase_changed.connect(_show_phase)
@@ -117,7 +107,8 @@ func setup(
 	_simulation.command_rejected.connect(_show_toast)
 	_simulation.enemies_left_changed.connect(_show_enemies_left)
 	_simulation.kills_changed.connect(_show_kills)
-	_simulation.payout.connect(_flash_gold)
+	_simulation.pace_changed.connect(_show_pace)
+	_simulation.miner_changed.connect(_show_miner_changed)
 	_simulation.building_placed.connect(_show_build_buttons.unbind(1))
 	_simulation.building_destroyed.connect(_show_build_buttons.unbind(1))
 	var run_state := _simulation.run_state
@@ -126,6 +117,7 @@ func setup(
 	_show_enemies_left(_simulation.enemies_left, _simulation.next_wave_specials)
 	_show_kills(run_state.kills)
 	_show_phase(_simulation.waves.phase)
+	_show_pace(_simulation.miners.pace, _simulation.miners.all_dry())
 	_game_over.visible = false
 	_capacity.visible = false
 	_capacity_name.visible = false
@@ -198,7 +190,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
-# Gold, Base HP, Wave, Enemies left and Kills as a two-column table.
+# Gold, Base HP, Wave, Enemies left, Kills, Mining and Aether as a two-column table.
 func _status_panel() -> PanelContainer:
 	var status := _panel()
 	# Wide enough for six-digit values, so the details don't shift as Gold grows.
@@ -208,11 +200,13 @@ func _status_panel() -> PanelContainer:
 	grid.add_theme_constant_override("h_separation", 18)
 	grid.add_theme_constant_override("v_separation", 0)
 	var rows := [
-		["Gold", _gold, 18, GOLD_FLASH_COLOUR],
+		["Gold", _gold, 18, GOLD_COLOUR],
 		["Base HP", _base_hp, 18, BASE_COLOUR],
 		["Wave", _wave, 15, Color.WHITE],
 		["Enemies left", _enemies_left, 15, Color.WHITE],
 		["Kills", _kills, 15, Color.WHITE],
+		["Mining", _mining, 15, GOLD_COLOUR],
+		["Aether", _aether, 15, AETHER_COLOUR],
 		["Capacity", _capacity, 15, Color.WHITE],
 	]
 	for entry: Array in rows:
@@ -233,8 +227,7 @@ func _status_panel() -> PanelContainer:
 	return status
 
 
-# A portrait placeholder, the selection's title and stats wrapping into columns, then its combo
-# ring when it can hold one.
+# A portrait placeholder, then the selection's title and stats wrapping into columns.
 func _details_panel() -> PanelContainer:
 	var details := _panel()
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -318,17 +311,17 @@ func _details_panel() -> PanelContainer:
 	_soldier_tiles.add_theme_constant_override("v_separation", 3)
 	text_column.add_child(_soldier_tiles)
 	details_row.add_child(text_column)
-	_combo_ring.custom_minimum_size = Vector2.ONE * COMBO_RING_SIZE
-	_combo_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	details_row.add_child(_combo_ring)
 	details.add_child(details_row)
 	return details
 
 
-# Square build buttons with cost and hotkey, then Next wave. With soldiers selected, the build
-# buttons give way to Stop, targeting and Formation on the top row.
+# Square build buttons with cost and hotkey, then Next wave, and the pace switch in a row
+# beneath. With soldiers selected, the build buttons give way to Stop, targeting and Formation on
+# the top row.
 func _command_card() -> PanelContainer:
 	var card := _panel()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
 	var commands := GridContainer.new()
 	commands.columns = COMMAND_COLUMNS
 	_stop.text = "Stop\n[S]"
@@ -359,8 +352,29 @@ func _command_card() -> PanelContainer:
 	_next_wave.custom_minimum_size = COMMAND_SIZE
 	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
 	commands.add_child(_next_wave)
-	card.add_child(commands)
+	column.add_child(commands)
+	column.add_child(_pace_switch())
+	card.add_child(column)
 	return card
+
+
+# Off / Low / Med / High as one switch: the pace's button lit in its colour.
+func _pace_switch() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 2)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var group := ButtonGroup.new()
+	for pace: Miners.Pace in PACES:
+		var button := Button.new()
+		button.text = PACES[pace][0]
+		button.toggle_mode = true
+		button.button_group = group
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = PACE_SIZE
+		button.pressed.connect(func() -> void: _send(Commands.SetPace.new(pace)))
+		_pace_buttons[pace] = button
+		row.add_child(button)
+	return row
 
 
 func _panel(radius := 4) -> PanelContainer:
@@ -415,12 +429,20 @@ func _show_kills(kills: int) -> void:
 	_kills.text = str(kills)
 
 
-func _flash_gold(_amount: int, _tier: int) -> void:
-	if _gold_tween != null:
-		_gold_tween.kill()
-	_gold.modulate = GOLD_FLASH_BRIGHTNESS
-	_gold_tween = create_tween()
-	_gold_tween.tween_property(_gold, "modulate", Color.WHITE, GOLD_FLASH_SECONDS)
+# The pace's button pressed and lit in its colour; the whole switch greyed once locked.
+func _show_pace(pace: Miners.Pace, locked: bool) -> void:
+	for each: Miners.Pace in _pace_buttons:
+		var button := _pace_buttons[each]
+		var lit := each == pace
+		button.set_pressed_no_signal(lit)
+		button.disabled = locked
+		button.modulate = PACES[each][1] if lit and not locked else Color.WHITE
+		button.tooltip_text = "Every deposit is dry" if locked else PACE_TOOLTIP
+
+
+func _show_miner_changed(id: int) -> void:
+	if id == Miners.BASE and _simulation.miners.is_dry(id):
+		_show_toast("base dry")
 
 
 func _show_base_hp(hp: float) -> void:
@@ -436,6 +458,7 @@ func _process(_delta: float) -> void:
 		or _simulation.run_state.is_game_over
 	)
 	_show_capacity()
+	_show_mining()
 	_show_command_card()
 	_show_details()
 	_paused.visible = _simulation.paused
@@ -458,6 +481,12 @@ func _show_command_card() -> void:
 	else:
 		_soldier_targeting.text = "%s\n%s [A]" % [targeting.left(cut), targeting.substr(cut + 1)]
 	_formation.text = "%s\n[F]" % SoldierSelection.FORMATION_NAMES[_soldiers.formation]
+
+
+# The gold a second at the current pace, and the Aether mined, rounded down.
+func _show_mining() -> void:
+	_mining.text = "%.1f/s" % _simulation.miners.gold_rate()
+	_aether.text = str(floori(_simulation.run_state.aether_mined))
 
 
 # Capacity shows from the first barracks on.
@@ -485,7 +514,6 @@ func _show_details() -> void:
 		label.visible = true
 	for i in range(stats.size(), _details_lines.get_child_count()):
 		(_details_lines.get_child(i) as Label).visible = false
-	_show_combo_ring()
 	_yard_controls.visible = _selection.is_yard_selected()
 	_assign.set_pressed_no_signal(_selection.is_assigning())
 	var threshold := _selection.yard_threshold()
@@ -544,24 +572,6 @@ func _show_barracks_controls() -> void:
 	for slot in _slot_buttons.size():
 		_slot_buttons[slot].text = QUEUED_SLOT if slot < queued else EMPTY_SLOT
 		_slot_buttons[slot].disabled = slot >= queued
-
-
-# One soldier's, a tower's or a grinder's ring, in pale gold at x1 rather than hidden, so its
-# progress towards x2 shows.
-func _show_combo_ring() -> void:
-	var building := _selection.selected_building()
-	var id := Occupancy.EMPTY
-	if _soldiers.selected().size() == 1:
-		id = _soldiers.selected()[0]
-	elif building != null and building.kind in [Buildings.TOWER, Buildings.GRINDER]:
-		id = building.id
-	_combo_ring.visible = id != Occupancy.EMPTY
-	if not _combo_ring.visible:
-		return
-	_combo_ring.ring = _combo_view.ring_of(id)
-	if _combo_ring.ring == null:
-		_combo_ring.ring = ComboView.Ring.new()
-	_combo_ring.queue_redraw()
 
 
 func _show_phase(_phase: Waves.Phase) -> void:

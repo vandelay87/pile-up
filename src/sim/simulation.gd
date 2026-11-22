@@ -10,8 +10,10 @@ signal kills_changed(kills: int)
 ## Enemies left, and in the build phase the next wave's special enemies as
 ## [method Waves.special_counts] gives them; [param specials] is empty during a wave.
 signal enemies_left_changed(left: int, specials: Dictionary)
-signal combo_events(events: Array[Combos.Event])
-signal payout(amount: int, tier: int)
+## The pace changed, or [param locked] did: the pace is locked once every miner is dry.
+signal pace_changed(pace: Miners.Pace, locked: bool)
+## A miner changed: for now, it ran dry.
+signal miner_changed(id: int)
 signal building_placed(id: int)
 signal building_destroyed(id: int)
 signal power_changed
@@ -30,7 +32,7 @@ signal restart_requested
 enum Step {
 	DRAIN_COMMANDS,
 	LAND_BODIES_AND_UPDATE_FIELDS,
-	SPAWN_ENEMIES,
+	MINE_AND_SPAWN,
 	REBUILD_SPATIAL_HASH,
 	MOVE_ENEMIES,
 	MOVE_UNITS,
@@ -64,7 +66,7 @@ var enemies: Enemies
 var waves: Waves
 var buildings: Buildings
 var run_state: RunState
-var combos: Combos
+var miners: Miners
 var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
@@ -113,7 +115,8 @@ var _restart_requested := false
 var _reported_gold: int
 var _reported_base_hp: float
 var _reported_kills := 0
-var _payout_was_multiplied := false
+var _reported_pace := Miners.Pace.OFF
+var _reported_pace_locked := false
 var _soldiers_died := false
 var _reported_enemies_left: int
 var _wave_ended := false
@@ -128,7 +131,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	occupancy = Occupancy.new(map.width, map.height)
 	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
 	run_state = RunState.new(settings)
-	combos = Combos.new(settings)
+	miners = Miners.new(settings, map)
 	power_grid = PowerGrid.new(settings, map)
 	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid, ids)
 	repair_yards = RepairYards.new(settings, buildings)
@@ -202,7 +205,7 @@ func jump_to_wave(wave: int) -> void:
 
 
 ## Kills the first [param count] living enemies on the field. They are removed at
-## [constant Step.REMOVE_DEAD] like any kill: they count, pay and leave bodies.
+## [constant Step.REMOVE_DEAD] like any kill: they count and leave bodies.
 func kill_enemies(count: int) -> void:
 	if count < 1:
 		reject_command("%s: the count must be at least 1" % Commands.KillEnemies.LABEL)
@@ -320,7 +323,7 @@ func tick() -> void:
 		_emit_signals()
 		return
 	_land_bodies_and_update_fields()
-	_spawn_enemies()
+	_mine_and_spawn()
 	_rebuild_spatial_hash()
 	_move_enemies()
 	_move_units()
@@ -344,12 +347,13 @@ func _emit_signals() -> void:
 		_reported_kills = run_state.kills
 		kills_changed.emit(_reported_kills)
 	_emit_enemies_left()
-	var events := combos.take_events()
-	if not events.is_empty():
-		combo_events.emit(events)
-	if _payout_was_multiplied:
-		_payout_was_multiplied = false
-		payout.emit(run_state.payout, run_state.payout_tier)
+	for id in miners.take_changed():
+		miner_changed.emit(id)
+	var locked := miners.all_dry()
+	if miners.pace != _reported_pace or locked != _reported_pace_locked:
+		_reported_pace = miners.pace
+		_reported_pace_locked = locked
+		pace_changed.emit(_reported_pace, _reported_pace_locked)
 	var placed := _placed
 	_placed = []
 	for id in placed:
@@ -459,8 +463,9 @@ func _land_bodies_and_update_fields() -> void:
 		_fields_changed = true
 
 
-func _spawn_enemies() -> void:
-	_observe(Step.SPAWN_ENEMIES)
+func _mine_and_spawn() -> void:
+	_observe(Step.MINE_AND_SPAWN)
+	run_state.credit(miners.step())
 	waves.spawn()
 	barracks.step(waves.phase == Waves.Phase.WAVE)
 
@@ -523,14 +528,9 @@ func _remove_dead() -> void:
 	if _soldiers_died:
 		soldier_attacks.end_on(soldier_deaths.ids)
 		piles.queue_bodies(soldier_deaths.bodies())
-		for id in soldier_deaths.ids:
-			combos.remove(id)
 	for id in buildings.pending_destroyed():
-		combos.remove(id)
 		barracks.remove(id)
-	combos.expire(tick_count)
-	run_state.pay(deaths, combos, tick_count)
-	_payout_was_multiplied = run_state.payout_tier > 1
+	run_state.record_kills(deaths)
 	waves.record_kills(deaths)
 
 

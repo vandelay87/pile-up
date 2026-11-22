@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 
 const FIRST := Simulation.Step.DRAIN_COMMANDS
 const SECOND := Simulation.Step.LAND_BODIES_AND_UPDATE_FIELDS
-const THIRD := Simulation.Step.SPAWN_ENEMIES
+const THIRD := Simulation.Step.MINE_AND_SPAWN
 
 
 func test_a_step_lasts_until_the_next_one_starts_and_the_last_until_the_tick_ends() -> void:

@@ -11,9 +11,6 @@ const SCHEMA := SettingsSchema.SCHEMA
 var enemy_hp: float:
 	get:
 		return value("enemies", "hp")
-var enemy_bounty: int:
-	get:
-		return value("enemies", "bounty")
 var separation_radius: float:
 	get:
 		return value("enemies", "separation_radius")
@@ -209,9 +206,6 @@ var bloater_hp: float:
 var bloater_speed: float:
 	get:
 		return value("bloaters", "speed")
-var bloater_bounty: int:
-	get:
-		return value("bloaters", "bounty")
 var first_bloater_wave: int:
 	get:
 		return value("bloaters", "first_wave")
@@ -254,9 +248,6 @@ var brute_hp: float:
 var brute_speed: float:
 	get:
 		return value("brutes", "speed")
-var brute_bounty: int:
-	get:
-		return value("brutes", "bounty")
 ## A brute's mass against a normal enemy's 1.
 var brute_mass: float:
 	get:
@@ -294,19 +285,18 @@ var second_edge_chance: float:
 	get:
 		var percent: int = value("waves", "second_edge_chance")
 		return percent / 100.0
-var combo_timer_ticks: int:
+var mining_base_rate: float:
 	get:
-		var seconds: float = value("combo", "timer")
-		return ticks_from_seconds(seconds)
-var combo_tier_2_kills: int:
+		return value("mining", "base_rate")
+var mining_income_low: float:
 	get:
-		return value("combo", "tier_2_kills")
-var combo_tier_3_kills: int:
+		return value("mining", "income_low")
+var mining_income_medium: float:
 	get:
-		return value("combo", "tier_3_kills")
-var combo_cap: int:
+		return value("mining", "income_medium")
+var mining_income_high: float:
 	get:
-		return value("combo", "cap")
+		return value("mining", "income_high")
 var tower_damage: float:
 	get:
 		return value("towers", "damage")
@@ -509,15 +499,6 @@ func enemy_hp_of(kind: Enemies.Kind) -> float:
 		Enemies.Kind.BRUTE:
 			return brute_hp
 	return enemy_hp
-
-
-func enemy_bounty_of(kind: Enemies.Kind) -> int:
-	match kind:
-		Enemies.Kind.BLOATER:
-			return bloater_bounty
-		Enemies.Kind.BRUTE:
-			return brute_bounty
-	return enemy_bounty
 
 
 func enemy_speed_per_tick_of(kind: Enemies.Kind) -> float:

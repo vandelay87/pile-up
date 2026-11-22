@@ -17,7 +17,6 @@
 [ext_resource type="Script" path="res://src/view/debug/power_overlay.gd" id="15"]
 [ext_resource type="Script" path="res://src/view/selection.gd" id="16"]
 [ext_resource type="Script" path="res://src/view/drone_view.gd" id="17"]
-[ext_resource type="Script" path="res://src/view/combo_view.gd" id="18"]
 [ext_resource type="Script" path="res://src/view/overflow_view.gd" id="19"]
 [ext_resource type="Script" path="res://src/view/blast_rings.gd" id="20"]
 [ext_resource type="Script" path="res://src/view/soldier_renderer.gd" id="21"]
@@ -84,9 +83,6 @@ script = ExtResource("10")
 
 [node name="DroneView" type="Node2D" parent="."]
 script = ExtResource("17")
-
-[node name="ComboView" type="Node2D" parent="."]
-script = ExtResource("18")
 
 [node name="OverflowView" type="Node2D" parent="."]
 script = ExtResource("19")

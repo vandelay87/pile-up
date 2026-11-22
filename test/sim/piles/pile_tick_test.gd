@@ -17,7 +17,7 @@ func test_a_killed_enemys_body_lands_at_step_1_of_the_next_tick() -> void:
 	assert_int(sim.piles.level(Vector2i(2, 2))).is_equal(0)
 	var seen: Array[int] = []
 	sim.step_observer = func(step: int) -> void:
-		if step == Simulation.Step.SPAWN_ENEMIES:
+		if step == Simulation.Step.MINE_AND_SPAWN:
 			seen.append(sim.piles.level(Vector2i(2, 2)))
 
 	sim.tick()
