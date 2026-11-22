@@ -85,6 +85,8 @@ func _init() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
 	# The bench stays on the v5 map until v6's threat ticket moves it to v6.json.
 	settings.change("run", "map_path", BENCH_MAP)
+	# The map path applies on restart, so take the settings as the next run would see them.
+	settings = settings.for_next_run()
 	var map := MapData.load_file(settings.map_path).map
 	var first := _run(settings, map)
 	var second := _run(settings, map)
