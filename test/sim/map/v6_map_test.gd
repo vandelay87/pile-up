@@ -1,15 +1,17 @@
 extends GdUnitTestSuite
 
-## The v6 map's shape: four spawn edges reaching the base, each deposit in a basin with one mouth,
-## and pylon chains of the planned lengths.
+## The v6 map's shape: four spawn edges reaching the base, each deposit in a wide basin with one
+## mouth, and pylon chains of the planned lengths.
 
 const PATH := "res://data/maps/v6.json"
-# Each deposit's basin mouth: a line of cells across the one opening onto its route.
+# Each deposit's basin mouth: a straight line of cells from rock to rock across its one opening
+# onto its route. A basin is a wide half-circle bay, so the line is long.
 const MOUTHS := {
-	"near": [Vector2i(42, 55), Vector2i(43, 55), Vector2i(44, 55)],
-	"far_north": [Vector2i(85, 10), Vector2i(85, 11), Vector2i(85, 12)],
-	"far_east": [Vector2i(113, 67), Vector2i(114, 67), Vector2i(115, 67)],
+	"near": Rect2i(37, 54, 17, 1),
+	"far_north": Rect2i(90, 6, 1, 20),
+	"far_east": Rect2i(106, 67, 17, 1),
 }
+const MOUTH_MIN_CELLS := 10
 const BASIN_MAX_CELLS := 150
 # The fewest pylons that put each deposit on the grid, as [least, most].
 const PYLONS := {"near": [1, 2], "far_north": [4, 5], "far_east": [4, 5]}
@@ -47,17 +49,21 @@ func test_every_spawn_edge_reaches_the_base_through_its_no_build_margin() -> voi
 	assert_bool(_map.is_no_build(_map.base.position)).is_false()
 
 
-func test_each_deposit_sits_in_a_basin_with_one_mouth() -> void:
+func test_each_deposit_sits_in_a_wide_basin_with_one_mouth() -> void:
 	for deposit in _map.deposits:
-		var mouth: Array = MOUTHS[deposit.name]
+		var mouth: Rect2i = MOUTHS[deposit.name]
+		var walled := _map.is_rock(mouth.position) and _map.is_rock(mouth.end - Vector2i.ONE)
+		(
+			assert_bool(walled)
+			. override_failure_message("%s's mouth doesn't run from rock to rock" % deposit.name)
+			. is_true()
+		)
 		var blocked := {}
-		for cell: Vector2i in mouth:
-			(
-				assert_bool(_map.is_rock(cell))
-				. override_failure_message("%s's mouth cell %s is rock" % [deposit.name, cell])
-				. is_false()
-			)
-			blocked[cell] = true
+		for y in range(mouth.position.y, mouth.end.y):
+			for x in range(mouth.position.x, mouth.end.x):
+				if not _map.is_rock(Vector2i(x, y)):
+					blocked[Vector2i(x, y)] = true
+		assert_int(blocked.size()).is_greater_equal(MOUTH_MIN_CELLS)
 		var basin := _flood(deposit.area.position, blocked)
 		(
 			assert_bool(_reaches_base(basin))
@@ -65,8 +71,6 @@ func test_each_deposit_sits_in_a_basin_with_one_mouth() -> void:
 			. is_false()
 		)
 		assert_int(basin.size()).is_less(BASIN_MAX_CELLS)
-		for cell: Vector2i in mouth:
-			assert_bool(_borders(cell, basin)).is_true()
 		assert_bool(_reaches_base(_flood(deposit.area.position, {}))).is_true()
 
 
@@ -108,13 +112,6 @@ func _flood(start: Vector2i, blocked: Dictionary) -> Dictionary:
 
 func _reaches_base(cells: Dictionary) -> bool:
 	return _map.base_cells().any(func(cell: Vector2i) -> bool: return cells.has(cell))
-
-
-func _borders(cell: Vector2i, cells: Dictionary) -> bool:
-	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		if cells.has(cell + offset):
-			return true
-	return false
 
 
 # A cell a pylon can stand on: clear, buildable, and on neither the base nor a deposit.
