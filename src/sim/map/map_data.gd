@@ -1,7 +1,12 @@
 class_name MapData
 extends RefCounted
 
-const VERSION := 1
+## Version 2 adds the base's deposit and the rig deposits; version 1 maps still load.
+const VERSION := 2
+## A version 1 map's base deposit: v6's contents, so older maps play under v6's rules.
+const DEFAULT_BASE_GOLD := 4200
+const DEFAULT_BASE_AETHER := 1400
+const DEPOSIT_SIZE := Vector2i(3, 3)
 const MAX_SIZE := 150
 const CLEAR := "."
 const ROCK := "#"
@@ -27,6 +32,14 @@ var rock: PackedByteArray:
 var no_build: PackedByteArray:
 	get:
 		return _no_build
+## The deposit under the base, its area the base's.
+var base_deposit: Deposit:
+	get:
+		return _base_deposit
+## The deposits a rig can mine, in map order.
+var deposits: Array[Deposit]:
+	get:
+		return _deposits
 
 var _width: int
 var _height: int
@@ -35,6 +48,28 @@ var _no_build: PackedByteArray
 var _base: Rect2i
 var _spawn_edges: PackedStringArray
 var _spawn_cells := {}
+var _base_deposit: Deposit
+var _deposits: Array[Deposit] = []
+# Each cell's index into _deposits, or -1.
+var _deposit_index := PackedInt32Array()
+
+
+## A fixed 3×3 area of minerals, or the base's area for the base's own deposit.
+class Deposit:
+	extends RefCounted
+
+	var name: String
+	var area: Rect2i
+	var gold: int
+	var aether: int
+
+	func _init(
+		deposit_name: String, deposit_area: Rect2i, gold_held: int, aether_held: int
+	) -> void:
+		name = deposit_name
+		area = deposit_area
+		gold = gold_held
+		aether = aether_held
 
 
 class LoadResult:
@@ -55,6 +90,8 @@ func _init(
 	base_rect: Rect2i,
 	edges: PackedStringArray,
 	no_build_cells: PackedByteArray,
+	base_contents: Vector2i,
+	rig_deposits: Array[Deposit],
 ) -> void:
 	_width = map_width
 	_height = map_height
@@ -62,6 +99,15 @@ func _init(
 	_no_build = no_build_cells
 	_base = base_rect
 	_spawn_edges = edges
+	_base_deposit = Deposit.new("base", base_rect, base_contents.x, base_contents.y)
+	_deposits = rig_deposits
+	_deposit_index.resize(map_width * map_height)
+	_deposit_index.fill(-1)
+	for i in rig_deposits.size():
+		var area := rig_deposits[i].area
+		for y in range(area.position.y, area.end.y):
+			for x in range(area.position.x, area.end.x):
+				_deposit_index[index_of(Vector2i(x, y))] = i
 	var reaches_base := _cells_reaching_base()
 	for edge in edges:
 		var cells: Array[Vector2i] = []
@@ -92,14 +138,19 @@ static func from_json(text: String) -> LoadResult:
 	var data: Dictionary = json.data
 	var errors := PackedStringArray()
 	var version := _read_int(data, "version", errors)
-	if errors.is_empty() and version != VERSION:
-		errors.append("version: unknown version %d (expected %d)" % [version, VERSION])
+	if errors.is_empty() and (version < 1 or version > VERSION):
+		errors.append("version: unknown version %d (expected 1 to %d)" % [version, VERSION])
 		return _failure(errors)
 	var map_width := _read_side(data, "width", errors)
 	var map_height := _read_side(data, "height", errors)
 	var rows := _read_strings(data, "rows", errors)
 	var base_rect := _read_base(data, errors)
 	var edges := _read_edges(data, errors)
+	var base_contents := Vector2i(DEFAULT_BASE_GOLD, DEFAULT_BASE_AETHER)
+	var rig_deposits: Array[Deposit] = []
+	if version >= 2:
+		base_contents = _read_base_deposit(data, errors)
+		rig_deposits = _read_deposits(data, errors)
 	if not errors.is_empty():
 		return _failure(errors)
 
@@ -111,8 +162,13 @@ static func from_json(text: String) -> LoadResult:
 	_check_base(base_rect, rock, map_width, map_height, errors)
 	if not errors.is_empty():
 		return _failure(errors)
+	_check_deposits(rig_deposits, base_rect, rock, no_build_cells, map_width, map_height, errors)
+	if not errors.is_empty():
+		return _failure(errors)
 
-	var map := MapData.new(map_width, map_height, rock, base_rect, edges, no_build_cells)
+	var map := MapData.new(
+		map_width, map_height, rock, base_rect, edges, no_build_cells, base_contents, rig_deposits
+	)
 	for edge in edges:
 		if map.spawn_cells(edge).is_empty():
 			errors.append("spawn_edges: %s has no passable cell that reaches the base" % edge)
@@ -131,6 +187,14 @@ func is_no_build(cell: Vector2i) -> bool:
 
 func is_base(cell: Vector2i) -> bool:
 	return _base.has_point(cell)
+
+
+## The rig deposit [param cell] belongs to, or null (the base's deposit included).
+func deposit_at(cell: Vector2i) -> Deposit:
+	if not in_bounds(cell):
+		return null
+	var i := _deposit_index[index_of(cell)]
+	return null if i < 0 else _deposits[i]
 
 
 func base_cells() -> Array[Vector2i]:
@@ -264,6 +328,89 @@ static func _check_base(
 		for x in range(base_rect.position.x, base_rect.end.x):
 			if rock[y * map_width + x] == 1:
 				errors.append("base: covers rock at %s" % Vector2i(x, y))
+
+
+static func _check_deposits(
+	rig_deposits: Array[Deposit],
+	base_rect: Rect2i,
+	rock: PackedByteArray,
+	no_build_cells: PackedByteArray,
+	map_width: int,
+	map_height: int,
+	errors: PackedStringArray,
+) -> void:
+	for i in rig_deposits.size():
+		var deposit := rig_deposits[i]
+		var area := deposit.area
+		var label := "deposits[%d] (%s)" % [i, deposit.name]
+		if not Rect2i(0, 0, map_width, map_height).encloses(area):
+			errors.append(
+				(
+					"%s: %s size %s is outside the %d×%d map"
+					% [label, area.position, area.size, map_width, map_height]
+				)
+			)
+			continue
+		if area.intersects(base_rect):
+			errors.append("%s: overlaps the base" % label)
+		for j in i:
+			if area.intersects(rig_deposits[j].area):
+				errors.append("%s: overlaps deposit '%s'" % [label, rig_deposits[j].name])
+		for y in range(area.position.y, area.end.y):
+			for x in range(area.position.x, area.end.x):
+				if rock[y * map_width + x] == 1:
+					errors.append("%s: covers rock at %s" % [label, Vector2i(x, y)])
+				elif no_build_cells[y * map_width + x] == 1:
+					errors.append("%s: in the no-build margin at %s" % [label, Vector2i(x, y)])
+
+
+## The base deposit's gold (x) and Aether (y).
+static func _read_base_deposit(data: Dictionary, errors: PackedStringArray) -> Vector2i:
+	if data.get("base_deposit") is not Dictionary:
+		errors.append("base_deposit: expected an object with gold and aether")
+		return Vector2i()
+	var contents: Dictionary = data["base_deposit"]
+	return Vector2i(
+		_read_amount(contents, "gold", "base_deposit.gold", errors),
+		_read_amount(contents, "aether", "base_deposit.aether", errors),
+	)
+
+
+static func _read_deposits(data: Dictionary, errors: PackedStringArray) -> Array[Deposit]:
+	var loaded: Array[Deposit] = []
+	var raw: Variant = data.get("deposits")
+	var items: Array = raw if raw is Array else []
+	if raw is not Array or not items.all(func(item: Variant) -> bool: return item is Dictionary):
+		errors.append("deposits: expected an array of deposits")
+		return loaded
+	var names := PackedStringArray()
+	for i in items.size():
+		var item: Dictionary = items[i]
+		var label := "deposits[%d]" % i
+		var raw_name: Variant = item.get("name")
+		var deposit_name: String = raw_name if raw_name is String else ""
+		if deposit_name.is_empty():
+			errors.append("%s.name: expected a name" % label)
+		elif deposit_name in names:
+			errors.append("%s: %s is named twice" % [label, deposit_name])
+		names.append(deposit_name)
+		var origin := _read_cell(item, "origin", label + ".origin", errors)
+		var gold := _read_amount(item, "gold", label + ".gold", errors)
+		var aether := _read_amount(item, "aether", label + ".aether", errors)
+		loaded.append(Deposit.new(deposit_name, Rect2i(origin, DEPOSIT_SIZE), gold, aether))
+	return loaded
+
+
+static func _read_amount(
+	data: Dictionary, key: String, label: String, errors: PackedStringArray
+) -> int:
+	var raw: Variant = data.get(key)
+	if not _is_whole(raw) or type_convert(raw, TYPE_INT) < 0:
+		errors.append(
+			"%s: expected a whole number of 0 or more, got %s" % [label, JSON.stringify(raw)]
+		)
+		return 0
+	return type_convert(raw, TYPE_INT)
 
 
 static func _read_base(data: Dictionary, errors: PackedStringArray) -> Rect2i:

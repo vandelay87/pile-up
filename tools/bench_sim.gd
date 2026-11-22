@@ -20,6 +20,7 @@
 extends SceneTree
 
 const RUN_SEED := 1
+const BENCH_MAP := "res://data/maps/v3-flared.json"
 const CROWD_SEED := 1
 const ENEMIES := 1000
 const WARMUP_TICKS := 120
@@ -82,6 +83,8 @@ class RunResult:
 
 func _init() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	# The bench stays on the v5 map until v6's threat ticket moves it to v6.json.
+	settings.change("run", "map_path", BENCH_MAP)
 	var map := MapData.load_file(settings.map_path).map
 	var first := _run(settings, map)
 	var second := _run(settings, map)
