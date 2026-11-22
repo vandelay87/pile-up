@@ -32,6 +32,8 @@ func _init() -> void:
 	settings.change("run", "base_power_area", 20)
 	# The bench stays on the v5 map until v6's threat ticket moves it to v6.json.
 	settings.change("run", "map_path", BENCH_MAP)
+	# The map path applies on restart, so take the settings as the next run would see them.
+	settings = settings.for_next_run()
 	var map := MapData.load_file(settings.map_path).map
 	_sim = Simulation.new(settings, map, RUN_SEED)
 	var crowd := BenchCrowd.new(_sim, CROWD_SEED)
