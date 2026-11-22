@@ -29,10 +29,10 @@ const COMMAND_SIZE := Vector2(72, 56)
 const COMMAND_COLUMNS := 3
 ## The pace switch's buttons, in order, with each pace's name and the colour it lights in.
 const PACES := {
-	Miners.Pace.OFF: ["Off", Color(0.75, 0.75, 0.8)],
-	Miners.Pace.LOW: ["Low", Color(0.5, 0.9, 0.5)],
-	Miners.Pace.MEDIUM: ["Med", Color(1.0, 0.8, 0.35)],
-	Miners.Pace.HIGH: ["High", Color(1.0, 0.45, 0.4)],
+	Miners.Pace.OFF: {"name": "Off", "colour": Color(0.75, 0.75, 0.8)},
+	Miners.Pace.LOW: {"name": "Low", "colour": Color(0.5, 0.9, 0.5)},
+	Miners.Pace.MEDIUM: {"name": "Med", "colour": Color(1.0, 0.8, 0.35)},
+	Miners.Pace.HIGH: {"name": "High", "colour": Color(1.0, 0.45, 0.4)},
 }
 const PACE_SIZE := Vector2(52, 30)
 ## The command card's build buttons in grid order, before Next wave.
@@ -366,7 +366,7 @@ func _pace_switch() -> HBoxContainer:
 	var group := ButtonGroup.new()
 	for pace: Miners.Pace in PACES:
 		var button := Button.new()
-		button.text = PACES[pace][0]
+		button.text = PACES[pace]["name"]
 		button.toggle_mode = true
 		button.button_group = group
 		button.focus_mode = Control.FOCUS_NONE
@@ -436,7 +436,7 @@ func _show_pace(pace: Miners.Pace, locked: bool) -> void:
 		var lit := each == pace
 		button.set_pressed_no_signal(lit)
 		button.disabled = locked
-		button.modulate = PACES[each][1] if lit and not locked else Color.WHITE
+		button.modulate = PACES[each]["colour"] if lit and not locked else Color.WHITE
 		button.tooltip_text = "Every deposit is dry" if locked else PACE_TOOLTIP
 
 

@@ -18,6 +18,8 @@ var pace := Pace.OFF
 
 var _settings: Settings
 var _base: MapData.Deposit
+# Every mineral the base's deposit held at the start.
+var _base_total: int
 # The share of the base's deposit still in it, from 1 down to 0.
 var _base_left := 1.0
 var _changed := PackedInt32Array()
@@ -38,7 +40,8 @@ class Minerals:
 func _init(run_settings: Settings, map: MapData) -> void:
 	_settings = run_settings
 	_base = map.base_deposit
-	if _base.gold + _base.aether == 0:
+	_base_total = _base.gold + _base.aether
+	if _base_total == 0:
 		_base_left = 0.0
 
 
@@ -55,8 +58,7 @@ func step() -> Minerals:
 	var mined := Minerals.new()
 	if not is_mining(BASE):
 		return mined
-	var total := _base.gold + _base.aether
-	var share := minf(_minerals_per_tick() / total, _base_left)
+	var share := minf(_minerals_per_tick() / _base_total, _base_left)
 	_base_left -= share
 	if _base_left <= DRY_SHARE:
 		# The last tick takes whatever float error left, so the deposit is mined out exactly.
@@ -68,10 +70,12 @@ func step() -> Minerals:
 	return mined
 
 
+## Whether the miner mines this tick: the pace is above Off and it isn't dry.
 func is_mining(id: int) -> bool:
 	return pace != Pace.OFF and not is_dry(id)
 
 
+## Whether nothing is left in the miner's deposit. A dry miner stays dry.
 func is_dry(id: int) -> bool:
 	assert(id == BASE, "unknown miner %d" % id)
 	return _base_left == 0.0
@@ -92,8 +96,7 @@ func remaining(id: int) -> Minerals:
 func gold_rate() -> float:
 	if not is_mining(BASE):
 		return 0.0
-	var total := _base.gold + _base.aether
-	return _minerals_per_tick() * Simulation.TICKS_PER_SECOND * _base.gold / total
+	return _minerals_per_tick() * Simulation.TICKS_PER_SECOND * _base.gold / _base_total
 
 
 ## The miners that ran dry since the last call.
@@ -103,6 +106,7 @@ func take_changed() -> PackedInt32Array:
 	return changed
 
 
+## The pace's share of [code]mining.base_rate[/code]: 0 at Off.
 func income(of_pace: Pace) -> float:
 	match of_pace:
 		Pace.LOW:

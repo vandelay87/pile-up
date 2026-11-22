@@ -1,6 +1,8 @@
 class_name RunState
 extends RefCounted
 
+## How far under a whole number the mined gold can be and still pay it: float error from many
+## small shares, not gold.
 const WHOLE_TOLERANCE := 1e-6
 
 var gold: int
