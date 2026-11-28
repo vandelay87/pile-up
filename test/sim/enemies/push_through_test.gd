@@ -39,11 +39,13 @@ func before_test() -> void:
 	_settings.change("routing", "sensible_pile_weight", 5.0)
 	_settings.change("waves", "burst_size", 50)
 	TestSettings.set_scatter_share(_settings, 10)
+	_settings.change("waves", "size_roll", 0)
+	TestWaves.without_trickle(_settings)
 
 
 func test_outside_the_wave_tail_an_enemy_turned_back_takes_the_long_way() -> void:
 	var sim := _sim_in_wave(RING, RING_BASE, 13)
-	assert_bool(sim.waves.in_wave_tail()).is_false()
+	assert_bool(_in_tail(sim)).is_false()
 	var id := _spawn_heading_east(sim, RING_START)
 
 	_land_pile(sim, RING_PILE)
@@ -56,7 +58,7 @@ func test_outside_the_wave_tail_an_enemy_turned_back_takes_the_long_way() -> voi
 
 func test_in_the_wave_tail_an_enemy_turned_back_pushes_through_on_the_direct_route() -> void:
 	var sim := _sim_in_wave(RING, RING_BASE, 12)
-	assert_bool(sim.waves.in_wave_tail()).is_true()
+	assert_bool(_in_tail(sim)).is_true()
 	var id := _spawn_heading_east(sim, RING_START)
 
 	_land_pile(sim, RING_PILE)
@@ -111,39 +113,43 @@ func test_a_wider_turn_back_angle_keeps_a_turned_back_enemy_on_the_long_way() ->
 		assert_int(_route(sim, id)).is_equal(Routing.Route.SENSIBLE)
 
 
-func test_the_wave_tail_starts_at_10_plus_2_per_wave_enemies_left() -> void:
-	for wave: int in [1, 3]:
-		var expected_tail: int = {1: 12, 3: 16}[wave]
+func test_the_wave_tail_starts_at_10_plus_2_per_point_of_threat_enemies_left() -> void:
+	for threat: int in [1, 3]:
+		var expected_tail: int = {1: 12, 3: 16}[threat]
 		var sim := _ring_sim()
-		sim.queue_command(Commands.JumpToWave.new(wave))
-		sim.tick()
-		_kill(sim, sim.enemies_left - expected_tail - 1)
-		assert_int(sim.enemies_left).is_equal(expected_tail + 1)
-		assert_bool(sim.waves.in_wave_tail()).is_false()
+		TestWaves.send_at(sim, threat + 0.5)
+		_kill(sim, sim.waves.enemies_left - expected_tail - 1)
+		assert_int(sim.waves.enemies_left).is_equal(expected_tail + 1)
+		assert_bool(_in_tail(sim)).is_false()
 
 		_kill(sim, 1)
 
-		assert_int(sim.enemies_left).is_equal(expected_tail)
-		assert_bool(sim.waves.in_wave_tail()).is_true()
+		assert_int(sim.waves.enemies_left).is_equal(expected_tail)
+		assert_bool(_in_tail(sim)).is_true()
 
 
 func test_the_wave_tail_follows_its_settings() -> void:
 	_settings.change("waves", "wave_tail", 4)
-	_settings.change("waves", "wave_tail_per_wave", 3)
+	_settings.change("waves", "wave_tail_per_threat", 3)
 	var sim := _ring_sim()
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	sim.tick()
 
-	_kill(sim, sim.enemies_left - 7)
+	_kill(sim, sim.waves.enemies_left - 7)
 
-	assert_bool(sim.waves.in_wave_tail()).is_true()
-	assert_bool(_sim_in_wave(RING, RING_BASE, 8).waves.in_wave_tail()).is_false()
+	assert_bool(_in_tail(sim)).is_true()
+	assert_bool(_in_tail(_sim_in_wave(RING, RING_BASE, 8))).is_false()
 
 
-func test_there_is_no_wave_tail_between_waves() -> void:
+func test_in_the_quiet_a_trickle_enemy_turned_back_pushes_through_as_in_the_wave_tail() -> void:
 	var sim := _ring_sim()
+	assert_int(sim.waves.phase).is_equal(Waves.Phase.QUIET)
+	var id := _spawn_heading_east(sim, RING_START)
 
-	assert_bool(sim.waves.in_wave_tail()).is_false()
+	_land_pile(sim, RING_PILE)
+	sim.tick()
+
+	assert_int(_route(sim, id)).is_equal(Routing.Route.DIRECT)
 
 
 func _ring_sim() -> Simulation:
@@ -159,17 +165,24 @@ func _sim_in_wave(rows: Array[String], base: Rect2i, enemies_left: int) -> Simul
 	_settings.change("waves", "spawn_rate", 0.5)
 	var edges: Array[String] = ["W"]
 	var sim := Simulation.new(_settings.for_next_run(), TestMaps.from_rows(rows, base, edges), 1)
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	sim.tick()
 	assert_int(sim.enemies.count).is_equal(1)
 	_kill(sim, 1)
 	assert_int(sim.enemies.count).is_equal(0)
-	assert_int(sim.enemies_left).is_equal(enemies_left)
+	assert_int(sim.waves.enemies_left).is_equal(enemies_left)
 	return sim
 
 
+func _in_tail(sim: Simulation) -> bool:
+	return sim.waves.open_waves()[0].is_in_tail()
+
+
+# An enemy of the open wave, or of no wave in the quiet, walking east from [param start].
 func _spawn_heading_east(sim: Simulation, start: Vector2) -> int:
-	var id := sim.enemies.spawn(start, _settings.enemy_hp)
+	var open := sim.waves.open_waves()
+	var wave := open[0].index if not open.is_empty() else Waves.NO_WAVE
+	var id := sim.enemies.spawn(start, _settings.enemy_hp, Enemies.Kind.NORMAL, wave)
 	sim.tick()
 	assert_float(_position(sim, id).x).is_greater(start.x)
 	return id

@@ -8,6 +8,8 @@ var _settings: Settings
 func before_test() -> void:
 	_settings = Settings.load_file(Settings.DEFAULTS_PATH).settings
 	_settings.change("enemies", "speed", 0.1)
+	_settings.change("waves", "size_roll", 0)
+	TestWaves.without_trickle(_settings)
 
 
 func test_with_no_scatter_enemies_spawn_in_bursts_of_the_burst_size() -> void:
@@ -130,7 +132,7 @@ func _corridor() -> MapData:
 
 func _start_wave(map: MapData, run_seed: int = 1) -> Simulation:
 	var sim := Simulation.new(_settings.for_next_run(), map, run_seed)
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	sim.tick()
 	return sim
 

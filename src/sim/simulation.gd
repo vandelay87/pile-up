@@ -7,9 +7,8 @@ signal fields_changed
 signal gold_changed(gold: int)
 signal base_hp_changed(hp: float)
 signal kills_changed(kills: int)
-## Enemies left, and in the build phase the next wave's special enemies as
-## [method Waves.special_counts] gives them; [param specials] is empty during a wave.
-signal enemies_left_changed(left: int, specials: Dictionary)
+## The open waves' enemies left and their total size, sent only during a wave.
+signal enemies_left_changed(left: int, size: int)
 ## The pace changed, or [param locked] did: the pace is locked once every miner is dry.
 signal pace_changed(pace: Miners.Pace, locked: bool)
 ## A miner changed: for now, it ran dry.
@@ -25,7 +24,13 @@ signal blasts(went_off: Array[Blasts.Blast])
 ## Each perched enemy that died this tick and leaves a body, for its short fall to the ground.
 signal perched_bodies(drops: Array[Perches.Drop])
 signal phase_changed(phase: Waves.Phase)
-signal wave_started(edges: PackedStringArray)
+## The alert reached its warning: the next wave's edges are picked.
+signal wave_coming(edges: PackedStringArray)
+## A wave started, with its size and its special enemies as [method Waves.special_counts]
+## gives them.
+signal wave_started(edges: PackedStringArray, size: int, specials: Dictionary)
+## The last open wave's last enemy died: the quiet begins.
+signal wave_ended
 signal game_over
 signal restart_requested
 
@@ -67,6 +72,7 @@ var waves: Waves
 var buildings: Buildings
 var run_state: RunState
 var miners: Miners
+var threat: Threat
 var structures: Structures
 var power_grid: PowerGrid
 var repair_yards: RepairYards
@@ -87,16 +93,6 @@ var tick_cost := TickCost.new()
 var deaths := Deaths.new()
 ## The soldiers the last removal step took, read-only.
 var soldier_deaths := SoldierDeaths.new()
-var enemies_left: int:
-	get:
-		return waves.enemies_left
-## The next wave's special enemies in the build phase, as [method Waves.special_counts] gives
-## them; empty during a wave.
-var next_wave_specials: Dictionary:
-	get:
-		if waves.phase == Waves.Phase.WAVE:
-			return {}
-		return waves.special_counts(run_state.wave + 1)
 
 var _command_queue: Array[Commands.Command] = []
 var _rejections: Array[String] = []
@@ -110,7 +106,6 @@ var _blasts: Array[Blasts.Blast] = []
 var _perched_drops: Array[Perches.Drop] = []
 var _run_seed: int
 var _pending_steps := 0
-var _wave_started := false
 var _restart_requested := false
 var _reported_gold: int
 var _reported_base_hp: float
@@ -118,9 +113,10 @@ var _reported_kills := 0
 var _reported_pace := Miners.Pace.OFF
 var _reported_pace_locked := false
 var _soldiers_died := false
-var _reported_enemies_left: int
+var _reported_enemies_left := 0
+var _reported_wave_size := 0
 var _wave_ended := false
-var _reported_phase := Waves.Phase.BUILD
+var _reported_phase := Waves.Phase.QUIET
 var _reported_game_over := false
 
 
@@ -132,6 +128,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	piles = Piles.new(settings, map, occupancy, _system_rng("piles"))
 	run_state = RunState.new(settings)
 	miners = Miners.new(settings, map)
+	threat = Threat.new(settings)
 	power_grid = PowerGrid.new(settings, map)
 	buildings = Buildings.new(settings, map, occupancy, piles, run_state, power_grid, ids)
 	repair_yards = RepairYards.new(settings, buildings)
@@ -150,9 +147,7 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 			_system_rng("swarm"),
 		)
 	)
-	waves = Waves.new(
-		settings, map, enemies, _system_rng("waves"), _system_seed("bloaters"), _run_seed
-	)
+	waves = Waves.new(settings, map, enemies, _system_rng("waves"), _run_seed)
 	perches = Perches.new(settings, map, occupancy, structures, buildings, enemies)
 	overflow = Overflow.new(
 		settings, map, structures, buildings, enemies, routing, perches, _system_rng("overflow")
@@ -166,7 +161,6 @@ func _init(run_settings: Settings, run_map: MapData, run_seed: int = 0) -> void:
 	barracks = Barracks.new(settings, map, buildings, run_state, soldiers, unit_paths)
 	_reported_gold = run_state.gold
 	_reported_base_hp = run_state.base_hp
-	_reported_enemies_left = waves.enemies_left
 
 
 func queue_command(command: Commands.Command) -> void:
@@ -193,15 +187,16 @@ func change_setting(group: String, key: String, new_value: Variant) -> void:
 		unit_paths.refresh_costs()
 
 
-func next_wave() -> void:
-	_start_wave(run_state.wave + 1, Commands.NextWave.LABEL)
-
-
-func jump_to_wave(wave: int) -> void:
-	if wave < 1:
-		reject_command("%s: the wave must be at least 1" % Commands.JumpToWave.LABEL)
+## Debug: fills the alert, so the next wave starts this tick. Rejected during a wave and while
+## the fields rebuild after decay.
+func send_wave() -> void:
+	var label := Commands.SendWave.LABEL
+	if is_decay_rebuild_in_flight():
+		reject_command("%s: the fields are still rebuilding after decay" % label)
 		return
-	_start_wave(wave, Commands.JumpToWave.LABEL)
+	var error := waves.send_wave()
+	if not error.is_empty():
+		reject_command("%s: %s" % [label, error])
 
 
 ## Kills the first [param count] living enemies on the field. They are removed at
@@ -387,9 +382,13 @@ func _emit_signals() -> void:
 	if waves.phase != _reported_phase:
 		_reported_phase = waves.phase
 		phase_changed.emit(_reported_phase)
-	if _wave_started:
-		_wave_started = false
-		wave_started.emit(waves.edges)
+	if waves.take_coming():
+		wave_coming.emit(waves.next_edges)
+	for wave in waves.take_started():
+		wave_started.emit(wave.edges, wave.size, wave.specials)
+	if _wave_ended:
+		_wave_ended = false
+		wave_ended.emit()
 	if _fields_changed:
 		_fields_changed = false
 		fields_changed.emit()
@@ -405,16 +404,16 @@ func _emit_signals() -> void:
 		restart_requested.emit()
 
 
-# Enemies left reaches 0 as a wave ends, then shows the next wave's size: both are reported.
+# Only during a wave: in the quiet the HUD shows the alert instead.
 func _emit_enemies_left() -> void:
-	if _wave_ended:
-		_wave_ended = false
-		if _reported_enemies_left != 0:
-			_reported_enemies_left = 0
-			enemies_left_changed.emit(0, {})
-	if waves.enemies_left != _reported_enemies_left:
-		_reported_enemies_left = waves.enemies_left
-		enemies_left_changed.emit(_reported_enemies_left, next_wave_specials)
+	if waves.phase != Waves.Phase.WAVE:
+		return
+	var left := waves.enemies_left
+	var size := waves.open_size
+	if left != _reported_enemies_left or size != _reported_wave_size:
+		_reported_enemies_left = left
+		_reported_wave_size = size
+		enemies_left_changed.emit(left, size)
 
 
 func _drain_commands() -> void:
@@ -465,9 +464,12 @@ func _land_bodies_and_update_fields() -> void:
 
 func _mine_and_spawn() -> void:
 	_observe(Step.MINE_AND_SPAWN)
-	run_state.credit(miners.step())
-	waves.spawn()
-	barracks.step(waves.phase == Waves.Phase.WAVE)
+	var mined := miners.step()
+	run_state.credit(mined)
+	threat.add_minerals(mined.gold + mined.aether)
+	threat.step()
+	waves.step(miners.pace, threat, miners.all_dry())
+	barracks.step()
 
 
 func _rebuild_spatial_hash() -> void:
@@ -477,7 +479,7 @@ func _rebuild_spatial_hash() -> void:
 
 func _move_enemies() -> void:
 	_observe(Step.MOVE_ENEMIES)
-	enemies.move(waves.in_wave_tail(), overflow.band_mask)
+	enemies.move(waves.tail_mask(), overflow.band_mask)
 	overflow.step()
 	jumps.step()
 	# Buildings.pending_destroyed is the live list, so it holds what perched attacks destroy too.
@@ -509,7 +511,7 @@ func _units_fire() -> void:
 
 func _repair_buildings() -> void:
 	_observe(Step.REPAIR_BUILDINGS)
-	repair_yards.step(waves.phase == Waves.Phase.WAVE)
+	repair_yards.step()
 	buildings.under_repair = repair_yards.under_repair()
 
 
@@ -540,22 +542,6 @@ func _check_wave_end() -> void:
 		_wave_ended = true
 		decay_piles()
 		soldiers.recover_all()
-		barracks.finish_queues()
-
-
-func _start_wave(wave: int, label: String) -> void:
-	if waves.phase == Waves.Phase.WAVE:
-		reject_command("%s: a wave is already running" % label)
-		return
-	if map.spawn_edges.is_empty():
-		reject_command("%s: the map has no spawn edges" % label)
-		return
-	if is_decay_rebuild_in_flight():
-		reject_command("%s: the fields are still rebuilding after decay" % label)
-		return
-	run_state.wave = wave
-	waves.start(wave)
-	_wave_started = true
 
 
 func _system_rng(system: String) -> RandomNumberGenerator:

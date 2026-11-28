@@ -1,7 +1,7 @@
 class_name RepairYards
 extends RefCounted
 
-## One drone per repair yard. During a wave, while its yard is working, a drone flies in a straight
+## One drone per repair yard. While its yard is working, at any time, a drone flies in a straight
 ## line from the yard's centre to a damaged building in the yard's repair area, repairs it to full
 ## and flies home. Drones are never attacked and ignore terrain; they step in their yards' build
 ## order, so ties are deterministic.
@@ -139,9 +139,9 @@ func under_repair() -> Dictionary[int, bool]:
 	return ids
 
 
-## Flies every drone one tick and repairs. Outside a wave, or while its yard isn't working
-## (unpowered or under repair), a drone flies home and stops. A destroyed yard's drone is gone.
-func step(in_wave: bool) -> void:
+## Flies every drone one tick and repairs. While its yard isn't working (unpowered or under
+## repair), a drone flies home and stops. A destroyed yard's drone is gone.
+func step() -> void:
 	var gone := false
 	for drone in drones:
 		var yard := _buildings.building(drone.yard_id)
@@ -151,7 +151,7 @@ func step(in_wave: bool) -> void:
 			continue
 		if drone.assignment != NONE and _buildings.building(drone.assignment) == null:
 			drone.assignment = NONE
-		if not (in_wave and _buildings.is_working(yard.id)):
+		if not _buildings.is_working(yard.id):
 			_send_home(drone)
 		elif drone.state == State.HOME:
 			_pick(drone, yard)

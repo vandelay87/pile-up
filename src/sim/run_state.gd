@@ -7,7 +7,6 @@ const WHOLE_TOLERANCE := 1e-6
 
 var gold: int
 var base_hp: float
-var wave := 0
 var kills := 0
 ## The minerals mined this run, by kind, fractional.
 var gold_mined := 0.0

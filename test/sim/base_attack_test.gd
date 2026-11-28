@@ -97,7 +97,7 @@ func test_the_run_ends_when_the_base_is_destroyed_and_only_a_restart_is_accepted
 	var positions_at_game_over := sim.enemies.positions.slice(0, sim.enemies.count)
 	for tick in 60:
 		sim.tick()
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	sim.queue_command(Commands.AddGold.new(10))
 	sim.queue_command(Commands.Restart.new())
 	sim.tick()
@@ -108,7 +108,7 @@ func test_the_run_ends_when_the_base_is_destroyed_and_only_a_restart_is_accepted
 		. contains_exactly(
 			[
 				"game over",
-				"next wave: the run is over",
+				"send wave: the run is over",
 				"add gold: the run is over",
 				"restart",
 			]

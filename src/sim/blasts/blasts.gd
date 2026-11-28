@@ -76,7 +76,17 @@ func resolve(deaths: Deaths, soldiers: Soldiers) -> Array[Blast]:
 func _kill_around(blast: Blast, radius: float, deaths: Deaths) -> void:
 	for i in _enemies.living_within(blast.position, radius):
 		_enemies.kill(_enemies.ids[i])
-		deaths.add(_enemies.ids[i], _enemies.positions[i], _enemies.kinds[i], blast.killer, true)
+		(
+			deaths
+			. add(
+				_enemies.ids[i],
+				_enemies.positions[i],
+				_enemies.kinds[i],
+				blast.killer,
+				true,
+				_enemies.waves[i],
+			)
+		)
 		_buildings.count_kill(blast.killer)
 
 

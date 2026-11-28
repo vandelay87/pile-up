@@ -41,13 +41,13 @@ func test_top_up_fills_the_crowd_to_the_target() -> void:
 	assert_int(sim.enemies.count).is_equal(150)
 
 
-func test_top_up_mixes_in_a_wave_20_count_of_brutes_on_the_direct_route() -> void:
+func test_top_up_mixes_in_a_threat_20_count_of_brutes_on_the_direct_route() -> void:
 	var sim := Simulation.new(_settings, _map(), 1)
 	var crowd := BenchCrowd.new(sim, 1)
 
 	crowd.top_up(150)
 
-	# Wave 20 brings 1 + (20 - 12) / 6 = 2 brutes before its roll.
+	# Threat 20 brings 1 + (20 - 12) / 6 = 2 brutes before its roll.
 	assert_int(crowd.brute_count()).is_equal(2)
 	var brutes := 0
 	for i in sim.enemies.count:

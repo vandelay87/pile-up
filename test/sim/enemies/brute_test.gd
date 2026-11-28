@@ -63,7 +63,8 @@ func test_a_brute_never_leaves_the_direct_route_past_obstacles_and_in_the_wave_t
 		_routing.update(_piles.take_field_changes())
 		_routing.step()
 		enemies.rebuild_spatial_hash()
-		enemies.move(tick % 2 == 0)
+		# Every other tick, its wave (none) is in the wave tail.
+		enemies.move(PackedByteArray([1]) if tick % 2 == 0 else PackedByteArray())
 		assert_int(_route(enemies, brute)).is_equal(Routing.Route.DIRECT)
 		var normal_at := enemies.index_of(normal)
 		if normal_at != Enemies.NONE and enemies.positions[normal_at].x > 6.0:

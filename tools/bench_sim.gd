@@ -3,7 +3,8 @@
 # about the kill rate of a v1 wave, and every DECAY_INTERVAL ticks the piles decay and the fields
 # rebuild on the worker. A branch of pylons runs up the west way to a tower, and every
 # PYLON_INTERVAL ticks its first pylon is destroyed (cutting the branch off) or rebuilt, so power is
-# recomputed. A wave runs throughout, so two repair yards beside the base send their drones to the
+# recomputed. A late wave runs throughout, sent at WAVE_THREAT and High with the roll off, with the
+# trickle beside it. Two repair yards beside the base send their drones to the
 # crowd's ring of towers, which the crowd attacks; every REBUILD_INTERVAL ticks any broken tower or
 # yard is built again where it can be. The crowd stalls against the towers until their crushes
 # overflow at a surge, so enemies tumble over the ring, perching on its towers and the base when
@@ -20,7 +21,7 @@
 extends SceneTree
 
 const RUN_SEED := 1
-const BENCH_MAP := "res://data/maps/v3-flared.json"
+const BENCH_MAP := "res://data/maps/v6.json"
 const CROWD_SEED := 1
 const ENEMIES := 1000
 const WARMUP_TICKS := 120
@@ -33,13 +34,15 @@ const CHAIN_INTERVAL := 90
 # Bloaters in each chain, in a line out from the wall, each in the last one's reach.
 const CHAIN_BLOATERS := 5
 const CHAIN_SPACING := 1.5
-# A late wave: its size keeps it out of the wave tail for the whole run, with a trickle of spawns.
-const WAVE := 20
-# Two yards beside the base, with the crowd's towers in their repair areas.
-const YARDS: Array[Vector2i] = [Vector2i(58, 51), Vector2i(50, 59)]
-# A pylon on the base grid's edge, one on that pylon's edge, and a tower beyond it.
-const BRANCH_PYLONS: Array[Vector2i] = [Vector2i(48, 44), Vector2i(47, 34)]
-const BRANCH_TOWER := Vector2i(38, 25)
+# A late wave: its size (1,943 at High) keeps it out of the wave tail for the whole run.
+const WAVE_THREAT := 20.0
+# Two yards beside the base, with the crowd's towers in their repair areas: offsets from the
+# base's origin.
+const YARDS: Array[Vector2i] = [Vector2i(5, -3), Vector2i(-3, 5)]
+# Down the west route: a pylon on the base grid's edge, one on that pylon's edge, and a tower
+# beyond it, as offsets from the base's origin.
+const BRANCH_PYLONS: Array[Vector2i] = [Vector2i(-10, 1), Vector2i(-20, 1)]
+const BRANCH_TOWER := Vector2i(-30, 1)
 # Grinders in the crowd's ring, halfway between its towers.
 const GRINDERS := 8
 const GRINDER_STEPS_IN := 4
@@ -83,7 +86,6 @@ class RunResult:
 
 func _init() -> void:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
-	# The bench stays on the v5 map until v6's threat ticket moves it to v6.json.
 	settings.change("run", "map_path", BENCH_MAP)
 	# The map path applies on restart, so take the settings as the next run would see them.
 	settings = settings.for_next_run()
@@ -179,7 +181,10 @@ func _run(settings: Settings, map: MapData) -> RunResult:
 	var grinders := _build_grinders(sim)
 	_build_branch(sim)
 	_build_yards(sim)
-	sim.queue_command(Commands.JumpToWave.new(WAVE))
+	sim.settings.change("waves", "size_roll", 0)
+	sim.queue_command(Commands.JumpToThreat.new(WAVE_THREAT))
+	sim.queue_command(Commands.SetPace.new(Miners.Pace.HIGH))
+	sim.queue_command(Commands.SendWave.new())
 	var tumbling: Dictionary[int, bool] = {}
 	var chain_wall := Vector2i(-1, -1)
 	sim.blasts.connect(
@@ -290,7 +295,7 @@ func _set_off_chain(sim: Simulation, wall: Vector2i) -> void:
 
 func _build_yards(sim: Simulation) -> void:
 	sim.add_gold(YARDS.size() * sim.settings.repair_yard_cost)
-	for origin in YARDS:
+	for origin in _yards(sim):
 		sim.queue_command(Commands.Build.new(Buildings.REPAIR_YARD, origin))
 	sim.tick()
 	if sim.repair_yards.drones.size() != YARDS.size():
@@ -322,7 +327,7 @@ func _build_grinders(sim: Simulation) -> Array[Vector2i]:
 
 # Queues every broken yard, crowd tower and grinder to be built again; piles may block some.
 func _rebuild(sim: Simulation, crowd: BenchCrowd, grinders: Array[Vector2i]) -> void:
-	for origin in YARDS:
+	for origin in _yards(sim):
 		_rebuild_at(sim, Buildings.REPAIR_YARD, origin)
 	for origin in crowd.tower_origins:
 		_rebuild_at(sim, Buildings.TOWER, origin)
@@ -348,20 +353,29 @@ func _buildings_digest(sim: Simulation) -> int:
 
 func _build_branch(sim: Simulation) -> void:
 	sim.add_gold(BRANCH_PYLONS.size() * sim.settings.pylon_cost + sim.settings.tower_cost)
-	for origin in BRANCH_PYLONS:
-		sim.queue_command(Commands.Build.new(Buildings.PYLON, origin))
-	sim.queue_command(Commands.Build.new(Buildings.TOWER, BRANCH_TOWER))
+	var base := sim.map.base.position
+	for offset in BRANCH_PYLONS:
+		sim.queue_command(Commands.Build.new(Buildings.PYLON, base + offset))
+	sim.queue_command(Commands.Build.new(Buildings.TOWER, base + BRANCH_TOWER))
 	sim.tick()
-	var tower := sim.buildings.building(sim.occupancy.building_at(BRANCH_TOWER))
+	var tower := sim.buildings.building(sim.occupancy.building_at(base + BRANCH_TOWER))
 	if tower == null or not tower.powered:
 		printerr("The pylon branch did not build a powered tower")
 
 
 # Destroys the branch's first pylon when it stands, or queues it to be built again.
 func _cut_or_relink(sim: Simulation) -> void:
-	var link := sim.occupancy.building_at(BRANCH_PYLONS[0])
+	var cell := sim.map.base.position + BRANCH_PYLONS[0]
+	var link := sim.occupancy.building_at(cell)
 	if link != Occupancy.EMPTY:
 		sim.buildings.damage(link, sim.buildings.building(link).hp)
 		return
 	sim.add_gold(sim.settings.pylon_cost)
-	sim.queue_command(Commands.Build.new(Buildings.PYLON, BRANCH_PYLONS[0]))
+	sim.queue_command(Commands.Build.new(Buildings.PYLON, cell))
+
+
+func _yards(sim: Simulation) -> Array[Vector2i]:
+	var origins: Array[Vector2i] = []
+	for offset in YARDS:
+		origins.append(sim.map.base.position + offset)
+	return origins

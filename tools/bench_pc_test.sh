@@ -204,9 +204,9 @@ has "with no headings, dense-1000 --army is run" "$scratch/calls" "bench bench_p
 lacks "a missing body heading runs no bench_frame" "$scratch/calls" "bench bench_frame"
 
 project
-FAKE_BODY=$'### bench_frame\n### bench_profile wave-20 --army' run 7 || fail "bench_frame heading exited non-zero"
+FAKE_BODY=$'### bench_frame\n### bench_profile wave-1000 --army' run 7 || fail "bench_frame heading exited non-zero"
 has "a bench_frame heading is run" "$scratch/calls" "bench bench_frame"
-has "a wave-20 heading is run" "$scratch/calls" "bench bench_profile wave-20 --army"
+has "a wave-1000 heading is run" "$scratch/calls" "bench bench_profile wave-1000 --army"
 
 project
 FAKE_BENCH=missed run 7 || fail "a missed target exited non-zero: $(cat "$scratch/err")"

@@ -23,22 +23,22 @@ const BLOATERS := {
 		"unit": "cells/s",
 		"apply": Settings.Apply.LIVE,
 	},
-	"first_wave":
+	"first_threat":
 	{
 		"type": TYPE_INT,
 		"min": 1,
 		"max": 100,
 		"step": 1,
-		"unit": "wave",
+		"unit": "threat",
 		"apply": Settings.Apply.LIVE,
 	},
-	"waves_per_step":
+	"threat_per_step":
 	{
 		"type": TYPE_INT,
 		"min": 1,
 		"max": 50,
 		"step": 1,
-		"unit": "waves per extra bloater",
+		"unit": "points of threat per extra bloater",
 		"apply": Settings.Apply.LIVE,
 	},
 	"miss_chance":
@@ -143,13 +143,13 @@ const JUMPERS := {
 		"unit": "s",
 		"apply": Settings.Apply.LIVE,
 	},
-	"first_wave":
+	"first_threat":
 	{
 		"type": TYPE_INT,
 		"min": 1,
 		"max": 100,
 		"step": 1,
-		"unit": "wave",
+		"unit": "threat",
 		"apply": Settings.Apply.LIVE,
 	},
 	"share":
@@ -218,22 +218,22 @@ const BRUTES := {
 		"unit": "× drawn size",
 		"apply": Settings.Apply.LIVE,
 	},
-	"first_wave":
+	"first_threat":
 	{
 		"type": TYPE_INT,
 		"min": 1,
 		"max": 100,
 		"step": 1,
-		"unit": "wave",
+		"unit": "threat",
 		"apply": Settings.Apply.LIVE,
 	},
-	"waves_per_step":
+	"threat_per_step":
 	{
 		"type": TYPE_INT,
 		"min": 1,
 		"max": 50,
 		"step": 1,
-		"unit": "waves per extra brute",
+		"unit": "points of threat per extra brute",
 		"apply": Settings.Apply.LIVE,
 	},
 	"miss_chance":

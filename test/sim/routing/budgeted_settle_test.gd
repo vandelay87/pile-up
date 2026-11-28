@@ -18,7 +18,7 @@ func before_test() -> void:
 	_sim = Simulation.new(settings, TestMaps.from_rows(_rows(), BASE, ["E"] as Array[String]), 1)
 	_reports = []
 	_sim.fields_changed.connect(func() -> void: _reports.append(_sim.tick_count))
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 	_sim.tick()
 

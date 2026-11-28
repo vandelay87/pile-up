@@ -9,7 +9,7 @@
 # build in bin/; on Windows it is CI's native-windows artifact for HEAD's sha (through gh), or a
 # local scons build when there is none.
 #
-# Usage: tools/bench_release.sh bench_profile [dense-1000|dense-1390|wave-20] [--army]
+# Usage: tools/bench_release.sh bench_profile [dense-1000|dense-1390|wave-1000] [--army]
 #        tools/bench_release.sh bench_frame
 set -u
 
@@ -31,7 +31,7 @@ bench_profile)
 	army=""
 	for arg in "$@"; do
 		case $arg in
-		dense-1000 | dense-1390 | wave-20) bench_case=$arg ;;
+		dense-1000 | dense-1390 | wave-1000) bench_case=$arg ;;
 		--army) army=--army ;;
 		*) usage ;;
 		esac

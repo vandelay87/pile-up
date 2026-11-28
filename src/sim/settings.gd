@@ -93,15 +93,15 @@ var scatter_share_end: float:
 	get:
 		var percent: int = value("waves", "scatter_share_end")
 		return percent / 100.0
-var scatter_share_end_wave: int:
+var scatter_share_end_threat: int:
 	get:
-		return value("waves", "scatter_share_end_wave")
+		return value("waves", "scatter_share_end_threat")
 var wave_tail: int:
 	get:
 		return value("waves", "wave_tail")
-var wave_tail_per_wave: int:
+var wave_tail_per_threat: int:
 	get:
-		return value("waves", "wave_tail_per_wave")
+		return value("waves", "wave_tail_per_threat")
 var wall_hp: float:
 	get:
 		return value("piles", "wall_hp")
@@ -206,12 +206,12 @@ var bloater_hp: float:
 var bloater_speed: float:
 	get:
 		return value("bloaters", "speed")
-var first_bloater_wave: int:
+var first_bloater_threat: int:
 	get:
-		return value("bloaters", "first_wave")
-var bloater_waves_per_step: int:
+		return value("bloaters", "first_threat")
+var bloater_threat_per_step: int:
 	get:
-		return value("bloaters", "waves_per_step")
+		return value("bloaters", "threat_per_step")
 var bloater_miss_chance: float:
 	get:
 		var percent: int = value("bloaters", "miss_chance")
@@ -281,10 +281,41 @@ var hp_growth: float:
 var spawn_rate: float:
 	get:
 		return value("waves", "spawn_rate")
-var second_edge_chance: float:
+## A wave's size is rolled within ± this share of it.
+var size_roll: float:
 	get:
-		var percent: int = value("waves", "second_edge_chance")
+		var percent: int = value("waves", "size_roll")
 		return percent / 100.0
+## The alert's fill a tick at High, before the pace's fill factor.
+var alert_fill_per_tick: float:
+	get:
+		var seconds: float = value("alert", "fill_seconds")
+		return 1.0 / (seconds * Simulation.TICKS_PER_SECOND)
+## How full the alert is when the next wave's edges are picked, from 0 to 1.
+var alert_warn_at: float:
+	get:
+		var percent: int = value("alert", "warn_at")
+		return percent / 100.0
+## The trickle's enemies a second at threat 1 (not the overflow's trickle tier); none at an
+## interval of 0.
+var trickle_spawn_rate: float:
+	get:
+		var seconds: float = value("trickle", "interval")
+		return 0.0 if seconds == 0.0 else 1.0 / seconds
+var trickle_spawn_growth: float:
+	get:
+		return value("trickle", "growth")
+var threat_start: float:
+	get:
+		return value("threat", "start")
+## Threat a tick adds by time alone.
+var threat_per_tick: float:
+	get:
+		var seconds: float = value("threat", "seconds_per_point")
+		return 1.0 / (seconds * Simulation.TICKS_PER_SECOND)
+var minerals_per_threat: float:
+	get:
+		return value("threat", "minerals_per_point")
 var mining_base_rate: float:
 	get:
 		return value("mining", "base_rate")
@@ -374,7 +405,7 @@ var soldier_contact_push: float:
 var soldier_cost: int:
 	get:
 		return value("soldiers", "cost")
-## Ticks a barracks spends training one soldier during a wave.
+## Ticks a barracks spends training one soldier.
 var training_ticks: int:
 	get:
 		var seconds: float = value("soldiers", "training_time")

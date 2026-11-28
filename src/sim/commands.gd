@@ -20,16 +20,17 @@ class Play:
 		return ""
 
 
-class NextWave:
+## Debug: fills the alert, so the next wave starts this tick.
+class SendWave:
 	extends Commands.Play
 
-	const LABEL := "next wave"
+	const LABEL := "send wave"
 
 	func label() -> String:
 		return LABEL
 
 	func apply(sim: Simulation) -> void:
-		sim.next_wave()
+		sim.send_wave()
 
 
 ## Sets the pace every miner mines at, from this tick on.
@@ -189,8 +190,7 @@ class Train:
 
 	# Straight to Barracks: Simulation is at gdlint's limit of public methods.
 	func apply(sim: Simulation) -> void:
-		var instant := sim.waves.phase != Waves.Phase.WAVE
-		var error := sim.barracks.train(_barracks_id, _count, instant)
+		var error := sim.barracks.train(_barracks_id, _count)
 		if not error.is_empty():
 			sim.reject_command("%s: %s" % [LABEL, error])
 
@@ -375,21 +375,25 @@ class AddGold:
 		sim.add_gold(_amount)
 
 
-class JumpToWave:
+## Debug: sets the run's threat, which never falls.
+class JumpToThreat:
 	extends Commands.Play
 
-	const LABEL := "jump to wave"
+	const LABEL := "jump to threat"
 
-	var _wave: int
+	var _threat: float
 
-	func _init(wave: int) -> void:
-		_wave = wave
+	func _init(threat: float) -> void:
+		_threat = threat
 
 	func label() -> String:
 		return LABEL
 
+	# Straight to Threat: Simulation is at gdlint's limit of public methods.
 	func apply(sim: Simulation) -> void:
-		sim.jump_to_wave(_wave)
+		var error := sim.threat.jump_to(_threat)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
 
 
 class KillEnemies:
@@ -409,8 +413,8 @@ class KillEnemies:
 		sim.kill_enemies(_count)
 
 
-## Debug: [code]count[/code] enemies of a kind sent at once as one burst, counting towards
-## nothing in the wave (see [method Waves.send]).
+## Debug: [code]count[/code] enemies of a kind sent at once as one burst, belonging to no wave
+## (see [method Waves.send]).
 class SpawnEnemies:
 	extends Commands.Play
 
@@ -430,7 +434,7 @@ class SpawnEnemies:
 	func apply(sim: Simulation) -> void:
 		if _count < 1:
 			sim.reject_command("%s: the count must be at least 1" % LABEL)
-		elif not sim.waves.send(_kind, _count):
+		elif not sim.waves.send(_kind, _count, sim.threat.value):
 			sim.reject_command("%s: the map has no spawn edges" % LABEL)
 
 

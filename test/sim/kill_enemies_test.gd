@@ -19,8 +19,7 @@ func before_test() -> void:
 	_sim = Simulation.new(settings, TestMaps.from_rows(rows, Rect2i(5, 9, 2, 2), edges), 1)
 	_events = []
 	_sim.command_rejected.connect(func(reason: String) -> void: _events.append(reason))
-	_sim.queue_command(Commands.NextWave.new())
-	_sim.tick()
+	TestWaves.send_at(_sim, 1.0)
 
 
 func test_kill_enemies_kills_the_first_n_on_the_field_that_tick() -> void:
@@ -44,7 +43,7 @@ func test_killed_enemies_count_as_kills_and_leave_bodies() -> void:
 	_sim.tick()
 
 	assert_int(_sim.run_state.kills).is_equal(3)
-	assert_int(_sim.enemies_left).is_equal(17)
+	assert_int(_sim.waves.enemies_left).is_equal(17)
 	assert_int(_sim.run_state.gold).is_equal(gold)
 	var bodies := 0
 	for level in _sim.piles.levels:

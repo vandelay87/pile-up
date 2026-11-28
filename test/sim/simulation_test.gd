@@ -87,7 +87,7 @@ func test_enemies_walk_over_no_build_cells_to_the_base() -> void:
 	var sim := Simulation.new(Settings.load_file(Settings.DEFAULTS_PATH).settings, map, 1)
 	var start_hp := sim.run_state.base_hp
 
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	for tick in 600:
 		sim.tick()
 
@@ -96,13 +96,15 @@ func test_enemies_walk_over_no_build_cells_to_the_base() -> void:
 
 func _enemy_positions_after_wave_start(run_seed: int) -> PackedVector2Array:
 	var settings := Settings.load_file(Settings.DEFAULTS_PATH).settings
+	settings.change("waves", "size_roll", 0)
+	TestWaves.without_trickle(settings)
 	var rows: Array[String] = []
 	for y in 16:
 		rows.append("................")
 	var edges: Array[String] = ["N", "E", "S", "W"]
 	var map := TestMaps.from_rows(rows, Rect2i(7, 7, 2, 2), edges)
 	var sim := Simulation.new(settings, map, run_seed)
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	for tick in WAVE_TICKS:
 		sim.tick()
 	return sim.enemies.positions.slice(0, sim.enemies.count)

@@ -34,13 +34,24 @@ func _process(_delta: float) -> void:
 	if not visible or _simulation == null:
 		return
 	var now := Time.get_ticks_msec()
+	var waves := _simulation.waves
+	var open := PackedStringArray()
+	for wave in waves.open_waves():
+		open.append("#%d %d/%d" % [wave.index, wave.size - wave.kills, wave.size])
 	_label.text = (
-		"%d fps\n%d enemies\ntick %.2f ms mean, %.2f ms max\ndecay rebuild in flight: %s"
+		(
+			"%d fps\n%d enemies\ntick %.2f ms mean, %.2f ms max\ndecay rebuild in flight: %s"
+			+ "\nthreat %.2f, alert %.0f%%\nopen waves: %s\ntrickle %.2f/s"
+		)
 		% [
 			Engine.get_frames_per_second(),
 			_simulation.enemies.count,
 			_simulation.tick_cost.mean_msec(now),
 			_simulation.tick_cost.max_msec(now),
 			"yes" if _simulation.is_decay_rebuild_in_flight() else "no",
+			_simulation.threat.value,
+			waves.alert * 100.0,
+			", ".join(open) if not open.is_empty() else "none",
+			waves.trickle_rate(_simulation.threat.value),
 		]
 	)

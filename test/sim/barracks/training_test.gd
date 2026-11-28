@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 ## A 24×24 open field with a 4×4 base at (10, 10), centred on (12, 12); the base powers cells
-## 0..23. A wave of one slow enemy from the east edge keeps the wave running. The barracks at
+## 0..23. A wave is one slow enemy from the east edge, with no trickle. The barracks at
 ## (15, 10) has the ring x 14..17, y 9..12; its cell nearest the base's centre is (14, 11),
 ## tied with (14, 12) and taking the lower index.
 
@@ -18,6 +18,7 @@ func before_test() -> void:
 	settings.change("waves", "wave_1_size", 1)
 	settings = settings.for_next_run()
 	settings.change("enemies", "speed", 0.1)
+	TestWaves.without_trickle(settings)
 	var rows: Array[String] = []
 	for y in SIZE:
 		rows.append(".".repeat(SIZE))
@@ -28,12 +29,17 @@ func before_test() -> void:
 	_sim.command_rejected.connect(func(reason: String) -> void: _rejections.append(reason))
 
 
-func test_build_phase_training_pays_and_trains_at_once_beside_the_barracks() -> void:
+func test_in_the_quiet_training_pays_at_once_and_takes_5_seconds() -> void:
 	var barracks := _build(BARRACKS)
 	_sim.queue_command(Commands.Train.new(barracks.id, 1))
 	_sim.tick()
 
+	assert_int(_sim.waves.phase).is_equal(Waves.Phase.QUIET)
 	assert_int(_sim.run_state.gold).is_equal(9770)
+	assert_int(_sim.soldiers.count).is_equal(0)
+	_run(298)
+	assert_int(_sim.soldiers.count).is_equal(0)
+	_run(1)
 	assert_int(_sim.soldiers.count).is_equal(1)
 	assert_object(_sim.soldiers.spot(0)).is_equal(Vector2i(14, 11))
 	assert_int(_sim.barracks.queue_of(barracks.id).size()).is_equal(0)
@@ -128,7 +134,7 @@ func test_cancelling_a_slot_that_isnt_queued_is_rejected() -> void:
 	assert_int(_sim.barracks.queue_of(barracks.id).size()).is_equal(1)
 
 
-func test_during_a_wave_each_soldier_takes_300_ticks_counting_the_tick_it_was_queued() -> void:
+func test_in_a_wave_each_soldier_takes_300_ticks_counting_the_tick_it_was_queued() -> void:
 	var barracks := _build(BARRACKS)
 	_start_wave()
 	_sim.queue_command(Commands.Train.new(barracks.id, 1))
@@ -147,7 +153,7 @@ func test_during_a_wave_each_soldier_takes_300_ticks_counting_the_tick_it_was_qu
 	assert_int(_sim.soldiers.count).is_equal(2)
 
 
-func test_wave_training_pauses_while_unpowered_and_resumes_where_it_left_off() -> void:
+func test_training_pauses_while_unpowered_and_resumes_where_it_left_off() -> void:
 	var barracks := _build(BARRACKS)
 	_start_wave()
 	_train(barracks.id, 1)
@@ -165,7 +171,7 @@ func test_wave_training_pauses_while_unpowered_and_resumes_where_it_left_off() -
 	assert_int(_sim.soldiers.count).is_equal(1)
 
 
-func test_wave_training_pauses_while_the_barracks_is_under_repair() -> void:
+func test_training_pauses_while_the_barracks_is_under_repair() -> void:
 	var barracks := _build(BARRACKS)
 	var yard := _build_kind(Buildings.REPAIR_YARD, Vector2i(15, 14))
 	_sim.queue_command(Commands.SetRepairThreshold.new(yard.id, 100))
@@ -186,33 +192,27 @@ func test_wave_training_pauses_while_the_barracks_is_under_repair() -> void:
 	assert_int(_sim.barracks.ticks_left(barracks.id)).is_less(left)
 
 
-func test_at_wave_end_every_queue_trains_at_once_in_build_order() -> void:
-	var first := _build(BARRACKS)
-	var second := _build(Vector2i(4, 4))
+func test_a_waves_end_trains_nothing_at_once() -> void:
+	var barracks := _build(BARRACKS)
 	_start_wave()
-	_sim.queue_command(Commands.Train.new(second.id, 1))
-	_sim.queue_command(Commands.Train.new(first.id, 5))
+	_sim.queue_command(Commands.Train.new(barracks.id, 5))
 	_sim.queue_command(Commands.KillEnemies.new(1))
 	_sim.tick()
 
-	assert_int(_sim.waves.phase).is_equal(Waves.Phase.BUILD)
-	assert_int(_sim.soldiers.count).is_equal(6)
-	assert_object(_sim.soldiers.spot(0)).is_equal(Vector2i(14, 11))
-	assert_bool(Rect2i(3, 3, 4, 4).has_point(_sim.soldiers.spot(5))).is_true()
-	assert_int(_sim.barracks.queue_of(first.id).size()).is_equal(0)
-	assert_int(_sim.barracks.queue_of(second.id).size()).is_equal(0)
+	assert_int(_sim.waves.phase).is_equal(Waves.Phase.QUIET)
+	assert_int(_sim.soldiers.count).is_equal(0)
+	assert_int(_sim.barracks.queue_of(barracks.id).size()).is_equal(5)
 
 
 func test_a_destroyed_barracks_refunds_its_queue_and_lowers_capacity_but_no_soldier_dies() -> void:
 	var barracks := _build(BARRACKS)
 	_build(Vector2i(4, 4))
-	_train(barracks.id, 5)
-	_start_wave()
+	_add_soldiers(5)
 	_train(barracks.id, 5)
 	_sim.buildings.damage(barracks.id, 1000.0)
 	_sim.tick()
 
-	assert_int(_sim.run_state.gold).is_equal(10000 - 2 * 200 - 5 * 30)
+	assert_int(_sim.run_state.gold).is_equal(10000 - 2 * 200)
 	assert_int(_sim.soldiers.count).is_equal(5)
 	assert_int(_sim.barracks.capacity()).is_equal(10)
 	assert_int(_sim.barracks.used()).is_equal(5)
@@ -244,7 +244,7 @@ func _add_soldiers(count: int) -> void:
 
 
 func _start_wave() -> void:
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 
 
