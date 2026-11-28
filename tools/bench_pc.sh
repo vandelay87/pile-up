@@ -55,7 +55,7 @@ busy_reason() {
 # headings in order without repeats, or the per-ticket pair when there are none.
 cases() {
 	local found
-	found=$(tr -d '\r' | sed -nE 's/^### (bench_frame|bench_profile( (dense-1000|dense-1390|wave-20))?( --army)?)[[:space:]]*$/\1/p' | awk '!seen[$0]++')
+	found=$(tr -d '\r' | sed -nE 's/^### (bench_frame|bench_profile( (dense-1000|dense-1390|wave-1000))?( --army)?)[[:space:]]*$/\1/p' | awk '!seen[$0]++')
 	if [ -n "$found" ]; then
 		echo "$found"
 	else

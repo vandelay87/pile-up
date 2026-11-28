@@ -146,9 +146,9 @@ has "bench_frame is the main scene" "$scratch/export.log" 'run/main_scene="res:/
 has "bench_frame takes no case" "$scratch/out" "TABLE --fixed-fps 60 --"
 
 project
-FAKE_BENCH_STATUS=1 run Darwin bench_profile wave-20 && fail "a missed target exited zero"
-has "a missed target still prints the table" "$scratch/out" "TABLE --fixed-fps 60 -- --case=wave-20"
-has "the output is headed by the run" "$scratch/out" "### bench_profile wave-20"
+FAKE_BENCH_STATUS=1 run Darwin bench_profile wave-1000 && fail "a missed target exited zero"
+has "a missed target still prints the table" "$scratch/out" "TABLE --fixed-fps 60 -- --case=wave-1000"
+has "the output is headed by the run" "$scratch/out" "### bench_profile wave-1000"
 has "the fingerprint has the Godot version" "$scratch/out" "| Godot | 4.7.2.stable.official.fake |"
 has "the fingerprint has the sha" "$scratch/out" "| Commit | $(cd "$scratch/project" && git rev-parse --short HEAD) |"
 for row in CPU GPU OS Power Load; do
@@ -158,7 +158,7 @@ has "the table is in a code block" "$scratch/out" '```text'
 grep -q "^Godot Engine" "$scratch/out" && fail "the engine banner is in the table"
 
 project
-FAKE_VERDICT="Target: worst tick 9.00 ms against 8.00 ms (FAIL)." run Darwin bench_profile wave-20 &&
+FAKE_VERDICT="Target: worst tick 9.00 ms against 8.00 ms (FAIL)." run Darwin bench_profile wave-1000 &&
 	fail "a FAIL verdict with status 0 exited zero"
 has "a FAIL verdict is still printed" "$scratch/out" "(FAIL)."
 

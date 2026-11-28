@@ -123,7 +123,7 @@ func test_the_full_base_deposit_pays_every_gold_at_any_pace_mix() -> void:
 
 
 func test_the_pace_changes_mining_from_the_tick_it_is_set_mid_wave_included() -> void:
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_set_pace(Miners.Pace.HIGH)
 	_run(30)
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.WAVE)
@@ -146,7 +146,7 @@ func test_damage_to_the_base_does_not_change_the_rate() -> void:
 
 
 func test_kills_pay_nothing_and_kills_still_counts_them() -> void:
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 	assert_int(_sim.enemies.count).is_greater_equal(2)
 

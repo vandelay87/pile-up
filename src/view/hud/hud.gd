@@ -2,7 +2,8 @@ class_name Hud
 extends CanvasLayer
 ## The StarCraft-style console: one full-width bar across the bottom, built in UiRoot units.
 ## Status on the left, the selection's details in the middle (always there), and a command
-## card of square buttons on the right. Toasts sit just above the bar; game over is centred.
+## card of square buttons on the right, with the alert strip along the bar's top edge. Toasts sit
+## just above the bar; game over is centred.
 ## With soldiers selected the card swaps to their commands and the details to theirs. Space
 ## toggles pause; no HUD button takes keyboard focus, so Space always reaches it.
 
@@ -35,7 +36,7 @@ const PACES := {
 	Miners.Pace.HIGH: {"name": "High", "colour": Color(1.0, 0.45, 0.4)},
 }
 const PACE_SIZE := Vector2(52, 30)
-## The command card's build buttons in grid order, before Next wave.
+## The command card's build buttons in grid order.
 const COMMANDS: Array[StringName] = [
 	Buildings.TOWER, Buildings.GRINDER, Buildings.PYLON, Buildings.REPAIR_YARD, Buildings.BARRACKS
 ]
@@ -61,8 +62,11 @@ var _selection: Selection
 var _soldiers: SoldierSelection
 var _gold := Label.new()
 var _base_hp := Label.new()
-var _wave := Label.new()
+var _threat := Label.new()
 var _enemies_left := Label.new()
+# The row under Threat: Enemies left during a wave, the alert in the quiet.
+var _enemies_left_name := Label.new()
+var _alert_strip := AlertStrip.new()
 var _kills := Label.new()
 var _mining := Label.new()
 var _aether := Label.new()
@@ -78,13 +82,12 @@ var _targeting_buttons: Dictionary[StringName, Button] = {}
 var _barracks_controls := HBoxContainer.new()
 var _train := Button.new()
 var _slot_buttons: Array[Button] = []
-var _next_wave := Button.new()
 var _pace_buttons: Dictionary[Miners.Pace, Button] = {}
 var _stop := Button.new()
 var _clear_rally := Button.new()
 var _soldier_targeting := Button.new()
 var _formation := Button.new()
-# The soldier card's buttons and the blanks that keep Next wave in its slot.
+# The soldier card's buttons and the blanks that fill the build buttons' slots.
 var _soldier_commands: Array[Control] = []
 var _soldier_tiles := HFlowContainer.new()
 var _paused := Label.new()
@@ -102,10 +105,11 @@ func setup(simulation: Simulation, selection: Selection, soldiers: SoldierSelect
 	_soldiers = soldiers
 	_simulation.gold_changed.connect(_show_gold)
 	_simulation.base_hp_changed.connect(_show_base_hp)
-	_simulation.phase_changed.connect(_show_phase)
+	_simulation.wave_coming.connect(_show_wave_coming)
+	_simulation.wave_started.connect(_show_wave_started)
+	_simulation.wave_ended.connect(_show_toast.bind("wave beaten"))
 	_simulation.game_over.connect(_show_game_over)
 	_simulation.command_rejected.connect(_show_toast)
-	_simulation.enemies_left_changed.connect(_show_enemies_left)
 	_simulation.kills_changed.connect(_show_kills)
 	_simulation.pace_changed.connect(_show_pace)
 	_simulation.miner_changed.connect(_show_miner_changed)
@@ -114,9 +118,7 @@ func setup(simulation: Simulation, selection: Selection, soldiers: SoldierSelect
 	var run_state := _simulation.run_state
 	_show_gold(run_state.gold)
 	_show_base_hp(run_state.base_hp)
-	_show_enemies_left(_simulation.enemies_left, _simulation.next_wave_specials)
 	_show_kills(run_state.kills)
-	_show_phase(_simulation.waves.phase)
 	_show_pace(_simulation.miners.pace, _simulation.miners.all_dry())
 	_game_over.visible = false
 	_capacity.visible = false
@@ -131,6 +133,9 @@ func _ready() -> void:
 	_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_bar.offset_top = -BAR_HEIGHT
 	ui.add_child(_bar)
+	# Outside the bar's container, so it isn't laid out with its panels; it follows the bar's top.
+	_alert_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(_alert_strip)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.add_child(_status_panel())
@@ -190,7 +195,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
-# Gold, Base HP, Wave, Enemies left, Kills, Mining and Aether as a two-column table.
+# Gold, Base HP, Threat, Enemies left (or Alert), Kills, Mining and Aether as a two-column table.
 func _status_panel() -> PanelContainer:
 	var status := _panel()
 	# Wide enough for six-digit values, so the details don't shift as Gold grows.
@@ -202,15 +207,19 @@ func _status_panel() -> PanelContainer:
 	var rows := [
 		["Gold", _gold, 18, GOLD_COLOUR],
 		["Base HP", _base_hp, 18, BASE_COLOUR],
-		["Wave", _wave, 15, Color.WHITE],
-		["Enemies left", _enemies_left, 15, Color.WHITE],
+		["Threat", _threat, 15, Color.WHITE],
+		["Alert", _enemies_left, 15, Color.WHITE],
 		["Kills", _kills, 15, Color.WHITE],
 		["Mining", _mining, 15, GOLD_COLOUR],
 		["Aether", _aether, 15, AETHER_COLOUR],
 		["Capacity", _capacity, 15, Color.WHITE],
 	]
 	for entry: Array in rows:
-		var name_label := _capacity_name if entry[1] == _capacity else Label.new()
+		var name_label := Label.new()
+		if entry[1] == _capacity:
+			name_label = _capacity_name
+		elif entry[1] == _enemies_left:
+			name_label = _enemies_left_name
 		name_label.text = entry[0]
 		name_label.add_theme_font_size_override("font_size", 15)
 		name_label.add_theme_color_override("font_color", NAME_COLOUR)
@@ -315,9 +324,8 @@ func _details_panel() -> PanelContainer:
 	return details
 
 
-# Square build buttons with cost and hotkey, then Next wave, and the pace switch in a row
-# beneath. With soldiers selected, the build buttons give way to Stop, targeting and Formation on
-# the top row.
+# Square build buttons with cost and hotkey, and the pace switch in a row beneath. With soldiers
+# selected, the build buttons give way to Stop, targeting and Formation on the top row.
 func _command_card() -> PanelContainer:
 	var card := _panel()
 	var column := VBoxContainer.new()
@@ -347,11 +355,6 @@ func _command_card() -> PanelContainer:
 		button.pressed.connect(build_requested.emit.bind(kind))
 		_build_buttons[kind] = button
 		commands.add_child(button)
-	_next_wave.text = "Next\nwave"
-	_next_wave.focus_mode = Control.FOCUS_NONE
-	_next_wave.custom_minimum_size = COMMAND_SIZE
-	_next_wave.pressed.connect(func() -> void: _send(Commands.NextWave.new()))
-	commands.add_child(_next_wave)
 	column.add_child(commands)
 	column.add_child(_pace_switch())
 	card.add_child(column)
@@ -412,17 +415,43 @@ func _show_build_buttons() -> void:
 	button.tooltip_text = _sentence(Buildings.BARRACKS_LIMIT) if button.disabled else ""
 
 
-# In the build phase, the next wave's size and each special type it brings, like
-# "120 enemies · 3 bloaters · 1 brute".
-func _show_enemies_left(left: int, specials: Dictionary) -> void:
-	if _simulation.waves.phase == Waves.Phase.WAVE:
-		_enemies_left.text = str(left)
+# Threat to one decimal; then during a wave Enemies left against the wave's size, like
+# "143 / 214", and in the quiet the alert's fill, like "62% · wave coming".
+func _show_waves() -> void:
+	var waves := _simulation.waves
+	_threat.text = "%.1f" % _simulation.threat.value
+	_alert_strip.position = _bar.position
+	_alert_strip.size = Vector2(_bar.size.x, AlertStrip.HEIGHT)
+	_alert_strip.warn_at = _simulation.settings.alert_warn_at
+	_alert_strip.in_wave = waves.phase == Waves.Phase.WAVE
+	if _alert_strip.in_wave:
+		# Full as the wave starts, draining to empty as its last enemy dies.
+		_alert_strip.fill = float(waves.enemies_left) / maxi(1, waves.open_size)
+		_enemies_left_name.text = "Enemies left"
+		_enemies_left.text = "%d / %d" % [waves.enemies_left, waves.open_size]
 		return
-	_enemies_left.text = "%d enemies" % left
+	_alert_strip.fill = waves.alert
+	_enemies_left_name.text = "Alert"
+	_enemies_left.text = "%d%%" % floori(waves.alert * 100.0)
+	if not waves.next_edges.is_empty():
+		_enemies_left.text += " · wave coming"
+	elif waves.fill_factor(_simulation.miners.pace, _simulation.miners.all_dry()) == 0.0:
+		_enemies_left.text += " · not filling"
+
+
+func _show_wave_coming(edges: PackedStringArray) -> void:
+	_show_toast("wave coming from %s" % ", ".join(edges))
+
+
+# The wave's size, each special type it brings and its edges, like
+# "214 enemies · 3 bloaters · 6 jumpers · from N, E".
+func _show_wave_started(edges: PackedStringArray, size: int, specials: Dictionary) -> void:
+	var text := "%d enemies" % size
 	for kind: String in ["bloaters", "jumpers", "brutes"]:
 		var count: int = specials.get(kind, 0)
 		if count > 0:
-			_enemies_left.text += " · %d %s" % [count, kind if count > 1 else kind.trim_suffix("s")]
+			text += " · %d %s" % [count, kind if count > 1 else kind.trim_suffix("s")]
+	_show_toast("%s · from %s" % [text, ", ".join(edges)])
 
 
 func _show_kills(kills: int) -> void:
@@ -452,11 +481,7 @@ func _show_base_hp(hp: float) -> void:
 func _process(_delta: float) -> void:
 	if _simulation == null:
 		return
-	_next_wave.disabled = (
-		_simulation.waves.phase == Waves.Phase.WAVE
-		or _simulation.is_decay_rebuild_in_flight()
-		or _simulation.run_state.is_game_over
-	)
+	_show_waves()
 	_show_capacity()
 	_show_mining()
 	_show_command_card()
@@ -464,7 +489,7 @@ func _process(_delta: float) -> void:
 	_paused.visible = _simulation.paused
 
 
-# The soldier card while soldiers are selected, else the build menu; Next wave stays put.
+# The soldier card while soldiers are selected, else the build menu.
 func _show_command_card() -> void:
 	var soldiers := _soldiers.has_selection()
 	for control in _soldier_commands:
@@ -574,13 +599,8 @@ func _show_barracks_controls() -> void:
 		_slot_buttons[slot].disabled = slot >= queued
 
 
-func _show_phase(_phase: Waves.Phase) -> void:
-	_wave.text = str(_simulation.run_state.wave)
-	_show_enemies_left(_simulation.enemies_left, _simulation.next_wave_specials)
-
-
 func _show_game_over() -> void:
-	_reached.text = "Reached wave %d" % _simulation.run_state.wave
+	_reached.text = "Reached threat %.1f" % _simulation.threat.value
 	_run_kills.text = "Kills %d" % _simulation.run_state.kills
 	_game_over.visible = true
 

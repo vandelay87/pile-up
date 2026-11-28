@@ -3,10 +3,10 @@
 # against its performance target (v4 spec, section 5).
 # Cases, chosen by a user arg:
 #   --case=dense-1000  1,000 dense enemies from BenchCrowd: tick p99 ≤ 12 ms, frame p99 ≤ 16.7 ms
-#   --case=dense-1390  the wave-20 crowd, dense: frame mean ≤ 16.7 ms
-#   --case=wave-20     a real wave 20 against BenchCrowd's towers and endless base, jumped to once
-#                      warm-up ends: no tick over 16.7 ms, for up to 7,200 ticks or until the wave
-#                      ends
+#   --case=dense-1390  a 1,390 crowd (v5's wave 20), dense: frame mean ≤ 16.7 ms
+#   --case=wave-1000   a real wave of about 1,000 against BenchCrowd's towers and endless base, sent
+#                      at threat WAVE_THREAT and High with the roll off once warm-up ends: no tick
+#                      over 16.7 ms, for up to 7,200 ticks or until the wave ends
 # With --army, BenchCrowd's army stands in and around the crowd's ring and a group of its soldiers
 # is sent across the ring through the crowd every BenchCrowd.ORDER_INTERVAL ticks, alternating
 # Cluster and Line, so the unit steps' cost shows.
@@ -18,11 +18,12 @@ const MAIN_SCENE := preload("res://src/view/main.tscn")
 const CROWD_SEED := 1
 const WARMUP_FRAMES := 240
 const DENSE_TICKS := 1800
-const WAVE := 20
+# At High (×1.4) with the roll off, threat 17 sizes a wave of 995.
+const WAVE_THREAT := 17.0
 const WAVE_TICKS := 7200
 const FRAME_BUDGET_MSEC := 1000.0 / 60.0
 const DENSE_TICK_P99_MSEC := 12.0
-const CASES: Array[String] = ["dense-1000", "dense-1390", "wave-20"]
+const CASES: Array[String] = ["dense-1000", "dense-1390", "wave-1000"]
 
 var _main: Main
 var _sim: Simulation
@@ -58,7 +59,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_crowd = BenchCrowd.new(_sim, CROWD_SEED)
-	if _case != "wave-20":
+	if _case != "wave-1000":
 		_dense_count = int(_case.trim_prefix("dense-"))
 	if _army:
 		_crowd.field_army()
@@ -102,12 +103,16 @@ func _process(_delta: float) -> void:
 	if _frame == WARMUP_FRAMES:
 		_measuring = true
 		if _dense_count == 0:
-			_sim.jump_to_wave(WAVE)
+			_sim.settings.change("waves", "size_roll", 0)
+			_sim.queue_command(Commands.JumpToThreat.new(WAVE_THREAT))
+			_sim.queue_command(Commands.SetPace.new(Miners.Pace.HIGH))
+			_sim.queue_command(Commands.SendWave.new())
 
 
 func _done() -> bool:
 	if _dense_count > 0:
 		return _ticks >= DENSE_TICKS
+	# The wave is sent at the first measured tick's drain, so it is open from its first check.
 	return _ticks >= WAVE_TICKS or _sim.waves.phase != Waves.Phase.WAVE
 
 

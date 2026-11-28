@@ -21,8 +21,8 @@
 	"bloaters": {
 		"hp": 30,
 		"speed": 1.6,
-		"first_wave": 5,
-		"waves_per_step": 6,
+		"first_threat": 5,
+		"threat_per_step": 6,
 		"miss_chance": 25,
 		"extra_chance": 10,
 		"size": 1.5,
@@ -36,7 +36,7 @@
 		"cooldown": 4,
 		"crouch": 0.25,
 		"air_time": 0.8,
-		"first_wave": 8,
+		"first_threat": 8,
 		"share": 5,
 		"cap": 0
 	},
@@ -46,8 +46,8 @@
 		"mass": 3,
 		"structure_damage_factor": 5,
 		"size": 1.8,
-		"first_wave": 12,
-		"waves_per_step": 6,
+		"first_threat": 12,
+		"threat_per_step": 6,
 		"miss_chance": 25,
 		"extra_chance": 10
 	},
@@ -93,18 +93,42 @@
 	"waves": {
 		"wave_1_size": 20,
 		"growth": 1.25,
-		"hp_growth": 1.05,
+		"hp_growth": 1,
 		"spawn_rate": 10,
-		"second_edge_chance": 50,
 		"spawn_rate_growth": 1.1,
 		"burst_size": 16,
 		"burst_growth": 1.05,
 		"burst_width": 6,
 		"scatter_share_start": 90,
 		"scatter_share_end": 10,
-		"scatter_share_end_wave": 12,
+		"scatter_share_end_threat": 12,
 		"wave_tail": 10,
-		"wave_tail_per_wave": 2
+		"wave_tail_per_threat": 2,
+		"size_low": 0.7,
+		"size_medium": 1,
+		"size_high": 1.4,
+		"dry_size": 1,
+		"size_roll": 15,
+		"two_edges_threat": 6,
+		"three_edges_threat": 10,
+		"four_edges_threat": 15
+	},
+	"alert": {
+		"fill_seconds": 60,
+		"fill_low": 0.6,
+		"fill_medium": 0.8,
+		"fill_high": 1,
+		"dry_fill": 0.8,
+		"warn_at": 75
+	},
+	"trickle": {
+		"interval": 2.5,
+		"growth": 1.05
+	},
+	"threat": {
+		"start": 1,
+		"seconds_per_point": 1000,
+		"minerals_per_point": 360
 	},
 	"towers": {
 		"damage": 5,

@@ -213,14 +213,21 @@ func _add_cheats() -> void:
 	var add_gold := Button.new()
 	add_gold.text = "Add gold"
 	add_gold.pressed.connect(func() -> void: _send(Commands.AddGold.new(roundi(gold.value))))
-	var wave := _number_field(1, 99, 1, 1)
-	var jump := Button.new()
-	jump.text = "Jump to wave"
-	jump.pressed.connect(func() -> void: _send(Commands.JumpToWave.new(roundi(wave.value))))
 	var row := HBoxContainer.new()
-	for control: Control in [gold, add_gold, wave, jump]:
+	for control: Control in [gold, add_gold]:
 		row.add_child(control)
 	_box.add_child(row)
+	var threat := _number_field(1, 99, 0.1, 1)
+	var jump := Button.new()
+	jump.text = "Jump to threat"
+	jump.pressed.connect(func() -> void: _send(Commands.JumpToThreat.new(threat.value)))
+	var send_wave := Button.new()
+	send_wave.text = "Send wave"
+	send_wave.pressed.connect(func() -> void: _send(Commands.SendWave.new()))
+	var wave_row := HBoxContainer.new()
+	for control: Control in [threat, jump, send_wave]:
+		wave_row.add_child(control)
+	_box.add_child(wave_row)
 	var victims := _number_field(1, 10000, 1, 10)
 	var kill := Button.new()
 	kill.text = "Kill enemies"

@@ -105,7 +105,7 @@ func _build(kind: StringName, origin: Vector2i, threshold := 100) -> Buildings.B
 
 
 func _start_wave() -> void:
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 
 

@@ -9,10 +9,9 @@ func before_test() -> void:
 	_run = RunState.new(_settings)
 
 
-func test_a_run_starts_with_200_base_hp_and_300_gold_at_wave_0() -> void:
+func test_a_run_starts_with_200_base_hp_and_300_gold() -> void:
 	assert_float(_run.base_hp).is_equal(200.0)
 	assert_int(_run.gold).is_equal(300)
-	assert_int(_run.wave).is_equal(0)
 	assert_bool(_run.is_game_over).is_false()
 
 
@@ -66,7 +65,7 @@ func test_a_kill_in_a_tick_counts_pays_nothing_and_reports_the_kills() -> void:
 	var kills: Array[int] = []
 	sim.gold_changed.connect(func(amount: int) -> void: gold.append(amount))
 	sim.kills_changed.connect(func(count: int) -> void: kills.append(count))
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	sim.tick()
 
 	sim.enemies.damage(sim.enemies.ids[0], 100.0, Enemies.NONE)
@@ -79,7 +78,7 @@ func test_a_kill_in_a_tick_counts_pays_nothing_and_reports_the_kills() -> void:
 
 func test_the_next_run_is_a_fresh_simulation_with_pending_restart_settings() -> void:
 	var sim := _sim(_settings)
-	sim.queue_command(Commands.NextWave.new())
+	sim.queue_command(Commands.SendWave.new())
 	sim.queue_command(Commands.SetSetting.new("run", "starting_gold", 500))
 	for tick in 30:
 		sim.tick()
@@ -89,8 +88,9 @@ func test_the_next_run_is_a_fresh_simulation_with_pending_restart_settings() -> 
 	assert_object(next).is_not_same(sim)
 	assert_object(next.map).is_same(sim.map)
 	assert_int(next.run_state.gold).is_equal(500)
-	assert_int(next.run_state.wave).is_equal(0)
-	assert_int(next.waves.phase).is_equal(Waves.Phase.BUILD)
+	assert_float(next.threat.value).is_equal(1.0)
+	assert_int(next.waves.started).is_equal(0)
+	assert_int(next.waves.phase).is_equal(Waves.Phase.QUIET)
 	assert_int(next.enemies.count).is_equal(0)
 
 

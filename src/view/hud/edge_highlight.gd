@@ -15,12 +15,18 @@ func setup(map: MapData) -> void:
 	_map = map
 
 
-func announce(edges: PackedStringArray) -> void:
+## The next wave's edges from the alert's warning: lit until the wave starts.
+func warn(edges: PackedStringArray) -> void:
 	_edges = edges
 	queue_redraw()
 	if _tween != null:
 		_tween.kill()
 	modulate.a = 1.0
+
+
+## A wave starting from [param edges]: lit, then faded.
+func announce(edges: PackedStringArray, _size := 0, _specials := {}) -> void:
+	warn(edges)
 	_tween = create_tween()
 	_tween.tween_interval(HOLD_SECONDS)
 	_tween.tween_property(self, "modulate:a", 0.0, FADE_SECONDS)

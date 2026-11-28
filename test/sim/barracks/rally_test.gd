@@ -1,8 +1,7 @@
 extends GdUnitTestSuite
 
 ## A 16×12 open field with a 2×2 base at (2, 8) and a rock at (12, 3). The barracks at (6, 6)
-## trains in the build phase, so a Train puts its soldier beside it at once: on (5, 8), the ring
-## cell nearest the base's centre.
+## puts each soldier it trains beside it: on (5, 8), the ring cell nearest the base's centre.
 
 var _sim: Simulation
 var _rejections: Array[String]
@@ -30,8 +29,7 @@ func before_test() -> void:
 
 func test_a_new_soldier_walks_to_its_barracks_rally_point() -> void:
 	_sim.queue_command(Commands.SetRallyPoint.new(_barracks.id, Vector2i(11, 2)))
-	_sim.queue_command(Commands.Train.new(_barracks.id, 1))
-	_sim.tick()
+	_train(1)
 
 	_run_until_standing()
 
@@ -41,10 +39,7 @@ func test_a_new_soldier_walks_to_its_barracks_rally_point() -> void:
 
 func test_new_soldiers_gather_round_the_rally_point_on_the_free_cells_nearest_it() -> void:
 	_sim.queue_command(Commands.SetRallyPoint.new(_barracks.id, Vector2i(11, 2)))
-	_sim.queue_command(Commands.Train.new(_barracks.id, 1))
-	_sim.queue_command(Commands.Train.new(_barracks.id, 1))
-	_sim.queue_command(Commands.Train.new(_barracks.id, 1))
-	_sim.tick()
+	_train(3)
 
 	_run_until_standing()
 
@@ -66,8 +61,7 @@ func test_a_rally_point_on_rock_moves_to_the_nearest_cell_a_soldier_can_stand_on
 func test_without_a_rally_point_a_new_soldier_stands_where_it_appears() -> void:
 	_sim.queue_command(Commands.SetRallyPoint.new(_barracks.id, Vector2i(11, 2)))
 	_sim.queue_command(Commands.ClearRallyPoint.new(_barracks.id))
-	_sim.queue_command(Commands.Train.new(_barracks.id, 1))
-	_sim.tick()
+	_train(1)
 	_sim.tick()
 
 	assert_int(_sim.soldiers.orders[0]).is_equal(Soldiers.NONE)
@@ -93,6 +87,15 @@ func test_setting_a_rally_point_reports_the_barracks_changed() -> void:
 	_sim.tick()
 
 	assert_array(changed).contains_exactly([_barracks.id])
+
+
+# Queues [param count] soldiers one by one and ticks until the last has been trained.
+func _train(count: int) -> void:
+	for n in count:
+		_sim.queue_command(Commands.Train.new(_barracks.id, 1))
+	_sim.tick()
+	while not _sim.barracks.queue_of(_barracks.id).is_empty():
+		_sim.tick()
 
 
 func _run_until_standing() -> void:

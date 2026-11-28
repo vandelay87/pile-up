@@ -47,24 +47,14 @@ func test_a_body_from_the_last_kill_lands_before_the_wave_decay() -> void:
 	assert_int(_sim.piles.level(Vector2i(6, 6))).is_equal(0)
 
 
-func test_next_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> void:
+func test_send_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> void:
 	_play_wave()
 
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 
-	assert_int(_sim.run_state.wave).is_equal(1)
-	assert_array(_events).contains(["next wave: the fields are still rebuilding after decay"])
-
-
-func test_jump_to_wave_is_rejected_while_the_decay_rebuild_is_in_flight() -> void:
-	_play_wave()
-
-	_sim.queue_command(Commands.JumpToWave.new(5))
-	_sim.tick()
-
-	assert_int(_sim.run_state.wave).is_equal(1)
-	assert_array(_events).contains(["jump to wave: the fields are still rebuilding after decay"])
+	assert_int(_sim.waves.started).is_equal(1)
+	assert_array(_events).contains(["send wave: the fields are still rebuilding after decay"])
 
 
 func test_the_rebuild_swaps_in_at_a_fixed_tick_however_soon_the_worker_finishes() -> void:
@@ -85,9 +75,9 @@ func test_the_rebuild_swaps_in_at_a_fixed_tick_however_soon_the_worker_finishes(
 	assert_array(swapped).contains_exactly([true])
 	assert_bool(_sim.routing.is_rebuilding()).is_false()
 	assert_array(_events).contains(["fields changed"])
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
-	assert_int(_sim.run_state.wave).is_equal(2)
+	assert_int(_sim.waves.started).is_equal(2)
 
 
 func test_a_tower_built_during_the_rebuild_restarts_it_and_is_in_the_swapped_in_fields() -> void:
@@ -107,10 +97,10 @@ func test_a_tower_built_during_the_rebuild_restarts_it_and_is_in_the_swapped_in_
 
 
 func _play_wave() -> void:
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	for tick in WAVE_TICKS:
 		_sim.tick()
-		if _sim.waves.phase == Waves.Phase.BUILD:
+		if _sim.waves.phase == Waves.Phase.QUIET:
 			return
 		_sim.queue_command(Commands.KillEnemies.new(1000))
 	fail("the wave did not end within %d ticks" % WAVE_TICKS)

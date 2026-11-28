@@ -45,7 +45,7 @@ func test_speed_n_runs_n_ticks_per_frame() -> void:
 
 func test_a_seed_and_recorded_commands_replay_to_an_identical_state() -> void:
 	var frames := {
-		0: [Commands.NextWave.new(), Commands.Build.new(Buildings.TOWER, Vector2i(3, 3))],
+		0: [Commands.SendWave.new(), Commands.Build.new(Buildings.TOWER, Vector2i(3, 3))],
 		5: [Commands.SetSetting.new("enemies", "speed", 3.0), Commands.SetSpeed.new(4)],
 		10: [Commands.SetPaused.new(true)],
 		12:
@@ -98,7 +98,7 @@ func test_commands_drained_while_paused_replay_to_an_identical_state() -> void:
 		recorded.append([live.tick_count, command])
 		live.queue_command(command)
 	queue.call(Commands.AddSoldiers.new(4))
-	queue.call(Commands.NextWave.new())
+	queue.call(Commands.SendWave.new())
 	for frame in 10:
 		live.run_frame()
 	queue.call(Commands.SetPaused.new(true))
@@ -197,7 +197,7 @@ func test_while_paused_a_train_applies_without_a_tick_running() -> void:
 	_sim.run_frame()
 
 	assert_int(_sim.tick_count).is_equal(paused_at)
-	assert_int(_sim.soldiers.count).is_equal(1)
+	assert_int(_sim.barracks.queue_of(_sim.buildings.built[0].id).size()).is_equal(1)
 
 
 func test_while_paused_a_setting_change_applies_without_a_tick_running() -> void:

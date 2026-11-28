@@ -32,6 +32,8 @@ var ids := PackedInt32Array()
 var positions := PackedVector2Array()
 var hp := PackedFloat32Array()
 var kinds := PackedByteArray()
+## Each enemy's wave index, or [constant Waves.NO_WAVE] for the trickle's and debug spawns.
+var waves := PackedInt32Array()
 # The building or soldier that last damaged each enemy, or NONE: the killer if it dies.
 var last_hitters := PackedInt32Array()
 var heading_offsets := PackedFloat32Array()
@@ -121,7 +123,7 @@ func _init(
 	_bucket_starts.resize(_map.width * _map.height + 1)
 
 
-func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
+func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL, wave := Waves.NO_WAVE) -> int:
 	if count == ids.size():
 		_grow()
 	var id := _next_id
@@ -130,6 +132,7 @@ func spawn(pos: Vector2, start_hp: float, kind := Kind.NORMAL) -> int:
 	positions[count] = pos
 	hp[count] = start_hp
 	kinds[count] = kind
+	waves[count] = wave
 	last_hitters[count] = NONE
 	heading_offsets[count] = _rng.randf_range(-1.0, 1.0) * _settings.heading_offset_radians
 	structure_targets[count] = NONE
@@ -341,10 +344,11 @@ func rebuild_spatial_hash() -> void:
 		next_slot[cell] += 1
 
 
-# In the wave tail, sensible-route enemies that a sensible field change turns back push
-# through on the direct route instead. Progress is tracked for enemies on cells marked 1 in
+# Sensible-route enemies in the wave tail (their wave marked 1 in [param wave_tail], as
+# [method Waves.tail_mask] gives it) that a sensible field change turns back push through on the
+# direct route instead. Progress is tracked for enemies on cells marked 1 in
 # [param band_mask].
-func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
+func move(wave_tail := PackedByteArray(), band_mask := PackedByteArray()) -> void:
 	var sensible_before := _routing.take_sensible_before()
 	if count == 0:
 		return
@@ -371,8 +375,8 @@ func move(in_wave_tail := false, band_mask := PackedByteArray()) -> void:
 	var space_push := _settings.personal_space_push
 	var spreads := space_radius > 2.0 * radius and space_push > 0.0
 	_ticks += 1
-	if in_wave_tail and sensible_before != null:
-		_push_through_turned_back(sensible_before, direct_parents)
+	if not wave_tail.is_empty() and sensible_before != null:
+		_push_through_turned_back(sensible_before, direct_parents, wave_tail)
 	# Only a debug kill as commands drain leaves an enemy dead before REMOVE_DEAD; it stands
 	# still and attacks nothing, as if it had died before moving. Lifted enemies are moved by others.
 	var fuse_ticks := _settings.fuse_ticks
@@ -561,12 +565,12 @@ func _roll_route(
 # turn-back angle takes the direct route, locked in on the first obstacle down the direct
 # field's chain as with a roll.
 func _push_through_turned_back(
-	sensible_before: Routing.Field, direct_parents: PackedInt32Array
+	sensible_before: Routing.Field, direct_parents: PackedInt32Array, wave_tail: PackedByteArray
 ) -> void:
 	var turn_back := _settings.turn_back_radians
 	var whole_chain := _map.width * _map.height
 	for i in count:
-		if routes[i] != Routing.Route.SENSIBLE or lifted[i] == 1:
+		if routes[i] != Routing.Route.SENSIBLE or lifted[i] == 1 or wave_tail[waves[i] + 1] == 0:
 			continue
 		var pos := positions[i]
 		var before := _routing.sample_field_direction(sensible_before, pos)
@@ -766,7 +770,7 @@ func remove_dead() -> Deaths:
 	var i := 0
 	while i < count:
 		if hp[i] <= 0.0:
-			deaths.add(ids[i], positions[i], kinds[i] as Kind, last_hitters[i])
+			deaths.add(ids[i], positions[i], kinds[i] as Kind, last_hitters[i], false, waves[i])
 			_swap_remove(i)
 		else:
 			i += 1
@@ -786,6 +790,7 @@ func _swap_remove(index: int) -> void:
 	positions[index] = positions[count]
 	hp[index] = hp[count]
 	kinds[index] = kinds[count]
+	waves[index] = waves[count]
 	last_hitters[index] = last_hitters[count]
 	heading_offsets[index] = heading_offsets[count]
 	structure_targets[index] = structure_targets[count]
@@ -810,6 +815,7 @@ func _grow() -> void:
 	positions.resize(capacity)
 	hp.resize(capacity)
 	kinds.resize(capacity)
+	waves.resize(capacity)
 	last_hitters.resize(capacity)
 	heading_offsets.resize(capacity)
 	structure_targets.resize(capacity)

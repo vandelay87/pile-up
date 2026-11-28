@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 
 ## A 48×48 open field with a 4×4 base at (12, 12): the base's grid is cells 2..25 on both axes.
-## A wave of one slow enemy from the east edge keeps the wave running without reaching anything.
+## Drones work whenever their yard is powered, in the quiet as in a wave. A wave is one slow
+## enemy from the east edge, which reaches nothing.
 ## The yard at (18, 12) has its centre at (19, 13); its repair area is cells 10..27 on x and 4..21
 ## on y. Drones fly 8 cells/s (8/60 a tick) and repair 5 HP/s (1/12 a tick).
 
@@ -85,15 +86,16 @@ func test_it_never_repairs_its_own_yard_walls_or_the_base() -> void:
 	assert_float(drone.repaired).is_equal(0.0)
 
 
-func test_it_does_not_repair_outside_a_wave() -> void:
+func test_it_repairs_in_the_quiet() -> void:
 	var yard := _build(Buildings.REPAIR_YARD, YARD)
 	var tower := _build(Buildings.TOWER, TOWER)
 
 	_sim.buildings.damage(tower.id, 10.0)
-	_run(120)
+	_run(90)
 
-	assert_int(_sim.repair_yards.drone(yard.id).state).is_equal(RepairYards.State.HOME)
-	assert_float(tower.hp).is_equal(50.0)
+	assert_int(_sim.waves.phase).is_equal(Waves.Phase.QUIET)
+	assert_int(_sim.repair_yards.drone(yard.id).state).is_equal(RepairYards.State.REPAIRING)
+	assert_float(tower.hp).is_greater(50.0)
 
 
 func test_two_yards_drones_spread_over_two_damaged_towers() -> void:
@@ -258,7 +260,7 @@ func test_losing_power_sends_it_home_and_it_stops() -> void:
 	assert_float(tower.hp).is_equal(50.0)
 
 
-func test_the_wave_ending_sends_it_home_and_it_stops() -> void:
+func test_the_wave_ending_doesnt_send_it_home() -> void:
 	var yard := _build(Buildings.REPAIR_YARD, YARD)
 	var tower := _build(Buildings.TOWER, TOWER)
 	_start_wave()
@@ -269,14 +271,12 @@ func test_the_wave_ending_sends_it_home_and_it_stops() -> void:
 
 	_sim.queue_command(Commands.KillEnemies.new(1))
 	_sim.tick()
-	assert_int(_sim.waves.phase).is_equal(Waves.Phase.BUILD)
+	assert_int(_sim.waves.phase).is_equal(Waves.Phase.QUIET)
 	var hp := tower.hp
 	_sim.tick()
-	assert_int(drone.state).is_equal(RepairYards.State.RETURNING)
-	_run(120)
 
-	assert_int(drone.state).is_equal(RepairYards.State.HOME)
-	assert_float(tower.hp).is_equal(hp)
+	assert_int(drone.state).is_equal(RepairYards.State.REPAIRING)
+	assert_float(tower.hp).is_greater(hp)
 
 
 func test_a_destroyed_yards_drone_is_gone() -> void:
@@ -344,7 +344,7 @@ func _build(kind: StringName, origin: Vector2i, threshold := 100) -> Buildings.B
 
 
 func _start_wave() -> void:
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 
 

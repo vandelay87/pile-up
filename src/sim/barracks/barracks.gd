@@ -152,9 +152,8 @@ func train_error(barracks_id: int, count := 1) -> String:
 
 
 ## Queues [param count] soldiers (1 or [constant BATCH]) at a barracks, as many as its queue,
-## capacity and gold allow, paying for each; returns why none could be queued, or "". With
-## [param instant] (the build phase) the queue trains at once.
-func train(barracks_id: int, count: int, instant: bool) -> String:
+## capacity and gold allow, paying for each; returns why none could be queued, or "".
+func train(barracks_id: int, count: int) -> String:
 	var error := train_error(barracks_id, count)
 	if not error.is_empty():
 		return error
@@ -167,8 +166,6 @@ func train(barracks_id: int, count: int, instant: bool) -> String:
 		_run_state.spend(cost)
 		trainer.paid.append(cost)
 	_mark_changed(trainer)
-	if instant:
-		_finish(trainer)
 	return ""
 
 
@@ -187,12 +184,10 @@ func cancel(barracks_id: int, slot: int) -> String:
 	return ""
 
 
-## At [constant Simulation.Step.MINE_AND_SPAWN] during a wave, each barracks with a queue trains
+## At [constant Simulation.Step.MINE_AND_SPAWN], at any time, each barracks with a queue trains
 ## its head one tick while it is working, in build order (unpowered or under repair, its
 ## timer holds); a head trained for [member Settings.training_ticks] appears beside it.
-func step(in_wave: bool) -> void:
-	if not in_wave:
-		return
+func step() -> void:
 	for trainer in _trainers:
 		if trainer.paid.is_empty() or not _buildings.is_working(trainer.barracks_id):
 			continue
@@ -215,24 +210,11 @@ func remove(barracks_id: int) -> void:
 	_mark_changed(trainer)
 
 
-## At wave end, every barracks' queue trains at once, in build order.
-func finish_queues() -> void:
-	for trainer in _trainers:
-		_finish(trainer)
-
-
 ## The barracks whose queue or head changed since the last call, each once, in order of change.
 func take_changed() -> Array[int]:
 	var taken := _changed
 	_changed = []
 	return taken
-
-
-# Trains every soldier in a queue at once, head first, as long as a free cell is found.
-func _finish(trainer: Trainer) -> void:
-	while not trainer.paid.is_empty() and _release_head(trainer):
-		pass
-	trainer.progress = 0
 
 
 # Puts the head on the free cell beside its barracks the new-soldier rule picks and takes it off

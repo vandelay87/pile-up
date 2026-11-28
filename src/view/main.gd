@@ -100,6 +100,7 @@ func _record_session() -> void:
 func _start_run(simulation: Simulation) -> void:
 	_simulation = simulation
 	_simulation.restart_requested.connect(_restart, CONNECT_DEFERRED)
+	_simulation.wave_coming.connect(_edge_highlight.warn)
 	_simulation.wave_started.connect(_edge_highlight.announce)
 	_simulation.fields_changed.connect(_flow_overlay.queue_redraw)
 	_pile_layer.setup(_simulation)

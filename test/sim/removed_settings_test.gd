@@ -1,13 +1,22 @@
 extends GdUnitTestSuite
 
-# v6 removed the bounties and the combo group: a defaults file that still has them is rejected.
+# v6 removed the bounties, the combo group, the second-edge chance and the wave-numbered keys: a
+# defaults file that still has them is rejected.
 
 
-func test_the_removed_bounty_and_combo_settings_are_rejected() -> void:
+func test_the_removed_and_renamed_settings_are_rejected() -> void:
 	var removed := [
 		["enemies", "bounty", 1],
 		["bloaters", "bounty", 2],
 		["brutes", "bounty", 4],
+		["waves", "second_edge_chance", 50],
+		["waves", "scatter_share_end_wave", 12],
+		["waves", "wave_tail_per_wave", 2],
+		["bloaters", "first_wave", 5],
+		["bloaters", "waves_per_step", 6],
+		["jumpers", "first_wave", 8],
+		["brutes", "first_wave", 12],
+		["brutes", "waves_per_step", 6],
 	]
 	for row: Array in removed:
 		var data: Dictionary = JSON.parse_string(

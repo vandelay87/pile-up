@@ -250,7 +250,7 @@ func test_soldiers_recover_to_full_hp_at_wave_end_and_not_before() -> void:
 	var map := TestMaps.from_rows(rows, Rect2i(0, 3, 2, 2), ["E"])
 	_sim = Simulation.new(Settings.load_file(Settings.DEFAULTS_PATH).settings, map)
 	var id := _sim.soldiers.add(Vector2i(6, 1))
-	_sim.queue_command(Commands.NextWave.new())
+	_sim.queue_command(Commands.SendWave.new())
 	_sim.tick()
 	_sim.soldiers.damage(id, 20.0)
 
