@@ -422,12 +422,15 @@ func _show_waves() -> void:
 	_threat.text = "%.1f" % _simulation.threat.value
 	_alert_strip.position = _bar.position
 	_alert_strip.size = Vector2(_bar.size.x, AlertStrip.HEIGHT)
-	_alert_strip.fill = waves.alert
 	_alert_strip.warn_at = _simulation.settings.alert_warn_at
-	if waves.phase == Waves.Phase.WAVE:
+	_alert_strip.in_wave = waves.phase == Waves.Phase.WAVE
+	if _alert_strip.in_wave:
+		# Full as the wave starts, draining to empty as its last enemy dies.
+		_alert_strip.fill = float(waves.enemies_left) / maxi(1, waves.open_size)
 		_enemies_left_name.text = "Enemies left"
 		_enemies_left.text = "%d / %d" % [waves.enemies_left, waves.open_size]
 		return
+	_alert_strip.fill = waves.alert
 	_enemies_left_name.text = "Alert"
 	_enemies_left.text = "%d%%" % floori(waves.alert * 100.0)
 	if not waves.next_edges.is_empty():
