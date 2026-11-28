@@ -217,7 +217,6 @@ func take_changed() -> Array[int]:
 	return taken
 
 
-# Trains every soldier in a queue at once, head first, as long as a free cell is found.
 # Puts the head on the free cell beside its barracks the new-soldier rule picks and takes it off
 # the queue; false, leaving it queued, when no free cell can be reached.
 func _release_head(trainer: Trainer) -> bool:

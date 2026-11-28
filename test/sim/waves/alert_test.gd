@@ -138,6 +138,9 @@ func test_send_wave_starts_a_wave_this_tick_picking_its_edges() -> void:
 	assert_int(_sim.waves.phase).is_equal(Waves.Phase.WAVE)
 	assert_float(_sim.waves.alert).is_equal(0.0)
 	assert_int(_sim.enemies.count).is_greater(0)
+	# Its edges are picked as it starts: no warning comes first.
+	assert_int(_events.size()).is_equal(2)
+	assert_str(_events[1]).starts_with("wave ")
 
 
 func _make_sim(base_deposit: Vector2i) -> Simulation:

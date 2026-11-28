@@ -23,6 +23,12 @@ const SPECIAL_KINDS := {
 	"jumpers": Enemies.Kind.JUMPER,
 	"brutes": Enemies.Kind.BRUTE,
 }
+# Each pace above Off's suffix in the alert's fill_ and the waves' size_ settings.
+const PACE_KEYS := {
+	Miners.Pace.LOW: "low",
+	Miners.Pace.MEDIUM: "medium",
+	Miners.Pace.HIGH: "high",
+}
 # Float slack for the alert reaching a mark and the trickle's budget reaching a whole enemy.
 const _SLACK := 1e-9
 
@@ -110,11 +116,12 @@ func _init(
 func step(pace: Miners.Pace, threat: Threat, dry: bool) -> void:
 	if phase == Phase.QUIET and not _map.spawn_edges.is_empty():
 		alert = minf(1.0, alert + _settings.alert_fill_per_tick * fill_factor(pace, dry))
-		if alert >= _settings.alert_warn_at - _SLACK and next_edges.is_empty():
-			next_edges = _pick_edges(threat.whole())
-			_coming = true
+		# A full alert starts the wave, which picks its edges if the warning hadn't.
 		if alert >= 1.0 - _SLACK:
 			_start(threat, size_factor(pace, dry))
+		elif alert >= _settings.alert_warn_at - _SLACK and next_edges.is_empty():
+			next_edges = _pick_edges(threat.whole())
+			_coming = true
 	for wave in _open:
 		_spawn(wave)
 	_trickle(threat.value)
@@ -136,28 +143,17 @@ func send_wave() -> String:
 func fill_factor(pace: Miners.Pace, dry: bool) -> float:
 	if dry:
 		return _settings.value("alert", "dry_fill")
-	match pace:
-		Miners.Pace.LOW:
-			return _settings.value("alert", "fill_low")
-		Miners.Pace.MEDIUM:
-			return _settings.value("alert", "fill_medium")
-		Miners.Pace.HIGH:
-			return _settings.value("alert", "fill_high")
-	return 0.0
+	if pace == Miners.Pace.OFF:
+		return 0.0
+	return _settings.value("alert", "fill_" + _pace_key(pace))
 
 
 ## A wave's size factor at [param pace]: the dry size while every deposit is dry, and at Off,
 ## where only a sent wave starts.
 func size_factor(pace: Miners.Pace, dry: bool) -> float:
-	if not dry:
-		match pace:
-			Miners.Pace.LOW:
-				return _settings.value("waves", "size_low")
-			Miners.Pace.MEDIUM:
-				return _settings.value("waves", "size_medium")
-			Miners.Pace.HIGH:
-				return _settings.value("waves", "size_high")
-	return _settings.value("waves", "dry_size")
+	if dry or pace == Miners.Pace.OFF:
+		return _settings.value("waves", "dry_size")
+	return _settings.value("waves", "size_" + _pace_key(pace))
 
 
 ## The size of wave [param index] starting at [param threat] with [param factor]:
@@ -464,6 +460,11 @@ func _jittered(cell: Vector2i) -> Vector2:
 		_rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER), _rng.randf_range(-SPAWN_JITTER, SPAWN_JITTER)
 	)
 	return MapData.centre_of(cell) + jitter
+
+
+func _pace_key(pace: Miners.Pace) -> String:
+	var key: String = PACE_KEYS[pace]
+	return key
 
 
 # 1 edge, then 2, 3 and 4 from their threats, capped at the map's spawn edges, drawn at random
