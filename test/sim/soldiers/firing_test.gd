@@ -1,7 +1,7 @@
 extends "res://test/sim/soldiers/order_suite.gd"
 
 # Soldiers fire at step 7 with their own numbers (2 damage at 2 shots/s,
-# range 4 plus 0.5 a level up), and earn bounty and a combo of their own.
+# range 4 plus 0.5 a level up), and are credited with their kills, which pay nothing.
 
 const TOUGH := 1000.0
 const OPEN: Array[String] = [
@@ -133,7 +133,7 @@ func test_a_firing_soldier_walks_back_to_its_spot_at_its_normal_speed() -> void:
 	assert_float(_position_of(id).y).is_equal_approx(2.0 - 2.5 / 60.0, 1e-4)
 
 
-func test_a_soldiers_kills_pay_bounty_times_its_tier_and_build_its_combo() -> void:
+func test_a_soldiers_kills_are_credited_to_it_and_pay_nothing() -> void:
 	_sim = _still_sim(OPEN)
 	var id := _sim.soldiers.add(Vector2i(6, 1))
 	_spawn_weak_row(12)
@@ -143,34 +143,9 @@ func test_a_soldiers_kills_pay_bounty_times_its_tier_and_build_its_combo() -> vo
 	for tick in 331:
 		_sim.tick()
 
-	# Kills 1–9 pay 1 each at ×1; the 10th reaches ×2, so it and the next two pay 2 each.
-	assert_int(_sim.run_state.gold - gold).is_equal(15)
 	assert_int(_sim.soldiers.kills[_sim.soldiers.index_of(id)]).is_equal(12)
-	assert_int(_sim.combos.combo(id).count).is_equal(12)
-	assert_int(_sim.combos.combo(id).tier).is_equal(2)
-
-
-func test_moving_never_breaks_a_soldiers_combo() -> void:
-	_sim = _still_sim(OPEN)
-	var id := _sim.soldiers.add(Vector2i(6, 1))
-	_spawn_weak_row(12)
-	var breaks := []
-	_sim.combo_events.connect(
-		func(events: Array[Combos.Event]) -> void:
-			for event in events:
-				if event.kind == Combos.EventKind.BREAK:
-					breaks.append(event)
-	)
-	for tick in 100:
-		_sim.tick()
-
-	_move([id], Vector2(8.5, 1.5), Formations.CLUSTER)
-	for tick in 231:
-		_sim.tick()
-
-	assert_vector(_position_of(id)).is_not_equal(Vector2(6.5, 1.5))
-	assert_array(breaks).is_empty()
-	assert_int(_sim.combos.combo(id).count).is_equal(12)
+	assert_int(_sim.run_state.kills).is_equal(12)
+	assert_int(_sim.run_state.gold).is_equal(gold)
 
 
 func test_a_bloater_a_soldier_kills_credits_it_with_its_blasts_kills() -> void:
@@ -185,9 +160,8 @@ func test_a_bloater_a_soldier_kills_credits_it_with_its_blasts_kills() -> void:
 
 	assert_int(_sim.enemies.count).is_equal(0)
 	assert_int(_sim.soldiers.kills[_sim.soldiers.index_of(id)]).is_equal(4)
-	assert_int(_sim.combos.combo(id).count).is_equal(4)
-	# A bloater's bounty is 2 and a normal enemy's 1, all at ×1.
-	assert_int(_sim.run_state.gold - gold).is_equal(5)
+	assert_int(_sim.run_state.kills).is_equal(4)
+	assert_int(_sim.run_state.gold).is_equal(gold)
 
 
 # Twelve enemies a shot kills, in range of a soldier at (6, 1), in two rows of six.

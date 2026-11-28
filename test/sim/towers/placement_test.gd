@@ -123,7 +123,7 @@ func test_both_fields_cost_a_new_tower_on_the_tick_it_is_built() -> void:
 	var before := routing.value(Routing.Route.DIRECT, Vector2i(0, 6))
 	var matched: Array[bool] = []
 	sim.step_observer = func(step: int) -> void:
-		if step == Simulation.Step.SPAWN_ENEMIES:
+		if step == Simulation.Step.MINE_AND_SPAWN:
 			matched.append(FieldChecks.matches_full_rebuild(sim))
 	sim.fields_changed.connect(func() -> void: _events.append("fields changed"))
 

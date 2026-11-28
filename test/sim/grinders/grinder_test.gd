@@ -73,7 +73,7 @@ func test_an_unpowered_grinder_hurts_nothing() -> void:
 	assert_int(grinder.touching).is_equal(0)
 
 
-func test_its_kills_build_its_own_combo() -> void:
+func test_its_kills_are_credited_to_it() -> void:
 	var grinder := _build(Buildings.GRINDER, NORTH)
 	# Ten enemies against its west face, one a tick, each with under a tick's grinding (3/60 HP).
 	for n in 10:
@@ -81,9 +81,7 @@ func test_its_kills_build_its_own_combo() -> void:
 		_sim.tick()
 
 	assert_int(grinder.kills).is_equal(10)
-	var combo := _sim.combos.combo(grinder.id)
-	assert_int(combo.count).is_equal(10)
-	assert_int(combo.tier).is_equal(2)
+	assert_int(_sim.run_state.kills).is_equal(10)
 
 
 func test_it_joins_a_barrier_and_is_attacked_like_any_building() -> void:

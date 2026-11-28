@@ -152,7 +152,7 @@ func test_enemies_held_up_by_soldiers_fill_no_gauge() -> void:
 	assert_array(_gauges()).is_equal(gauges)
 
 
-func test_a_bloater_lights_its_fuse_on_a_soldier_and_its_self_pop_pays_only_its_kills() -> void:
+func test_a_bloater_lights_its_fuse_on_a_soldier_and_its_self_pop_kills_the_crowd() -> void:
 	_sim = _sim_from(LANE)
 	var id := _sim.soldiers.add(Vector2i(7, 1))
 	var bloater := _sim.enemies.spawn(Vector2(9.5, 1.5), TOUGH, Enemies.Kind.BLOATER)
@@ -160,7 +160,6 @@ func test_a_bloater_lights_its_fuse_on_a_soldier_and_its_self_pop_pays_only_its_
 	_sim.enemies.spawn(Vector2(11.3, 1.5), TOUGH)
 	_run_until_attacking(bloater, 240)
 	assert_int(_sim.enemies.fuse(bloater)).is_greater(0)
-	var gold := _sim.run_state.gold
 	var hp := _hp_of(id)
 
 	for tick in _sim.settings.fuse_ticks:
@@ -168,9 +167,6 @@ func test_a_bloater_lights_its_fuse_on_a_soldier_and_its_self_pop_pays_only_its_
 
 	assert_int(_sim.enemies.count).is_equal(0)
 	assert_int(_sim.run_state.kills).is_equal(3)
-	# The bloater pays no bounty; its two blast kills pay 1 each at x1.
-	assert_int(_sim.run_state.gold - gold).is_equal(2)
-	assert_object(_sim.combos.combo(id)).is_null()
 	# A bloater holds with its fuse lit and deals no damage of its own.
 	assert_float(_hp_of(id)).is_equal_approx(hp - _sim.settings.blast_damage, 1e-4)
 
@@ -247,29 +243,6 @@ func test_an_enemy_attacking_a_soldier_that_dies_stops_at_once() -> void:
 	_sim.tick()
 
 	assert_int(_soldier_target(enemy)).is_equal(Enemies.NONE)
-
-
-func test_a_kill_on_the_tick_its_soldier_dies_pays_x1() -> void:
-	_sim = _sim_from(OPEN)
-	_sim.settings.change("enemies", "speed", 0.1)
-	var id := _sim.soldiers.add(Vector2i(6, 1))
-	for n in 12:
-		_sim.enemies.spawn(Vector2(4.0 + 0.8 * (n % 6), 3.0 + 0.8 * (n / 6)), 2.0)
-	var i := _sim.soldiers.index_of(id)
-	while (
-		_sim.soldiers.kills[i] < _sim.settings.combo_tier_2_kills or _sim.soldiers.cooldowns[i] > 1
-	):
-		_sim.tick()
-	assert_int(_sim.combos.combo(id).tier).is_equal(2)
-	var gold := _sim.run_state.gold
-	var kills := _sim.run_state.kills
-
-	_sim.soldiers.damage(id, _sim.settings.soldier_hp)
-	_sim.tick()
-
-	assert_int(_sim.run_state.kills).is_equal(kills + 1)
-	assert_int(_sim.run_state.gold - gold).is_equal(1)
-	assert_object(_sim.combos.combo(id)).is_null()
 
 
 func test_soldiers_recover_to_full_hp_at_wave_end_and_not_before() -> void:

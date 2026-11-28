@@ -31,7 +31,6 @@ func test_the_brute_settings_load_with_their_starting_values() -> void:
 	assert_float(_settings.enemy_speed_per_tick_of(Enemies.Kind.BRUTE)).is_equal_approx(
 		1.4 / Simulation.TICKS_PER_SECOND, 1e-9
 	)
-	assert_int(_settings.enemy_bounty_of(Enemies.Kind.BRUTE)).is_equal(4)
 	assert_float(_settings.enemy_mass_of(Enemies.Kind.BRUTE)).is_equal(3.0)
 	assert_float(_settings.enemy_mass_of(Enemies.Kind.NORMAL)).is_equal(1.0)
 	assert_float(_settings.enemy_mass_of(Enemies.Kind.BLOATER)).is_equal(1.0)

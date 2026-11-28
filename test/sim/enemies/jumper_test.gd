@@ -31,7 +31,6 @@ func before_test() -> void:
 
 func test_the_jumper_settings_load_with_their_starting_values() -> void:
 	assert_float(_settings.enemy_hp_of(Enemies.Kind.JUMPER)).is_equal(10.0)
-	assert_int(_settings.enemy_bounty_of(Enemies.Kind.JUMPER)).is_equal(1)
 	assert_float(_settings.enemy_mass_of(Enemies.Kind.JUMPER)).is_equal(1.0)
 	assert_float(_settings.enemy_size_of(Enemies.Kind.JUMPER)).is_equal(1.0)
 	assert_float(_settings.enemy_speed_per_tick_of(Enemies.Kind.JUMPER)).is_equal_approx(

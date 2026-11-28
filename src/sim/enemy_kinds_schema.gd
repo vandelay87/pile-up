@@ -23,15 +23,6 @@ const BLOATERS := {
 		"unit": "cells/s",
 		"apply": Settings.Apply.LIVE,
 	},
-	"bounty":
-	{
-		"type": TYPE_INT,
-		"min": 0,
-		"max": 100,
-		"step": 1,
-		"unit": "gold",
-		"apply": Settings.Apply.LIVE,
-	},
 	"first_wave":
 	{
 		"type": TYPE_INT,
@@ -198,15 +189,6 @@ const BRUTES := {
 		"max": 10.0,
 		"step": 0.1,
 		"unit": "cells/s",
-		"apply": Settings.Apply.LIVE,
-	},
-	"bounty":
-	{
-		"type": TYPE_INT,
-		"min": 0,
-		"max": 100,
-		"step": 1,
-		"unit": "gold",
 		"apply": Settings.Apply.LIVE,
 	},
 	"mass":

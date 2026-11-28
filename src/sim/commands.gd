@@ -32,6 +32,27 @@ class NextWave:
 		sim.next_wave()
 
 
+## Sets the pace every miner mines at, from this tick on.
+class SetPace:
+	extends Commands.Play
+
+	const LABEL := "pace"
+
+	var _pace: Miners.Pace
+
+	func _init(pace: Miners.Pace) -> void:
+		_pace = pace
+
+	func label() -> String:
+		return LABEL
+
+	# Straight to Miners: Simulation is at gdlint's limit of public methods.
+	func apply(sim: Simulation) -> void:
+		var error := sim.miners.set_pace(_pace)
+		if not error.is_empty():
+			sim.reject_command("%s: %s" % [LABEL, error])
+
+
 class Build:
 	extends Commands.Play
 

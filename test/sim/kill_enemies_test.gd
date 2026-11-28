@@ -36,7 +36,7 @@ func test_kill_enemies_kills_the_first_n_on_the_field_that_tick() -> void:
 	)
 
 
-func test_killed_enemies_count_as_kills_pay_and_leave_bodies() -> void:
+func test_killed_enemies_count_as_kills_and_leave_bodies() -> void:
 	var gold := _sim.run_state.gold
 
 	_sim.queue_command(Commands.KillEnemies.new(3))
@@ -45,7 +45,7 @@ func test_killed_enemies_count_as_kills_pay_and_leave_bodies() -> void:
 
 	assert_int(_sim.run_state.kills).is_equal(3)
 	assert_int(_sim.enemies_left).is_equal(17)
-	assert_int(_sim.run_state.gold - gold).is_equal(3 * _sim.settings.enemy_bounty)
+	assert_int(_sim.run_state.gold).is_equal(gold)
 	var bodies := 0
 	for level in _sim.piles.levels:
 		bodies += level
